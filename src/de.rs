@@ -3,35 +3,34 @@ use anyhow::Result;
 use erased_serde::Serialize;
 use serde::Deserialize;
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct DeserializeOptions {
-    pub encoding: Encoding,
     pub all_documents: bool,
 }
 
 pub struct Deserializer {
-    opts: DeserializeOptions,
+    encoding: Encoding,
 }
 
 impl Deserializer {
-    pub fn new(opts: DeserializeOptions) -> Self {
-        Self { opts }
+    pub fn new(encoding: Encoding) -> Self {
+        Self { encoding }
     }
 
-    pub fn deserialize<R>(&self, reader: R) -> Result<Box<dyn Serialize>>
+    pub fn deserialize<R>(&self, reader: R, opts: DeserializeOptions) -> Result<Box<dyn Serialize>>
     where
         R: std::io::Read,
     {
         let mut reader = reader;
 
-        match &self.opts.encoding {
+        match &self.encoding {
             Encoding::Yaml => {
                 let mut values = Vec::new();
 
                 for doc in serde_yaml::Deserializer::from_reader(reader) {
                     let value = serde_yaml::Value::deserialize(doc)?;
 
-                    if self.opts.all_documents {
+                    if opts.all_documents {
                         values.push(value);
                     } else {
                         return Ok(Box::new(value));

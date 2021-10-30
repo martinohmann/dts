@@ -2,39 +2,43 @@ use crate::Encoding;
 use anyhow::{bail, Result};
 use erased_serde::Serialize;
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct SerializeOptions {
-    pub encoding: Encoding,
     pub pretty: bool,
     pub newline: bool,
 }
 
 pub struct Serializer {
-    opts: SerializeOptions,
+    encoding: Encoding,
 }
 
 impl Serializer {
-    pub fn new(opts: SerializeOptions) -> Self {
-        Self { opts }
+    pub fn new(encoding: Encoding) -> Self {
+        Self { encoding }
     }
 
-    pub fn serialize<W>(&self, writer: W, value: Box<dyn Serialize>) -> Result<()>
+    pub fn serialize<W>(
+        &self,
+        writer: W,
+        value: Box<dyn Serialize>,
+        opts: SerializeOptions,
+    ) -> Result<()>
     where
         W: std::io::Write,
     {
         let mut writer = writer;
 
-        match &self.opts.encoding {
+        match &self.encoding {
             Encoding::Yaml => serde_yaml::to_writer(writer.by_ref(), &value)?,
             Encoding::Json | Encoding::Json5 => {
-                if self.opts.pretty {
+                if opts.pretty {
                     serde_json::to_writer_pretty(writer.by_ref(), &value)?
                 } else {
                     serde_json::to_writer(writer.by_ref(), &value)?
                 }
             }
             Encoding::Ron => {
-                if self.opts.pretty {
+                if opts.pretty {
                     ron::ser::to_writer_pretty(
                         writer.by_ref(),
                         &value,
@@ -45,7 +49,7 @@ impl Serializer {
                 }
             }
             Encoding::Toml => {
-                let s = if self.opts.pretty {
+                let s = if opts.pretty {
                     toml::ser::to_string_pretty(&value)?
                 } else {
                     toml::ser::to_string(&value)?
@@ -55,7 +59,7 @@ impl Serializer {
             encoding => bail!("serializing to {:?} is not supported", encoding),
         };
 
-        if self.opts.newline {
+        if opts.newline {
             writer.write_all(b"\n")?;
         }
 

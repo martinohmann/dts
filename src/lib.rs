@@ -1,5 +1,5 @@
 use clap::ArgEnum;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub mod de;
 pub mod ser;
@@ -19,10 +19,6 @@ impl Encoding {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Option<Encoding> {
         let ext = path.as_ref().extension()?.to_str()?;
 
-        Self::from_extension(ext)
-    }
-
-    fn from_extension(ext: &str) -> Option<Encoding> {
         match ext {
             "json" => Some(Encoding::Json),
             "yaml" | "yml" => Some(Encoding::Yaml),
@@ -35,7 +31,10 @@ impl Encoding {
     }
 }
 
-pub fn detect_encoding(encoding: Option<Encoding>, path: Option<&PathBuf>) -> Option<Encoding> {
+pub fn detect_encoding<P>(encoding: Option<Encoding>, path: Option<P>) -> Option<Encoding>
+where
+    P: AsRef<Path>,
+{
     match encoding {
         Some(encoding) => Some(encoding),
         None => match &path {

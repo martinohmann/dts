@@ -44,29 +44,31 @@ struct Options {
 }
 
 impl Options {
+    fn deserialize_opts(&self) -> DeserializeOptions {
+        DeserializeOptions {
+            all_documents: self.all_documents,
+        }
+    }
+
     fn deserializer(&self) -> Result<Deserializer> {
         let encoding = detect_encoding(self.input_encoding, self.input.as_ref())
             .context("unable to detect input encoding, please provide it explicitly via -i")?;
 
-        let opts = DeserializeOptions {
-            encoding,
-            all_documents: self.all_documents,
-        };
+        Ok(Deserializer::new(encoding))
+    }
 
-        Ok(Deserializer::new(opts))
+    fn serialize_opts(&self) -> SerializeOptions {
+        SerializeOptions {
+            pretty: self.pretty,
+            newline: self.newline,
+        }
     }
 
     fn serializer(&self) -> Result<Serializer> {
         let encoding = detect_encoding(self.output_encoding, self.output.as_ref())
             .context("unable to detect output encoding, please provide it explicitly via -o")?;
 
-        let opts = SerializeOptions {
-            encoding,
-            pretty: self.pretty,
-            newline: self.newline,
-        };
-
-        Ok(Serializer::new(opts))
+        Ok(Serializer::new(encoding))
     }
 
     fn reader(&self) -> Result<Box<dyn std::io::Read>> {
@@ -104,7 +106,7 @@ fn main() -> Result<()> {
     let reader = opts.reader()?;
     let writer = opts.writer()?;
 
-    let value = de.deserialize(reader)?;
+    let value = de.deserialize(reader, opts.deserialize_opts())?;
 
-    ser.serialize(writer, value)
+    ser.serialize(writer, value, opts.serialize_opts())
 }
