@@ -2,10 +2,12 @@ use crate::Encoding;
 use anyhow::Result;
 use erased_serde::Serialize;
 use serde::Deserialize;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DeserializeOptions {
     pub all_documents: bool,
+    pub no_headers: bool,
 }
 
 pub struct Deserializer {
@@ -66,6 +68,54 @@ impl Deserializer {
                 let value: serde_json::Value = deser_hjson::from_str(&s)?;
                 Ok(Box::new(value))
             }
+            Encoding::Csv => {
+                let mut csv_reader = csv::ReaderBuilder::new()
+                    .has_headers(false)
+                    .from_reader(reader);
+                deserialize_csv(&mut csv_reader, opts)
+            }
+            Encoding::Tsv => {
+                let mut tsv_reader = csv::ReaderBuilder::new()
+                    .has_headers(false)
+                    .delimiter(b'\t')
+                    .from_reader(reader);
+                deserialize_csv(&mut tsv_reader, opts)
+            }
         }
+    }
+}
+
+fn deserialize_csv<R>(
+    reader: &mut csv::Reader<R>,
+    opts: DeserializeOptions,
+) -> Result<Box<dyn Serialize>>
+where
+    R: std::io::Read,
+{
+    let mut iter = reader.deserialize();
+
+    if opts.no_headers {
+        let value: Vec<Vec<String>> = iter.collect::<Result<_, _>>()?;
+
+        return Ok(Box::new(value));
+    }
+
+    match iter.next() {
+        Some(headers) => {
+            let headers: Vec<String> = headers?;
+
+            let value: Vec<BTreeMap<String, String>> = iter
+                .map(|record| {
+                    Ok(headers
+                        .iter()
+                        .zip(record?.iter())
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect())
+                })
+                .collect::<Result<_, csv::Error>>()?;
+
+            Ok(Box::new(value))
+        }
+        None => Ok(Box::new(Vec::<()>::new())),
     }
 }

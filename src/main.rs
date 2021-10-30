@@ -34,6 +34,10 @@ struct Options {
     #[clap(short = 'A', long)]
     all_documents: bool,
 
+    /// Indicates the first line of CSV or TSV input should not be treated as the headers.
+    #[clap(long)]
+    no_headers: bool,
+
     /// Input file, if absent or '-' input is read from stdin
     #[clap(name = "INPUT", parse(from_os_str), value_hint = ValueHint::FilePath)]
     input: Option<PathBuf>,
@@ -47,6 +51,7 @@ impl Options {
     fn deserialize_opts(&self) -> DeserializeOptions {
         DeserializeOptions {
             all_documents: self.all_documents,
+            no_headers: self.no_headers,
         }
     }
 

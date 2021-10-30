@@ -13,6 +13,8 @@ pub enum Encoding {
     Toml,
     Json5,
     Hjson,
+    Csv,
+    Tsv,
 }
 
 impl Encoding {
@@ -26,6 +28,8 @@ impl Encoding {
             "toml" => Some(Encoding::Toml),
             "json5" => Some(Encoding::Json5),
             "hjson" => Some(Encoding::Hjson),
+            "csv" => Some(Encoding::Csv),
+            "tsv" => Some(Encoding::Tsv),
             _ => None,
         }
     }
