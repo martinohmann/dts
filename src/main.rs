@@ -6,11 +6,11 @@ use trnscd::{
     de::{DeserializeOptions, Deserializer},
     detect_encoding,
     ser::{SerializeOptions, Serializer},
-    Encoding,
+    Encoding, Reader, Writer,
 };
 
 /// Simple tool to transcode between different encodings.
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[clap(name = "trnscd")]
 struct Options {
     /// Input encoding, if absent encoding will be detected from input file extension
@@ -75,31 +75,6 @@ impl Options {
 
         Ok(Serializer::new(encoding))
     }
-
-    fn reader(&self) -> Result<Box<dyn std::io::Read>> {
-        match &self.input {
-            Some(path) => match path.to_str() {
-                Some("-") => Ok(Box::new(std::io::stdin())),
-                _ => {
-                    let file = std::fs::File::open(path)
-                        .with_context(|| format!("failed to open file: {}", path.display()))?;
-                    Ok(Box::new(file))
-                }
-            },
-            None => Ok(Box::new(std::io::stdin())),
-        }
-    }
-
-    fn writer(&self) -> Result<Box<dyn std::io::Write>> {
-        match &self.output {
-            Some(path) => {
-                let file = std::fs::File::create(path)
-                    .with_context(|| format!("failed to create file: {}", path.display()))?;
-                Ok(Box::new(file))
-            }
-            None => Ok(Box::new(std::io::stdout())),
-        }
-    }
 }
 
 fn main() -> Result<()> {
@@ -108,10 +83,9 @@ fn main() -> Result<()> {
     let de = opts.deserializer()?;
     let ser = opts.serializer()?;
 
-    let reader = opts.reader()?;
-    let writer = opts.writer()?;
-
+    let reader = Reader::new(&opts.input)?;
     let value = de.deserialize(reader, opts.deserialize_opts())?;
 
+    let writer = Writer::new(&opts.output)?;
     ser.serialize(writer, value, opts.serialize_opts())
 }

@@ -2,8 +2,13 @@ use clap::ArgEnum;
 use std::path::Path;
 
 pub mod de;
+mod reader;
 pub mod ser;
 pub mod value;
+mod writer;
+
+pub use reader::Reader;
+pub use writer::Writer;
 
 #[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
 pub enum Encoding {
