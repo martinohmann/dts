@@ -1,10 +1,13 @@
 use anyhow::Result;
+use std::path::Path;
 
 use trnscd::{
     de::{DeserializeOptions, Deserializer},
     ser::{SerializeOptions, Serializer},
     Encoding,
 };
+
+use Encoding::*;
 
 fn transcode<T>(
     input: T,
@@ -57,26 +60,44 @@ where
     );
 }
 
+fn fixture<P: AsRef<Path>>(path: P) -> String {
+    std::fs::read_to_string(path).unwrap()
+}
+
 #[test]
 fn test_transcode() {
-    use Encoding::*;
-
-    assert_transcode("{\"foo\":\"bar\"}", "---\nfoo: bar\n", Json, Yaml);
-    assert_transcode("---\nfoo: bar\n", "{\"foo\":\"bar\"}", Yaml, Json);
+    assert_transcode(
+        fixture("tests/fixtures/simple.json"),
+        fixture("tests/fixtures/simple.yaml"),
+        Json,
+        Yaml,
+    );
+    assert_transcode(
+        fixture("tests/fixtures/simple.yaml"),
+        "{\"foo\":\"bar\"}".to_string(),
+        Yaml,
+        Json,
+    );
+    assert_transcode(
+        "row00,row01\nrow10,row11",
+        "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
+        Csv,
+        Json,
+    );
     assert_transcode_opts(
-        "---\nfoo: bar\n",
-        "{\n  \"foo\": \"bar\"\n}",
+        fixture("tests/fixtures/simple.yaml"),
+        fixture("tests/fixtures/simple.pretty.json"),
         Yaml,
         Json,
         DeserializeOptions::default(),
         SerializeOptions {
             pretty: true,
-            newline: false,
+            newline: true,
         },
     );
     assert_transcode_opts(
-        "---\nfoo: bar\n",
-        "{\"foo\":\"bar\"}\n",
+        fixture("tests/fixtures/simple.yaml"),
+        fixture("tests/fixtures/simple.json"),
         Yaml,
         Json,
         DeserializeOptions::default(),
@@ -85,4 +106,60 @@ fn test_transcode() {
             newline: true,
         },
     );
+}
+
+#[test]
+fn test_transcode_csv() {
+    assert_transcode(
+        "row00,row01\nrow10,row11",
+        "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
+        Csv,
+        Json,
+    );
+
+    assert_transcode_opts(
+        "header00,header01\nrow00,row01\nrow10,row11",
+        "[{\"header00\":\"row00\",\"header01\":\"row01\"},{\"header00\":\"row10\",\"header01\":\"row11\"}]",
+        Csv,
+        Json,
+        DeserializeOptions {
+            all_documents: false,
+            headers: true,
+        },
+        SerializeOptions::default(),
+    );
+}
+
+#[test]
+fn test_transcode_tsv() {
+    assert_transcode(
+        "row00\trow01\nrow10\trow11",
+        "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
+        Tsv,
+        Json,
+    );
+
+    assert_transcode_opts(
+        "header00\theader01\nrow00\trow01\nrow10\trow11",
+        "[{\"header00\":\"row00\",\"header01\":\"row01\"},{\"header00\":\"row10\",\"header01\":\"row11\"}]",
+        Tsv,
+        Json,
+        DeserializeOptions {
+            all_documents: false,
+            headers: true,
+        },
+        SerializeOptions::default(),
+    );
+}
+
+#[test]
+fn test_deserialize_errors() {
+    assert!(transcode(
+        "invalidjson",
+        Json,
+        Yaml,
+        DeserializeOptions::default(),
+        SerializeOptions::default(),
+    )
+    .is_err());
 }
