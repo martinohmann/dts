@@ -3,6 +3,7 @@ use std::path::Path;
 
 pub mod de;
 pub mod ser;
+pub mod value;
 
 #[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
 pub enum Encoding {

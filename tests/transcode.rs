@@ -1,17 +1,13 @@
 use anyhow::Result;
-use erased_serde::Serialize;
 
 use trnscd::{
     de::{DeserializeOptions, Deserializer},
     ser::{SerializeOptions, Serializer},
+    value::Value,
     Encoding,
 };
 
-fn serialize(
-    value: Box<dyn Serialize>,
-    encoding: Encoding,
-    opts: SerializeOptions,
-) -> Result<Vec<u8>> {
+fn serialize(value: Value, encoding: Encoding, opts: SerializeOptions) -> Result<Vec<u8>> {
     let ser = Serializer::new(encoding);
 
     let mut output: Vec<u8> = Vec::new();
@@ -19,11 +15,7 @@ fn serialize(
     Ok(output)
 }
 
-fn deserialize<T>(
-    input: T,
-    encoding: Encoding,
-    opts: DeserializeOptions,
-) -> Result<Box<dyn Serialize>>
+fn deserialize<T>(input: T, encoding: Encoding, opts: DeserializeOptions) -> Result<Value>
 where
     T: AsRef<[u8]>,
 {

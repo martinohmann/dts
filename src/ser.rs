@@ -1,6 +1,5 @@
-use crate::Encoding;
+use crate::{value::Value, Encoding};
 use anyhow::{bail, Result};
-use erased_serde::Serialize;
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SerializeOptions {
@@ -17,12 +16,7 @@ impl Serializer {
         Self { encoding }
     }
 
-    pub fn serialize<W>(
-        &self,
-        writer: W,
-        value: Box<dyn Serialize>,
-        opts: SerializeOptions,
-    ) -> Result<()>
+    pub fn serialize<W>(&self, writer: W, value: Value, opts: SerializeOptions) -> Result<()>
     where
         W: std::io::Write,
     {
