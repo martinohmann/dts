@@ -96,7 +96,7 @@ where
     W: std::io::Write,
 {
     if opts.pretty {
-        ron::ser::to_writer_pretty(writer, value, ron::ser::PrettyConfig::default())?
+        ron::ser::to_writer_pretty(writer, value, Default::default())?
     } else {
         ron::ser::to_writer(writer, value)?
     }
