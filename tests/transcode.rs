@@ -3,26 +3,8 @@ use anyhow::Result;
 use trnscd::{
     de::{DeserializeOptions, Deserializer},
     ser::{SerializeOptions, Serializer},
-    value::Value,
     Encoding,
 };
-
-fn serialize(value: Value, encoding: Encoding, opts: SerializeOptions) -> Result<Vec<u8>> {
-    let ser = Serializer::new(encoding);
-
-    let mut output: Vec<u8> = Vec::new();
-    ser.serialize(&mut output, value, opts)?;
-    Ok(output)
-}
-
-fn deserialize<T>(input: T, encoding: Encoding, opts: DeserializeOptions) -> Result<Value>
-where
-    T: AsRef<[u8]>,
-{
-    let de = Deserializer::new(encoding);
-
-    de.deserialize(input.as_ref(), opts)
-}
 
 fn transcode<T>(
     input: T,
@@ -34,8 +16,12 @@ fn transcode<T>(
 where
     T: AsRef<[u8]>,
 {
-    let value = deserialize(input, in_enc, de_opts)?;
-    serialize(value, out_enc, ser_opts)
+    let de = Deserializer::new(in_enc);
+    let value = de.deserialize(input.as_ref(), de_opts)?;
+    let ser = Serializer::new(out_enc);
+    let mut output: Vec<u8> = Vec::new();
+    ser.serialize(&mut output, value, ser_opts)?;
+    Ok(output)
 }
 
 fn assert_transcode_opts<T>(
