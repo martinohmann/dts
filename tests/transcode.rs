@@ -55,8 +55,8 @@ where
         expected,
         in_enc,
         out_enc,
-        DeserializeOptions::default(),
-        SerializeOptions::default(),
+        DeserializeOptions::new(),
+        SerializeOptions::new(),
     );
 }
 
@@ -89,7 +89,7 @@ fn test_transcode() {
         fixture("tests/fixtures/simple.pretty.json"),
         Yaml,
         Json,
-        DeserializeOptions::default(),
+        DeserializeOptions::new(),
         SerializeOptions {
             pretty: true,
             newline: true,
@@ -100,7 +100,7 @@ fn test_transcode() {
         fixture("tests/fixtures/simple.json"),
         Yaml,
         Json,
-        DeserializeOptions::default(),
+        DeserializeOptions::new(),
         SerializeOptions {
             pretty: false,
             newline: true,
@@ -126,7 +126,7 @@ fn test_transcode_csv() {
             all_documents: false,
             headers: true,
         },
-        SerializeOptions::default(),
+        SerializeOptions::new(),
     );
 }
 
@@ -148,7 +148,7 @@ fn test_transcode_tsv() {
             all_documents: false,
             headers: true,
         },
-        SerializeOptions::default(),
+        SerializeOptions::new(),
     );
 }
 
@@ -158,8 +158,8 @@ fn test_deserialize_errors() {
         "invalidjson",
         Json,
         Yaml,
-        DeserializeOptions::default(),
-        SerializeOptions::default(),
+        DeserializeOptions::new(),
+        SerializeOptions::new(),
     )
     .is_err());
 }

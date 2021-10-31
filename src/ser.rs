@@ -7,6 +7,12 @@ pub struct SerializeOptions {
     pub newline: bool,
 }
 
+impl SerializeOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 pub struct Serializer {
     encoding: Encoding,
     opts: SerializeOptions,

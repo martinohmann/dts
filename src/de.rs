@@ -8,6 +8,12 @@ pub struct DeserializeOptions {
     pub headers: bool,
 }
 
+impl DeserializeOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 pub struct Deserializer {
     encoding: Encoding,
     opts: DeserializeOptions,
