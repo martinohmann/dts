@@ -21,32 +21,16 @@ impl Deserializer {
     where
         R: std::io::Read,
     {
-        let mut reader = reader;
-
-        let value = match &self.encoding {
-            Encoding::Yaml => deserialize_yaml(reader, opts)?,
-            Encoding::Json => serde_json::from_reader(reader)?,
-            Encoding::Ron => ron::de::from_reader(reader)?,
-            Encoding::Toml => {
-                let mut buf = Vec::new();
-                reader.read_to_end(&mut buf)?;
-                toml::de::from_slice(&buf)?
-            }
-            Encoding::Json5 => {
-                let mut s = String::new();
-                reader.read_to_string(&mut s)?;
-                json5::from_str(&s)?
-            }
-            Encoding::Hjson => {
-                let mut s = String::new();
-                reader.read_to_string(&mut s)?;
-                deser_hjson::from_str(&s)?
-            }
-            Encoding::Csv => deserialize_csv(reader, b',', opts)?,
-            Encoding::Tsv => deserialize_csv(reader, b'\t', opts)?,
-        };
-
-        Ok(value)
+        match &self.encoding {
+            Encoding::Yaml => deserialize_yaml(reader, opts),
+            Encoding::Json => deserialize_json(reader),
+            Encoding::Ron => deserialize_ron(reader),
+            Encoding::Toml => deserialize_toml(reader),
+            Encoding::Json5 => deserialize_json5(reader),
+            Encoding::Hjson => deserialize_hjson(reader),
+            Encoding::Csv => deserialize_csv(reader, b',', opts),
+            Encoding::Tsv => deserialize_csv(reader, b'\t', opts),
+        }
     }
 }
 
@@ -67,6 +51,50 @@ where
     }
 
     Ok(Value::Array(values))
+}
+
+fn deserialize_json<R>(reader: R) -> Result<Value>
+where
+    R: std::io::Read,
+{
+    Ok(serde_json::from_reader(reader)?)
+}
+
+fn deserialize_ron<R>(reader: R) -> Result<Value>
+where
+    R: std::io::Read,
+{
+    Ok(ron::de::from_reader(reader)?)
+}
+
+fn deserialize_toml<R>(reader: R) -> Result<Value>
+where
+    R: std::io::Read,
+{
+    let mut reader = reader;
+    let mut buf = Vec::new();
+    reader.read_to_end(&mut buf)?;
+    Ok(toml::de::from_slice(&buf)?)
+}
+
+fn deserialize_json5<R>(reader: R) -> Result<Value>
+where
+    R: std::io::Read,
+{
+    let mut reader = reader;
+    let mut s = String::new();
+    reader.read_to_string(&mut s)?;
+    Ok(json5::from_str(&s)?)
+}
+
+fn deserialize_hjson<R>(reader: R) -> Result<Value>
+where
+    R: std::io::Read,
+{
+    let mut reader = reader;
+    let mut s = String::new();
+    reader.read_to_string(&mut s)?;
+    Ok(deser_hjson::from_str(&s)?)
 }
 
 fn deserialize_csv<R>(reader: R, delimiter: u8, opts: DeserializeOptions) -> Result<Value>
