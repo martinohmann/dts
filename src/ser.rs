@@ -50,36 +50,8 @@ impl Serializer {
                 };
                 writer.by_ref().write_all(s.as_bytes())?
             }
-            Encoding::Csv => {
-                if !value.is_array() {
-                    bail!(
-                        "serializing to {:?} requires the input data to be an array",
-                        &self.encoding
-                    )
-                }
-
-                let mut csv_writer = csv::Writer::from_writer(writer.by_ref());
-
-                for row in value.as_array().unwrap() {
-                    csv_writer.serialize(row)?;
-                }
-            }
-            Encoding::Tsv => {
-                if !value.is_array() {
-                    bail!(
-                        "serializing to {:?} requires the input data to be an array",
-                        &self.encoding
-                    )
-                }
-
-                let mut tsv_writer = csv::WriterBuilder::new()
-                    .delimiter(b'\t')
-                    .from_writer(writer.by_ref());
-
-                for row in value.as_array().unwrap() {
-                    tsv_writer.serialize(row)?;
-                }
-            }
+            Encoding::Csv => serialize_csv(writer.by_ref(), b',', value)?,
+            Encoding::Tsv => serialize_csv(writer.by_ref(), b'\t', value)?,
             encoding => bail!("serializing to {:?} is not supported", encoding),
         };
 
@@ -89,4 +61,23 @@ impl Serializer {
 
         Ok(())
     }
+}
+
+fn serialize_csv<W>(writer: W, delimiter: u8, value: Value) -> Result<()>
+where
+    W: std::io::Write,
+{
+    if !value.is_array() {
+        bail!("serializing to CSV requires the input data to be an array",)
+    }
+
+    let mut csv_writer = csv::WriterBuilder::new()
+        .delimiter(delimiter)
+        .from_writer(writer);
+
+    for row in value.as_array().unwrap() {
+        csv_writer.serialize(row)?;
+    }
+
+    Ok(())
 }

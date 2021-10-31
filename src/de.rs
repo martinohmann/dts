@@ -42,19 +42,8 @@ impl Deserializer {
                 reader.read_to_string(&mut s)?;
                 deser_hjson::from_str(&s)?
             }
-            Encoding::Csv => {
-                let mut csv_reader = csv::ReaderBuilder::new()
-                    .has_headers(false)
-                    .from_reader(reader);
-                deserialize_csv(&mut csv_reader, opts)?
-            }
-            Encoding::Tsv => {
-                let mut tsv_reader = csv::ReaderBuilder::new()
-                    .has_headers(false)
-                    .delimiter(b'\t')
-                    .from_reader(reader);
-                deserialize_csv(&mut tsv_reader, opts)?
-            }
+            Encoding::Csv => deserialize_csv(reader, b',', opts)?,
+            Encoding::Tsv => deserialize_csv(reader, b'\t', opts)?,
         };
 
         Ok(value)
@@ -80,11 +69,16 @@ where
     Ok(Value::Array(values))
 }
 
-fn deserialize_csv<R>(reader: &mut csv::Reader<R>, opts: DeserializeOptions) -> Result<Value>
+fn deserialize_csv<R>(reader: R, delimiter: u8, opts: DeserializeOptions) -> Result<Value>
 where
     R: std::io::Read,
 {
-    let mut iter = reader.deserialize();
+    let mut csv_reader = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .delimiter(delimiter)
+        .from_reader(reader);
+
+    let mut iter = csv_reader.deserialize();
 
     let value = if opts.headers {
         match iter.next() {
