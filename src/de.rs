@@ -16,14 +16,12 @@ impl DeserializeOptions {
 
 #[derive(Debug, Clone)]
 pub struct DeserializerBuilder {
-    encoding: Encoding,
     opts: DeserializeOptions,
 }
 
 impl DeserializerBuilder {
-    pub fn new(encoding: Encoding) -> Self {
+    pub fn new() -> Self {
         Self {
-            encoding,
             opts: DeserializeOptions::new(),
         }
     }
@@ -38,8 +36,8 @@ impl DeserializerBuilder {
         self
     }
 
-    pub fn build(&self) -> Deserializer {
-        Deserializer::new(self.encoding, self.opts.clone())
+    pub fn build(&self, encoding: Encoding) -> Deserializer {
+        Deserializer::new(encoding, self.opts.clone())
     }
 }
 

@@ -29,8 +29,8 @@ fn test_transcode() {
     assert_eq!(
         transcode(
             fixture("tests/fixtures/simple.json"),
-            DeserializerBuilder::new(Json).build(),
-            SerializerBuilder::new(Yaml).build(),
+            DeserializerBuilder::new().build(Json),
+            SerializerBuilder::new().build(Yaml),
         )
         .unwrap(),
         fixture("tests/fixtures/simple.yaml"),
@@ -39,8 +39,8 @@ fn test_transcode() {
     assert_eq!(
         transcode(
             fixture("tests/fixtures/simple.yaml"),
-            DeserializerBuilder::new(Yaml).build(),
-            SerializerBuilder::new(Json).build(),
+            DeserializerBuilder::new().build(Yaml),
+            SerializerBuilder::new().build(Json),
         )
         .unwrap(),
         "{\"foo\":\"bar\"}".to_string(),
@@ -49,11 +49,11 @@ fn test_transcode() {
     assert_eq!(
         transcode(
             fixture("tests/fixtures/simple.yaml"),
-            DeserializerBuilder::new(Yaml).build(),
-            SerializerBuilder::new(Json)
+            DeserializerBuilder::new().build(Yaml),
+            SerializerBuilder::new()
                 .pretty(true)
                 .newline(true)
-                .build(),
+                .build(Json),
         )
         .unwrap(),
         fixture("tests/fixtures/simple.pretty.json"),
@@ -62,8 +62,8 @@ fn test_transcode() {
     assert_eq!(
         transcode(
             fixture("tests/fixtures/simple.yaml"),
-            DeserializerBuilder::new(Yaml).build(),
-            SerializerBuilder::new(Json).newline(true).build(),
+            DeserializerBuilder::new().build(Yaml),
+            SerializerBuilder::new().newline(true).build(Json),
         )
         .unwrap(),
         fixture("tests/fixtures/simple.json"),
@@ -75,8 +75,8 @@ fn test_transcode_csv() {
     assert_eq!(
         transcode(
             "row00,row01\nrow10,row11",
-            DeserializerBuilder::new(Csv).build(),
-            SerializerBuilder::new(Json).build(),
+            DeserializerBuilder::new().build(Csv),
+            SerializerBuilder::new().build(Json),
         )
         .unwrap(),
         "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
@@ -85,8 +85,8 @@ fn test_transcode_csv() {
     assert_eq!(
         transcode(
             "header00,header01\nrow00,row01\nrow10,row11",
-            DeserializerBuilder::new(Csv).headers(true).build(),
-            SerializerBuilder::new(Json).build(),
+            DeserializerBuilder::new().headers(true).build(Csv),
+            SerializerBuilder::new().build(Json),
         ).unwrap(),
         "[{\"header00\":\"row00\",\"header01\":\"row01\"},{\"header00\":\"row10\",\"header01\":\"row11\"}]",
     );
@@ -97,8 +97,8 @@ fn test_transcode_tsv() {
     assert_eq!(
         transcode(
             "row00\trow01\nrow10\trow11",
-            DeserializerBuilder::new(Tsv).build(),
-            SerializerBuilder::new(Json).build(),
+            DeserializerBuilder::new().build(Tsv),
+            SerializerBuilder::new().build(Json),
         )
         .unwrap(),
         "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
@@ -107,8 +107,8 @@ fn test_transcode_tsv() {
     assert_eq!(
         transcode(
             "header00\theader01\nrow00\trow01\nrow10\trow11",
-            DeserializerBuilder::new(Tsv).headers(true).build(),
-            SerializerBuilder::new(Json).build(),
+            DeserializerBuilder::new().headers(true).build(Tsv),
+            SerializerBuilder::new().build(Json),
         ).unwrap(),
         "[{\"header00\":\"row00\",\"header01\":\"row01\"},{\"header00\":\"row10\",\"header01\":\"row11\"}]",
     );
@@ -118,8 +118,8 @@ fn test_transcode_tsv() {
 fn test_deserialize_errors() {
     assert!(transcode(
         "invalidjson",
-        DeserializerBuilder::new(Json).build(),
-        SerializerBuilder::new(Yaml).build(),
+        DeserializerBuilder::new().build(Json),
+        SerializerBuilder::new().build(Yaml),
     )
     .is_err());
 }

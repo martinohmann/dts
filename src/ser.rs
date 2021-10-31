@@ -15,14 +15,12 @@ impl SerializeOptions {
 
 #[derive(Debug, Clone)]
 pub struct SerializerBuilder {
-    encoding: Encoding,
     opts: SerializeOptions,
 }
 
 impl SerializerBuilder {
-    pub fn new(encoding: Encoding) -> Self {
+    pub fn new() -> Self {
         Self {
-            encoding,
             opts: SerializeOptions::new(),
         }
     }
@@ -37,8 +35,8 @@ impl SerializerBuilder {
         self
     }
 
-    pub fn build(&self) -> Serializer {
-        Serializer::new(self.encoding, self.opts.clone())
+    pub fn build(&self, encoding: Encoding) -> Serializer {
+        Serializer::new(encoding, self.opts.clone())
     }
 }
 
