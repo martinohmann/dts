@@ -5,7 +5,7 @@ use serde::Deserialize;
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DeserializeOptions {
     pub all_documents: bool,
-    pub no_headers: bool,
+    pub headers: bool,
 }
 
 pub struct Deserializer {
@@ -86,9 +86,7 @@ where
 {
     let mut iter = reader.deserialize();
 
-    let value = if opts.no_headers {
-        Value::Csv(iter.collect::<Result<_, _>>()?)
-    } else {
+    let value = if opts.headers {
         match iter.next() {
             Some(headers) => {
                 let headers: Vec<String> = headers?;
@@ -106,6 +104,8 @@ where
             }
             None => Value::Csv(Vec::new()),
         }
+    } else {
+        Value::Csv(iter.collect::<Result<_, _>>()?)
     };
 
     Ok(value)

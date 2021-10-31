@@ -1,5 +1,5 @@
 use crate::{value::Value, Encoding};
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SerializeOptions {
@@ -49,6 +49,36 @@ impl Serializer {
                     toml::ser::to_string(&value)?
                 };
                 writer.by_ref().write_all(s.as_bytes())?
+            }
+            Encoding::Csv => {
+                let rows = value.to_vec().with_context(|| {
+                    format!(
+                        "serializing to {:?} requires the input data to be an array",
+                        &self.encoding
+                    )
+                })?;
+
+                let mut csv_writer = csv::Writer::from_writer(writer.by_ref());
+
+                for row in rows {
+                    csv_writer.serialize(row)?;
+                }
+            }
+            Encoding::Tsv => {
+                let rows = value.to_vec().with_context(|| {
+                    format!(
+                        "serializing to {:?} requires the input data to be an array",
+                        &self.encoding
+                    )
+                })?;
+
+                let mut tsv_writer = csv::WriterBuilder::new()
+                    .delimiter(b'\t')
+                    .from_writer(writer.by_ref());
+
+                for row in rows {
+                    tsv_writer.serialize(row)?;
+                }
             }
             encoding => bail!("serializing to {:?} is not supported", encoding),
         };
