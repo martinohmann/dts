@@ -1,5 +1,5 @@
-use crate::{value::Value, Encoding};
-use anyhow::{bail, Context, Result};
+use crate::{Encoding, Value};
+use anyhow::{bail, Result};
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SerializeOptions {
@@ -51,32 +51,32 @@ impl Serializer {
                 writer.by_ref().write_all(s.as_bytes())?
             }
             Encoding::Csv => {
-                let rows = value.to_vec().with_context(|| {
-                    format!(
+                if !value.is_array() {
+                    bail!(
                         "serializing to {:?} requires the input data to be an array",
                         &self.encoding
                     )
-                })?;
+                }
 
                 let mut csv_writer = csv::Writer::from_writer(writer.by_ref());
 
-                for row in rows {
+                for row in value.as_array().unwrap() {
                     csv_writer.serialize(row)?;
                 }
             }
             Encoding::Tsv => {
-                let rows = value.to_vec().with_context(|| {
-                    format!(
+                if !value.is_array() {
+                    bail!(
                         "serializing to {:?} requires the input data to be an array",
                         &self.encoding
                     )
-                })?;
+                }
 
                 let mut tsv_writer = csv::WriterBuilder::new()
                     .delimiter(b'\t')
                     .from_writer(writer.by_ref());
 
-                for row in rows {
+                for row in value.as_array().unwrap() {
                     tsv_writer.serialize(row)?;
                 }
             }

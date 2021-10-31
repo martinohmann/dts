@@ -4,11 +4,14 @@ use std::path::Path;
 pub mod de;
 mod reader;
 pub mod ser;
-pub mod value;
 mod writer;
 
 pub use reader::Reader;
 pub use writer::Writer;
+
+// We use serde_json::Value as our internal deserialization format for now as it should have all
+// the necessary features we need for internal data transformation.
+pub type Value = serde_json::Value;
 
 #[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
 pub enum Encoding {
