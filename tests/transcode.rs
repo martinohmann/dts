@@ -16,7 +16,7 @@ where
     let mut input = input.as_ref();
     let value = de.deserialize(&mut input)?;
     let mut output: Vec<u8> = Vec::new();
-    ser.serialize(&mut output, value)?;
+    ser.serialize(&mut output, &value)?;
     Ok(std::str::from_utf8(&output)?.to_owned())
 }
 

@@ -79,5 +79,5 @@ fn main() -> Result<()> {
     let value = de.deserialize(&mut reader)?;
 
     let mut writer = Writer::new(&opts.output)?;
-    ser.serialize(&mut writer, value)
+    ser.serialize(&mut writer, &value)
 }

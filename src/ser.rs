@@ -13,16 +13,14 @@ impl SerializeOptions {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct SerializerBuilder {
     opts: SerializeOptions,
 }
 
 impl SerializerBuilder {
     pub fn new() -> Self {
-        Self {
-            opts: SerializeOptions::new(),
-        }
+        Self::default()
     }
 
     pub fn pretty(&mut self, pretty: bool) -> &mut Self {
@@ -50,7 +48,7 @@ impl Serializer {
         Self { encoding, opts }
     }
 
-    pub fn serialize<W>(&self, writer: &mut W, value: Value) -> Result<()>
+    pub fn serialize<W>(&self, writer: &mut W, value: &Value) -> Result<()>
     where
         W: std::io::Write,
     {
@@ -61,6 +59,7 @@ impl Serializer {
             Encoding::Toml => serialize_toml(writer, value, &self.opts)?,
             Encoding::Csv => serialize_csv(writer, b',', value)?,
             Encoding::Tsv => serialize_csv(writer, b'\t', value)?,
+            Encoding::Pickle => serialize_pickle(writer, value)?,
             encoding => bail!("serializing to {:?} is not supported", encoding),
         };
 
@@ -72,53 +71,53 @@ impl Serializer {
     }
 }
 
-fn serialize_yaml<W>(writer: &mut W, value: Value) -> Result<()>
+fn serialize_yaml<W>(writer: &mut W, value: &Value) -> Result<()>
 where
     W: std::io::Write,
 {
-    Ok(serde_yaml::to_writer(writer, &value)?)
+    Ok(serde_yaml::to_writer(writer, value)?)
 }
 
-fn serialize_json<W>(writer: &mut W, value: Value, opts: &SerializeOptions) -> Result<()>
+fn serialize_json<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
 where
     W: std::io::Write,
 {
     if opts.pretty {
-        serde_json::to_writer_pretty(writer, &value)?;
+        serde_json::to_writer_pretty(writer, value)?;
     } else {
-        serde_json::to_writer(writer, &value)?;
+        serde_json::to_writer(writer, value)?;
     }
 
     Ok(())
 }
 
-fn serialize_ron<W>(writer: &mut W, value: Value, opts: &SerializeOptions) -> Result<()>
+fn serialize_ron<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
 where
     W: std::io::Write,
 {
     if opts.pretty {
-        ron::ser::to_writer_pretty(writer, &value, ron::ser::PrettyConfig::default())?
+        ron::ser::to_writer_pretty(writer, value, ron::ser::PrettyConfig::default())?
     } else {
-        ron::ser::to_writer(writer, &value)?
+        ron::ser::to_writer(writer, value)?
     }
 
     Ok(())
 }
 
-fn serialize_toml<W>(writer: &mut W, value: Value, opts: &SerializeOptions) -> Result<()>
+fn serialize_toml<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
 where
     W: std::io::Write,
 {
     let s = if opts.pretty {
-        toml::ser::to_string_pretty(&value)?
+        toml::ser::to_string_pretty(value)?
     } else {
-        toml::ser::to_string(&value)?
+        toml::ser::to_string(value)?
     };
 
     Ok(writer.write_all(s.as_bytes())?)
 }
 
-fn serialize_csv<W>(writer: &mut W, delimiter: u8, value: Value) -> Result<()>
+fn serialize_csv<W>(writer: &mut W, delimiter: u8, value: &Value) -> Result<()>
 where
     W: std::io::Write,
 {
@@ -135,4 +134,11 @@ where
     }
 
     Ok(())
+}
+
+fn serialize_pickle<W>(writer: &mut W, value: &Value) -> Result<()>
+where
+    W: std::io::Write,
+{
+    Ok(serde_pickle::to_writer(writer, value, Default::default())?)
 }

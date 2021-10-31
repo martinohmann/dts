@@ -14,16 +14,14 @@ impl DeserializeOptions {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct DeserializerBuilder {
     opts: DeserializeOptions,
 }
 
 impl DeserializerBuilder {
     pub fn new() -> Self {
-        Self {
-            opts: DeserializeOptions::new(),
-        }
+        Self::default()
     }
 
     pub fn all_documents(&mut self, all_documents: bool) -> &mut Self {
@@ -64,6 +62,7 @@ impl Deserializer {
             Encoding::Hjson => deserialize_hjson(reader),
             Encoding::Csv => deserialize_csv(reader, b',', &self.opts),
             Encoding::Tsv => deserialize_csv(reader, b'\t', &self.opts),
+            Encoding::Pickle => deserialize_pickle(reader),
         }
     }
 }
@@ -165,4 +164,11 @@ where
     };
 
     Ok(value)
+}
+
+fn deserialize_pickle<R>(reader: &mut R) -> Result<Value>
+where
+    R: std::io::Read,
+{
+    Ok(serde_pickle::from_reader(reader, Default::default())?)
 }

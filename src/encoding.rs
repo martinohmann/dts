@@ -12,6 +12,7 @@ pub enum Encoding {
     Hjson,
     Csv,
     Tsv,
+    Pickle,
 }
 
 impl Encoding {
