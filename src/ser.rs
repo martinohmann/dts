@@ -9,28 +9,29 @@ pub struct SerializeOptions {
 
 pub struct Serializer {
     encoding: Encoding,
+    opts: SerializeOptions,
 }
 
 impl Serializer {
-    pub fn new(encoding: Encoding) -> Self {
-        Self { encoding }
+    pub fn new(encoding: Encoding, opts: SerializeOptions) -> Self {
+        Self { encoding, opts }
     }
 
-    pub fn serialize<W>(&self, writer: &mut W, value: Value, opts: SerializeOptions) -> Result<()>
+    pub fn serialize<W>(&self, writer: &mut W, value: Value) -> Result<()>
     where
         W: std::io::Write,
     {
         match &self.encoding {
             Encoding::Yaml => serialize_yaml(writer, value)?,
-            Encoding::Json | Encoding::Json5 => serialize_json(writer, value, &opts)?,
-            Encoding::Ron => serialize_ron(writer, value, &opts)?,
-            Encoding::Toml => serialize_toml(writer, value, &opts)?,
+            Encoding::Json | Encoding::Json5 => serialize_json(writer, value, &self.opts)?,
+            Encoding::Ron => serialize_ron(writer, value, &self.opts)?,
+            Encoding::Toml => serialize_toml(writer, value, &self.opts)?,
             Encoding::Csv => serialize_csv(writer, b',', value)?,
             Encoding::Tsv => serialize_csv(writer, b'\t', value)?,
             encoding => bail!("serializing to {:?} is not supported", encoding),
         };
 
-        if opts.newline {
+        if self.opts.newline {
             writer.write_all(b"\n")?;
         }
 

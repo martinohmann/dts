@@ -16,11 +16,12 @@ fn transcode<T>(
 where
     T: AsRef<[u8]>,
 {
-    let de = Deserializer::new(in_enc);
-    let value = de.deserialize(input.as_ref(), de_opts)?;
-    let ser = Serializer::new(out_enc);
+    let mut input = input.as_ref();
+    let de = Deserializer::new(in_enc, de_opts);
+    let value = de.deserialize(&mut input)?;
+    let ser = Serializer::new(out_enc, ser_opts);
     let mut output: Vec<u8> = Vec::new();
-    ser.serialize(&mut output, value, ser_opts)?;
+    ser.serialize(&mut output, value)?;
     Ok(output)
 }
 
