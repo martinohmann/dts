@@ -14,6 +14,35 @@ impl DeserializeOptions {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct DeserializerBuilder {
+    encoding: Encoding,
+    opts: DeserializeOptions,
+}
+
+impl DeserializerBuilder {
+    pub fn new(encoding: Encoding) -> Self {
+        Self {
+            encoding,
+            opts: DeserializeOptions::new(),
+        }
+    }
+
+    pub fn all_documents(&mut self, all_documents: bool) -> &mut Self {
+        self.opts.all_documents = all_documents;
+        self
+    }
+
+    pub fn headers(&mut self, headers: bool) -> &mut Self {
+        self.opts.headers = headers;
+        self
+    }
+
+    pub fn build(&self) -> Deserializer {
+        Deserializer::new(self.encoding, self.opts.clone())
+    }
+}
+
 pub struct Deserializer {
     encoding: Encoding,
     opts: DeserializeOptions,

@@ -2,62 +2,22 @@ use anyhow::Result;
 use std::path::Path;
 
 use trnscd::{
-    de::{DeserializeOptions, Deserializer},
-    ser::{SerializeOptions, Serializer},
+    de::{Deserializer, DeserializerBuilder},
+    ser::{Serializer, SerializerBuilder},
     Encoding,
 };
 
 use Encoding::*;
 
-fn transcode<T>(
-    input: T,
-    in_enc: Encoding,
-    out_enc: Encoding,
-    de_opts: DeserializeOptions,
-    ser_opts: SerializeOptions,
-) -> Result<Vec<u8>>
+fn transcode<T>(input: T, de: Deserializer, ser: Serializer) -> Result<String>
 where
     T: AsRef<[u8]>,
 {
     let mut input = input.as_ref();
-    let de = Deserializer::new(in_enc, de_opts);
     let value = de.deserialize(&mut input)?;
-    let ser = Serializer::new(out_enc, ser_opts);
     let mut output: Vec<u8> = Vec::new();
     ser.serialize(&mut output, value)?;
-    Ok(output)
-}
-
-fn assert_transcode_opts<T>(
-    input: T,
-    expected: T,
-    in_enc: Encoding,
-    out_enc: Encoding,
-    de_opts: DeserializeOptions,
-    ser_opts: SerializeOptions,
-) where
-    T: AsRef<[u8]>,
-{
-    let output = transcode(input, in_enc, out_enc, de_opts, ser_opts).unwrap();
-
-    assert_eq!(
-        std::str::from_utf8(&output).unwrap(),
-        std::str::from_utf8(expected.as_ref()).unwrap()
-    )
-}
-
-fn assert_transcode<T>(input: T, expected: T, in_enc: Encoding, out_enc: Encoding)
-where
-    T: AsRef<[u8]>,
-{
-    assert_transcode_opts(
-        input,
-        expected,
-        in_enc,
-        out_enc,
-        DeserializeOptions::new(),
-        SerializeOptions::new(),
-    );
+    Ok(std::str::from_utf8(&output)?.to_owned())
 }
 
 fn fixture<P: AsRef<Path>>(path: P) -> String {
@@ -66,89 +26,91 @@ fn fixture<P: AsRef<Path>>(path: P) -> String {
 
 #[test]
 fn test_transcode() {
-    assert_transcode(
-        fixture("tests/fixtures/simple.json"),
+    assert_eq!(
+        transcode(
+            fixture("tests/fixtures/simple.json"),
+            DeserializerBuilder::new(Json).build(),
+            SerializerBuilder::new(Yaml).build(),
+        )
+        .unwrap(),
         fixture("tests/fixtures/simple.yaml"),
-        Json,
-        Yaml,
     );
-    assert_transcode(
-        fixture("tests/fixtures/simple.yaml"),
+
+    assert_eq!(
+        transcode(
+            fixture("tests/fixtures/simple.yaml"),
+            DeserializerBuilder::new(Yaml).build(),
+            SerializerBuilder::new(Json).build(),
+        )
+        .unwrap(),
         "{\"foo\":\"bar\"}".to_string(),
-        Yaml,
-        Json,
     );
-    assert_transcode(
-        "row00,row01\nrow10,row11",
-        "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
-        Csv,
-        Json,
-    );
-    assert_transcode_opts(
-        fixture("tests/fixtures/simple.yaml"),
+
+    assert_eq!(
+        transcode(
+            fixture("tests/fixtures/simple.yaml"),
+            DeserializerBuilder::new(Yaml).build(),
+            SerializerBuilder::new(Json)
+                .pretty(true)
+                .newline(true)
+                .build(),
+        )
+        .unwrap(),
         fixture("tests/fixtures/simple.pretty.json"),
-        Yaml,
-        Json,
-        DeserializeOptions::new(),
-        SerializeOptions {
-            pretty: true,
-            newline: true,
-        },
     );
-    assert_transcode_opts(
-        fixture("tests/fixtures/simple.yaml"),
+
+    assert_eq!(
+        transcode(
+            fixture("tests/fixtures/simple.yaml"),
+            DeserializerBuilder::new(Yaml).build(),
+            SerializerBuilder::new(Json).newline(true).build(),
+        )
+        .unwrap(),
         fixture("tests/fixtures/simple.json"),
-        Yaml,
-        Json,
-        DeserializeOptions::new(),
-        SerializeOptions {
-            pretty: false,
-            newline: true,
-        },
     );
 }
 
 #[test]
 fn test_transcode_csv() {
-    assert_transcode(
-        "row00,row01\nrow10,row11",
+    assert_eq!(
+        transcode(
+            "row00,row01\nrow10,row11",
+            DeserializerBuilder::new(Csv).build(),
+            SerializerBuilder::new(Json).build(),
+        )
+        .unwrap(),
         "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
-        Csv,
-        Json,
     );
 
-    assert_transcode_opts(
-        "header00,header01\nrow00,row01\nrow10,row11",
+    assert_eq!(
+        transcode(
+            "header00,header01\nrow00,row01\nrow10,row11",
+            DeserializerBuilder::new(Csv).headers(true).build(),
+            SerializerBuilder::new(Json).build(),
+        ).unwrap(),
         "[{\"header00\":\"row00\",\"header01\":\"row01\"},{\"header00\":\"row10\",\"header01\":\"row11\"}]",
-        Csv,
-        Json,
-        DeserializeOptions {
-            all_documents: false,
-            headers: true,
-        },
-        SerializeOptions::new(),
     );
 }
 
 #[test]
 fn test_transcode_tsv() {
-    assert_transcode(
-        "row00\trow01\nrow10\trow11",
+    assert_eq!(
+        transcode(
+            "row00\trow01\nrow10\trow11",
+            DeserializerBuilder::new(Tsv).build(),
+            SerializerBuilder::new(Json).build(),
+        )
+        .unwrap(),
         "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
-        Tsv,
-        Json,
     );
 
-    assert_transcode_opts(
-        "header00\theader01\nrow00\trow01\nrow10\trow11",
+    assert_eq!(
+        transcode(
+            "header00\theader01\nrow00\trow01\nrow10\trow11",
+            DeserializerBuilder::new(Tsv).headers(true).build(),
+            SerializerBuilder::new(Json).build(),
+        ).unwrap(),
         "[{\"header00\":\"row00\",\"header01\":\"row01\"},{\"header00\":\"row10\",\"header01\":\"row11\"}]",
-        Tsv,
-        Json,
-        DeserializeOptions {
-            all_documents: false,
-            headers: true,
-        },
-        SerializeOptions::new(),
     );
 }
 
@@ -156,10 +118,8 @@ fn test_transcode_tsv() {
 fn test_deserialize_errors() {
     assert!(transcode(
         "invalidjson",
-        Json,
-        Yaml,
-        DeserializeOptions::new(),
-        SerializeOptions::new(),
+        DeserializerBuilder::new(Json).build(),
+        SerializerBuilder::new(Yaml).build(),
     )
     .is_err());
 }

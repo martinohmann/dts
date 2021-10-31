@@ -13,6 +13,35 @@ impl SerializeOptions {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SerializerBuilder {
+    encoding: Encoding,
+    opts: SerializeOptions,
+}
+
+impl SerializerBuilder {
+    pub fn new(encoding: Encoding) -> Self {
+        Self {
+            encoding,
+            opts: SerializeOptions::new(),
+        }
+    }
+
+    pub fn pretty(&mut self, pretty: bool) -> &mut Self {
+        self.opts.pretty = pretty;
+        self
+    }
+
+    pub fn newline(&mut self, newline: bool) -> &mut Self {
+        self.opts.newline = newline;
+        self
+    }
+
+    pub fn build(&self) -> Serializer {
+        Serializer::new(self.encoding, self.opts.clone())
+    }
+}
+
 pub struct Serializer {
     encoding: Encoding,
     opts: SerializeOptions,
