@@ -16,42 +16,17 @@ impl Serializer {
         Self { encoding }
     }
 
-    pub fn serialize<W>(&self, writer: W, value: Value, opts: SerializeOptions) -> Result<()>
+    pub fn serialize<W>(&self, writer: &mut W, value: Value, opts: SerializeOptions) -> Result<()>
     where
         W: std::io::Write,
     {
-        let mut writer = writer;
-
         match &self.encoding {
-            Encoding::Yaml => serde_yaml::to_writer(writer.by_ref(), &value)?,
-            Encoding::Json | Encoding::Json5 => {
-                if opts.pretty {
-                    serde_json::to_writer_pretty(writer.by_ref(), &value)?
-                } else {
-                    serde_json::to_writer(writer.by_ref(), &value)?
-                }
-            }
-            Encoding::Ron => {
-                if opts.pretty {
-                    ron::ser::to_writer_pretty(
-                        writer.by_ref(),
-                        &value,
-                        ron::ser::PrettyConfig::default(),
-                    )?
-                } else {
-                    ron::ser::to_writer(writer.by_ref(), &value)?
-                }
-            }
-            Encoding::Toml => {
-                let s = if opts.pretty {
-                    toml::ser::to_string_pretty(&value)?
-                } else {
-                    toml::ser::to_string(&value)?
-                };
-                writer.by_ref().write_all(s.as_bytes())?
-            }
-            Encoding::Csv => serialize_csv(writer.by_ref(), b',', value)?,
-            Encoding::Tsv => serialize_csv(writer.by_ref(), b'\t', value)?,
+            Encoding::Yaml => serialize_yaml(writer, value)?,
+            Encoding::Json | Encoding::Json5 => serialize_json(writer, value, &opts)?,
+            Encoding::Ron => serialize_ron(writer, value, &opts)?,
+            Encoding::Toml => serialize_toml(writer, value, &opts)?,
+            Encoding::Csv => serialize_csv(writer, b',', value)?,
+            Encoding::Tsv => serialize_csv(writer, b'\t', value)?,
             encoding => bail!("serializing to {:?} is not supported", encoding),
         };
 
@@ -63,7 +38,53 @@ impl Serializer {
     }
 }
 
-fn serialize_csv<W>(writer: W, delimiter: u8, value: Value) -> Result<()>
+fn serialize_yaml<W>(writer: &mut W, value: Value) -> Result<()>
+where
+    W: std::io::Write,
+{
+    Ok(serde_yaml::to_writer(writer, &value)?)
+}
+
+fn serialize_json<W>(writer: &mut W, value: Value, opts: &SerializeOptions) -> Result<()>
+where
+    W: std::io::Write,
+{
+    if opts.pretty {
+        serde_json::to_writer_pretty(writer, &value)?;
+    } else {
+        serde_json::to_writer(writer, &value)?;
+    }
+
+    Ok(())
+}
+
+fn serialize_ron<W>(writer: &mut W, value: Value, opts: &SerializeOptions) -> Result<()>
+where
+    W: std::io::Write,
+{
+    if opts.pretty {
+        ron::ser::to_writer_pretty(writer, &value, ron::ser::PrettyConfig::default())?
+    } else {
+        ron::ser::to_writer(writer, &value)?
+    }
+
+    Ok(())
+}
+
+fn serialize_toml<W>(writer: &mut W, value: Value, opts: &SerializeOptions) -> Result<()>
+where
+    W: std::io::Write,
+{
+    let s = if opts.pretty {
+        toml::ser::to_string_pretty(&value)?
+    } else {
+        toml::ser::to_string(&value)?
+    };
+
+    Ok(writer.write_all(s.as_bytes())?)
+}
+
+fn serialize_csv<W>(writer: &mut W, delimiter: u8, value: Value) -> Result<()>
 where
     W: std::io::Write,
 {

@@ -86,6 +86,6 @@ fn main() -> Result<()> {
     let reader = Reader::new(&opts.input)?;
     let value = de.deserialize(reader, opts.deserialize_opts())?;
 
-    let writer = Writer::new(&opts.output)?;
-    ser.serialize(writer, value, opts.serialize_opts())
+    let mut writer = Writer::new(&opts.output)?;
+    ser.serialize(&mut writer, value, opts.serialize_opts())
 }
