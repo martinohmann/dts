@@ -60,6 +60,7 @@ impl Serializer {
             Encoding::Csv => serialize_csv(writer, b',', value)?,
             Encoding::Tsv => serialize_csv(writer, b'\t', value)?,
             Encoding::Pickle => serialize_pickle(writer, value)?,
+            Encoding::QueryString => serialize_query_string(writer, value)?,
             encoding => bail!("serializing to {:?} is not supported", encoding),
         };
 
@@ -141,4 +142,11 @@ where
     W: std::io::Write,
 {
     Ok(serde_pickle::to_writer(writer, value, Default::default())?)
+}
+
+fn serialize_query_string<W>(writer: &mut W, value: &Value) -> Result<()>
+where
+    W: std::io::Write,
+{
+    Ok(serde_qs::to_writer(value, writer)?)
 }

@@ -13,6 +13,8 @@ pub enum Encoding {
     Csv,
     Tsv,
     Pickle,
+    #[clap(alias = "qs")]
+    QueryString,
 }
 
 impl Encoding {

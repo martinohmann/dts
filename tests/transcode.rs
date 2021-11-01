@@ -43,7 +43,7 @@ fn test_transcode() {
             SerializerBuilder::new().build(Json),
         )
         .unwrap(),
-        "{\"foo\":\"bar\"}".to_string(),
+        r#"{"foo":"bar"}"#.to_string(),
     );
 
     assert_eq!(
@@ -79,7 +79,7 @@ fn test_transcode_csv() {
             SerializerBuilder::new().build(Json),
         )
         .unwrap(),
-        "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
+        r#"[["row00","row01"],["row10","row11"]]"#,
     );
 
     assert_eq!(
@@ -91,16 +91,19 @@ fn test_transcode_csv() {
             SerializerBuilder::new().build(Json),
         )
         .unwrap(),
-        "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
+        r#"[["row00","row01"],["row10","row11"]]"#,
     );
 
     assert_eq!(
         transcode(
             "header00,header01\nrow00,row01\nrow10,row11",
-            DeserializerBuilder::new().csv_headers_as_keys(true).build(Csv),
+            DeserializerBuilder::new()
+                .csv_headers_as_keys(true)
+                .build(Csv),
             SerializerBuilder::new().build(Json),
-        ).unwrap(),
-        "[{\"header00\":\"row00\",\"header01\":\"row01\"},{\"header00\":\"row10\",\"header01\":\"row11\"}]",
+        )
+        .unwrap(),
+        r#"[{"header00":"row00","header01":"row01"},{"header00":"row10","header01":"row11"}]"#,
     );
 }
 
@@ -113,16 +116,42 @@ fn test_transcode_tsv() {
             SerializerBuilder::new().build(Json),
         )
         .unwrap(),
-        "[[\"row00\",\"row01\"],[\"row10\",\"row11\"]]",
+        r#"[["row00","row01"],["row10","row11"]]"#,
     );
 
     assert_eq!(
         transcode(
             "header00\theader01\nrow00\trow01\nrow10\trow11",
-            DeserializerBuilder::new().csv_headers_as_keys(true).build(Tsv),
+            DeserializerBuilder::new()
+                .csv_headers_as_keys(true)
+                .build(Tsv),
             SerializerBuilder::new().build(Json),
-        ).unwrap(),
-        "[{\"header00\":\"row00\",\"header01\":\"row01\"},{\"header00\":\"row10\",\"header01\":\"row11\"}]",
+        )
+        .unwrap(),
+        r#"[{"header00":"row00","header01":"row01"},{"header00":"row10","header01":"row11"}]"#,
+    );
+}
+
+#[test]
+fn test_transcode_query_string() {
+    assert_eq!(
+        transcode(
+            "&foo=bar&baz[0]=qux&baz[1]=foo&",
+            DeserializerBuilder::new().build(QueryString),
+            SerializerBuilder::new().build(Json),
+        )
+        .unwrap(),
+        r#"{"baz":["qux","foo"],"foo":"bar"}"#,
+    );
+
+    assert_eq!(
+        transcode(
+            r#"{"baz":["qux","foo"],"foo":"bar"}"#,
+            DeserializerBuilder::new().build(Json),
+            SerializerBuilder::new().build(QueryString),
+        )
+        .unwrap(),
+        "baz[0]=qux&baz[1]=foo&foo=bar",
     );
 }
 

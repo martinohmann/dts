@@ -69,6 +69,7 @@ impl Deserializer {
             Encoding::Csv => deserialize_csv(reader, b',', &self.opts),
             Encoding::Tsv => deserialize_csv(reader, b'\t', &self.opts),
             Encoding::Pickle => deserialize_pickle(reader),
+            Encoding::QueryString => deserialize_query_string(reader),
         }
     }
 }
@@ -180,4 +181,13 @@ where
     R: std::io::Read,
 {
     Ok(serde_pickle::from_reader(reader, Default::default())?)
+}
+
+fn deserialize_query_string<R>(reader: &mut R) -> Result<Value>
+where
+    R: std::io::Read,
+{
+    let mut s = String::new();
+    reader.read_to_string(&mut s)?;
+    Ok(Value::Object(serde_qs::from_str(&s)?))
 }
