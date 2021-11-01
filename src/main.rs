@@ -1,12 +1,13 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, ValueHint};
-use std::path::PathBuf;
+use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
 
 use trnscd::{
     de::{Deserializer, DeserializerBuilder},
     detect_encoding,
     ser::{Serializer, SerializerBuilder},
-    Encoding, Reader, Writer,
+    Encoding, Reader, Value, Writer,
 };
 
 /// Simple tool to transcode between different encodings.
@@ -45,47 +46,85 @@ struct Options {
     #[clap(long)]
     csv_headers_as_keys: bool,
 
-    /// Input file, if absent or '-' input is read from stdin
-    #[clap(name = "INPUT", parse(from_os_str), value_hint = ValueHint::FilePath)]
-    input: Option<PathBuf>,
-
-    /// Ouput file, if absent output is written to stdout
-    #[clap(name = "OUTPUT", parse(from_os_str), value_hint = ValueHint::FilePath)]
-    output: Option<PathBuf>,
+    /// If stdin is not a pipe, the first file is read from. Otherwise it is treated as the output
+    /// file. It is possible to provide multiple output files if the data resembles an array. Each
+    /// output file will receive an array element. The last output file collects the remaining
+    /// elements if there are more elements than files. Passing '-' as filename or providing no
+    /// output files will write the data to stdout instead.
+    #[clap(name = "FILE", parse(from_os_str), value_hint = ValueHint::FilePath)]
+    files: Vec<PathBuf>,
 }
 
-impl Options {
-    fn deserializer(&self) -> Result<Deserializer> {
-        let encoding = detect_encoding(self.input_encoding, self.input.as_ref())
-            .context("unable to detect input encoding, please provide it explicitly via -i")?;
+fn build_deserializer<P>(opts: &Options, input: Option<P>) -> Result<Deserializer>
+where
+    P: AsRef<Path>,
+{
+    let encoding = detect_encoding(opts.input_encoding, input)
+        .context("unable to detect input encoding, please provide it explicitly via -i")?;
 
-        Ok(DeserializerBuilder::new()
-            .all_documents(self.all_documents)
-            .csv_without_headers(self.csv_without_headers)
-            .csv_headers_as_keys(self.csv_headers_as_keys)
-            .build(encoding))
-    }
+    Ok(DeserializerBuilder::new()
+        .all_documents(opts.all_documents)
+        .csv_without_headers(opts.csv_without_headers)
+        .csv_headers_as_keys(opts.csv_headers_as_keys)
+        .build(encoding))
+}
 
-    fn serializer(&self) -> Result<Serializer> {
-        let encoding = detect_encoding(self.output_encoding, self.output.as_ref())
-            .context("unable to detect output encoding, please provide it explicitly via -o")?;
+fn build_serializer<P>(opts: &Options, output: Option<P>) -> Result<Serializer>
+where
+    P: AsRef<Path>,
+{
+    let encoding = detect_encoding(opts.output_encoding, output)
+        .context("unable to detect output encoding, please provide it explicitly via -o")?;
 
-        Ok(SerializerBuilder::new()
-            .pretty(self.pretty)
-            .newline(self.newline)
-            .build(encoding))
-    }
+    Ok(SerializerBuilder::new()
+        .pretty(opts.pretty)
+        .newline(opts.newline)
+        .build(encoding))
 }
 
 fn main() -> Result<()> {
     let opts = Options::parse();
 
-    let de = opts.deserializer()?;
-    let ser = opts.serializer()?;
+    let mut files = VecDeque::from(opts.files.clone());
 
-    let mut reader = Reader::new(&opts.input)?;
-    let value = de.deserialize(&mut reader)?;
+    // If stdin is not a pipe, use the first filename as the input and remove it from the list.
+    // Otherwise it's an output filename.
+    let input = if atty::is(atty::Stream::Stdin) {
+        files.pop_front()
+    } else {
+        None
+    };
 
-    let mut writer = Writer::new(&opts.output)?;
-    ser.serialize(&mut writer, &value)
+    let de = build_deserializer(&opts, input.as_ref())?;
+    let ser = build_serializer(&opts, files.get(0))?;
+
+    let mut reader = Reader::new(&input)?;
+
+    let mut value = de.deserialize(&mut reader)?;
+
+    if files.len() <= 1 {
+        let mut writer = Writer::new(&files.get(0))?;
+        ser.serialize(&mut writer, &value)
+    } else {
+        let values = match value.as_array_mut() {
+            Some(values) => {
+                if files.len() < values.len() {
+                    // There are more values than files. The last file takes an array of the left
+                    // over values.
+                    let rest = values.split_off(files.len() - 1);
+                    values.push(Value::Array(rest));
+                }
+
+                values
+            }
+            None => bail!("when using multiple output files, the data must be an array"),
+        };
+
+        for (file, value) in files.iter().zip(values.iter()) {
+            let mut writer = Writer::new(&Some(file))?;
+            ser.serialize(&mut writer, value)?;
+        }
+
+        Ok(())
+    }
 }
