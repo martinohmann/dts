@@ -34,9 +34,16 @@ struct Options {
     #[clap(short = 'A', long)]
     all_documents: bool,
 
-    /// Indicates the first line of CSV or TSV input should be treated as the headers.
+    /// If this flag is absent, the first line of CSV or TSV input is treated as headers and will
+    /// be discarded.
     #[clap(long)]
-    headers: bool,
+    csv_without_headers: bool,
+
+    /// When reading CSV or TSV, this flag will deserialize the input into an array of maps with
+    /// each field keyed by the corresponding header value. Otherwise, the input is deserialized
+    /// into an array of arrays.
+    #[clap(long)]
+    csv_headers_as_keys: bool,
 
     /// Input file, if absent or '-' input is read from stdin
     #[clap(name = "INPUT", parse(from_os_str), value_hint = ValueHint::FilePath)]
@@ -54,7 +61,8 @@ impl Options {
 
         Ok(DeserializerBuilder::new()
             .all_documents(self.all_documents)
-            .headers(self.headers)
+            .csv_without_headers(self.csv_without_headers)
+            .csv_headers_as_keys(self.csv_headers_as_keys)
             .build(encoding))
     }
 

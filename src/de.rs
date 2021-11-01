@@ -5,7 +5,8 @@ use serde::Deserialize;
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DeserializeOptions {
     pub all_documents: bool,
-    pub headers: bool,
+    pub csv_without_headers: bool,
+    pub csv_headers_as_keys: bool,
 }
 
 impl DeserializeOptions {
@@ -29,8 +30,13 @@ impl DeserializerBuilder {
         self
     }
 
-    pub fn headers(&mut self, headers: bool) -> &mut Self {
-        self.opts.headers = headers;
+    pub fn csv_without_headers(&mut self, yes: bool) -> &mut Self {
+        self.opts.csv_without_headers = yes;
+        self
+    }
+
+    pub fn csv_headers_as_keys(&mut self, yes: bool) -> &mut Self {
+        self.opts.csv_headers_as_keys = yes;
         self
     }
 
@@ -131,14 +137,17 @@ fn deserialize_csv<R>(reader: &mut R, delimiter: u8, opts: &DeserializeOptions) 
 where
     R: std::io::Read,
 {
+    let keep_first_line = opts.csv_without_headers || opts.csv_headers_as_keys;
+
     let mut csv_reader = csv::ReaderBuilder::new()
-        .has_headers(false)
+        .trim(csv::Trim::All)
+        .has_headers(!keep_first_line)
         .delimiter(delimiter)
         .from_reader(reader);
 
     let mut iter = csv_reader.deserialize();
 
-    let value = if opts.headers {
+    let value = if opts.csv_headers_as_keys {
         match iter.next() {
             Some(headers) => {
                 let headers: Vec<String> = headers?;
