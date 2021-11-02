@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::{Parser, ValueHint};
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
@@ -34,13 +34,13 @@ struct Options {
     all_documents: bool,
 
     /// If this flag is absent, the first line of CSV or TSV input is treated as headers and will
-    /// be discarded.
+    /// be discarded
     #[clap(long)]
     csv_without_headers: bool,
 
     /// When reading CSV or TSV, this flag will deserialize the input into an array of maps with
     /// each field keyed by the corresponding header value. Otherwise, the input is deserialized
-    /// into an array of arrays.
+    /// into an array of arrays
     #[clap(long)]
     csv_headers_as_keys: bool,
 
@@ -48,7 +48,7 @@ struct Options {
     /// file. It is possible to provide multiple output files if the data resembles an array. Each
     /// output file will receive an array element. The last output file collects the remaining
     /// elements if there are more elements than files. Passing '-' as filename or providing no
-    /// output files will write the data to stdout instead.
+    /// output files will write the data to stdout instead
     #[clap(name = "FILE", parse(from_os_str), value_hint = ValueHint::FilePath)]
     files: Vec<PathBuf>,
 }
@@ -118,7 +118,11 @@ fn main() -> Result<()> {
 
                 values
             }
-            None => bail!("when using multiple output files, the data must be an array"),
+            None => {
+                return Err(anyhow!(
+                    "when using multiple output files, the data must be an array"
+                ))
+            }
         };
 
         files
