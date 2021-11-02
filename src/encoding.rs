@@ -1,24 +1,45 @@
+#![deny(missing_docs)]
 use clap::ArgEnum;
 use std::fmt;
 use std::path::Path;
 
+/// Encodings supported by this crate.
+///
+/// Not all of the supported encodings are supported to serialize and deserialize into. Some, like
+/// hjson only allow deserialization of encoded data but are not able to serialize back into the
+/// original representation.
+#[non_exhaustive]
 #[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
 pub enum Encoding {
+    /// JavaScript Object Notation
     Json,
+    /// Yet Another Markup Language
     #[clap(alias = "yml")]
     Yaml,
+    /// Rusty Object Notation
     Ron,
+    /// TOML configuration format
     Toml,
+    /// ES5 JSON
     Json5,
+    /// Human readable JSON
     Hjson,
+    /// Comma separated values
     Csv,
+    /// Tab separated values
     Tsv,
+    /// Python pickle
     Pickle,
+    /// URL query string
     #[clap(alias = "qs")]
     QueryString,
 }
 
 impl Encoding {
+    /// Creates an `Encoding` from a path by looking at the file extension.
+    ///
+    /// Returns `None` if the extension is absent or if the extension does not match any of the
+    /// supported encodings.
     pub fn from_path<P>(path: P) -> Option<Encoding>
     where
         P: AsRef<Path>,
@@ -38,6 +59,7 @@ impl Encoding {
         }
     }
 
+    /// Returns the name of the `Encoding`.
     pub fn as_str(&self) -> &'static str {
         match self {
             Encoding::Json => "json",
@@ -60,17 +82,18 @@ impl fmt::Display for Encoding {
     }
 }
 
+/// Chooses a suitable `Encoding` from the provided `Option` values.
+///
+/// If encoding is `Some` it is returned. Otherwise it attempts to create the `Encoding` from the
+/// provided path.
 pub fn detect_encoding<P>(encoding: Option<Encoding>, path: Option<P>) -> Option<Encoding>
 where
     P: AsRef<Path>,
 {
-    match encoding {
-        Some(encoding) => Some(encoding),
-        None => match &path {
-            Some(path) => Encoding::from_path(path),
-            None => None,
-        },
-    }
+    encoding.or_else(|| match &path {
+        Some(path) => Encoding::from_path(path),
+        None => None,
+    })
 }
 
 #[cfg(test)]
