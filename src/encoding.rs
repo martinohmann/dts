@@ -1,4 +1,5 @@
 use clap::ArgEnum;
+use std::fmt;
 use std::path::Path;
 
 #[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
@@ -18,7 +19,10 @@ pub enum Encoding {
 }
 
 impl Encoding {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Option<Encoding> {
+    pub fn from_path<P>(path: P) -> Option<Encoding>
+    where
+        P: AsRef<Path>,
+    {
         let ext = path.as_ref().extension()?.to_str()?;
 
         match ext {
@@ -32,6 +36,27 @@ impl Encoding {
             "tsv" => Some(Encoding::Tsv),
             _ => None,
         }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Encoding::Json => "json",
+            Encoding::Yaml => "yaml",
+            Encoding::Ron => "ron",
+            Encoding::Toml => "toml",
+            Encoding::Json5 => "json5",
+            Encoding::Hjson => "hjson",
+            Encoding::Csv => "csv",
+            Encoding::Tsv => "tsv",
+            Encoding::Pickle => "pickle",
+            Encoding::QueryString => "query-string",
+        }
+    }
+}
+
+impl fmt::Display for Encoding {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_str().fmt(f)
     }
 }
 

@@ -60,7 +60,7 @@ impl Serializer {
             Encoding::Tsv => serialize_csv(writer, b'\t', value)?,
             Encoding::Pickle => serialize_pickle(writer, value)?,
             Encoding::QueryString => serialize_query_string(writer, value)?,
-            &encoding => return Err(Error::UnsupportedOutputEncoding(encoding)),
+            &encoding => return Err(Error::SerializeUnsupported(encoding)),
         };
 
         if self.opts.newline {

@@ -6,8 +6,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("serializing to {0:?} is not supported")]
-    UnsupportedOutputEncoding(Encoding),
+    #[error("serializing to {0} is not supported")]
+    SerializeUnsupported(Encoding),
 
     #[error("serializing to CSV requires the input data to be an array")]
     CsvArrayExpected,

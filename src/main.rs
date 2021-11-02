@@ -67,8 +67,9 @@ where
         .build(encoding);
 
     let mut reader = Reader::new(file).context("failed to open input file")?;
+
     de.deserialize(&mut reader)
-        .context(format!("failed to deserialize {:?}", encoding))
+        .context(format!("failed to deserialize {}", encoding))
 }
 
 fn serialize<P>(file: Option<P>, value: &Value, opts: &Options) -> Result<()>
@@ -84,8 +85,9 @@ where
         .build(encoding);
 
     let mut writer = Writer::new(file).context("failed to open output file")?;
+
     ser.serialize(&mut writer, value)
-        .context(format!("failed to serialize {:?}", encoding))
+        .context(format!("failed to serialize {}", encoding))
 }
 
 fn main() -> Result<()> {
