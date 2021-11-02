@@ -10,20 +10,16 @@ pub enum Reader {
 }
 
 impl Reader {
-    pub fn new<P>(path: &Option<P>) -> Result<Self>
+    pub fn new<P>(path: Option<P>) -> Result<Self>
     where
         P: AsRef<Path>,
     {
-        match path {
-            Some(path) => match path.as_ref().to_str() {
-                Some("-") | Some("") => Ok(Self::Stdin(io::stdin())),
-                _ => {
-                    let file = std::fs::File::open(path).with_context(|| {
-                        format!("failed to open file: {}", path.as_ref().display())
-                    })?;
-                    Ok(Self::File(file))
-                }
-            },
+        match &path {
+            Some(path) => {
+                let file = std::fs::File::open(path)
+                    .with_context(|| format!("failed to open file: {}", path.as_ref().display()))?;
+                Ok(Self::File(file))
+            }
             None => Ok(Self::Stdin(io::stdin())),
         }
     }

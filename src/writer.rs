@@ -10,13 +10,13 @@ pub enum Writer {
 }
 
 impl Writer {
-    pub fn new<P>(path: &Option<P>) -> Result<Self>
+    pub fn new<P>(path: Option<P>) -> Result<Self>
     where
         P: AsRef<Path>,
     {
-        match path {
+        match &path {
             Some(path) => match path.as_ref().to_str() {
-                Some("-") | Some("") => Ok(Self::Stdout(io::stdout())),
+                Some("-") => Ok(Self::Stdout(io::stdout())),
                 _ => {
                     let file = std::fs::File::create(path).with_context(|| {
                         format!("failed to create file: {}", path.as_ref().display())

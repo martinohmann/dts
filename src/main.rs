@@ -1,13 +1,11 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, ValueHint};
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
 use trnscd::{
-    de::{Deserializer, DeserializerBuilder},
-    detect_encoding,
-    ser::{Serializer, SerializerBuilder},
-    Encoding, Reader, Value, Writer,
+    de::DeserializerBuilder, detect_encoding, ser::SerializerBuilder, Encoding, Reader, Value,
+    Writer,
 };
 
 /// Simple tool to transcode between different encodings.
@@ -55,31 +53,37 @@ struct Options {
     files: Vec<PathBuf>,
 }
 
-fn build_deserializer<P>(opts: &Options, input: Option<P>) -> Result<Deserializer>
+fn deserialize<P>(file: Option<P>, opts: &Options) -> Result<Value>
 where
     P: AsRef<Path>,
 {
-    let encoding = detect_encoding(opts.input_encoding, input)
+    let encoding = detect_encoding(opts.input_encoding, file.as_ref())
         .context("unable to detect input encoding, please provide it explicitly via -i")?;
 
-    Ok(DeserializerBuilder::new()
+    let de = DeserializerBuilder::new()
         .all_documents(opts.all_documents)
         .csv_without_headers(opts.csv_without_headers)
         .csv_headers_as_keys(opts.csv_headers_as_keys)
-        .build(encoding))
+        .build(encoding);
+
+    let mut reader = Reader::new(file)?;
+    de.deserialize(&mut reader)
 }
 
-fn build_serializer<P>(opts: &Options, output: Option<P>) -> Result<Serializer>
+fn serialize<P>(file: Option<P>, value: &Value, opts: &Options) -> Result<()>
 where
     P: AsRef<Path>,
 {
-    let encoding = detect_encoding(opts.output_encoding, output)
+    let encoding = detect_encoding(opts.output_encoding, file.as_ref())
         .context("unable to detect output encoding, please provide it explicitly via -o")?;
 
-    Ok(SerializerBuilder::new()
+    let ser = SerializerBuilder::new()
         .pretty(opts.pretty)
         .newline(opts.newline)
-        .build(encoding))
+        .build(encoding);
+
+    let mut writer = Writer::new(file)?;
+    ser.serialize(&mut writer, &value)
 }
 
 fn main() -> Result<()> {
@@ -89,22 +93,19 @@ fn main() -> Result<()> {
 
     // If stdin is not a pipe, use the first filename as the input and remove it from the list.
     // Otherwise it's an output filename.
-    let input = if atty::is(atty::Stream::Stdin) {
-        files.pop_front()
-    } else {
-        None
+    let input_file = match atty::is(atty::Stream::Stdin) {
+        true => Some(
+            files
+                .pop_front()
+                .ok_or_else(|| anyhow!("input file or data on stdin expected"))?,
+        ),
+        false => None,
     };
 
-    let de = build_deserializer(&opts, input.as_ref())?;
-    let ser = build_serializer(&opts, files.get(0))?;
-
-    let mut reader = Reader::new(&input)?;
-
-    let mut value = de.deserialize(&mut reader)?;
+    let mut value = deserialize(input_file, &opts)?;
 
     if files.len() <= 1 {
-        let mut writer = Writer::new(&files.get(0))?;
-        ser.serialize(&mut writer, &value)
+        serialize(files.get(0), &value, &opts)
     } else {
         let values = match value.as_array_mut() {
             Some(values) => {
@@ -120,11 +121,10 @@ fn main() -> Result<()> {
             None => bail!("when using multiple output files, the data must be an array"),
         };
 
-        for (file, value) in files.iter().zip(values.iter()) {
-            let mut writer = Writer::new(&Some(file))?;
-            ser.serialize(&mut writer, value)?;
-        }
-
-        Ok(())
+        files
+            .iter()
+            .zip(values.iter())
+            .map(|(file, value)| serialize(Some(file), &value, &opts))
+            .collect()
     }
 }
