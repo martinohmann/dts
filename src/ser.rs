@@ -1,5 +1,4 @@
-use crate::{Encoding, Value};
-use anyhow::{anyhow, Result};
+use crate::{Encoding, Error, Result, Value};
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SerializeOptions {
@@ -61,7 +60,7 @@ impl Serializer {
             Encoding::Tsv => serialize_csv(writer, b'\t', value)?,
             Encoding::Pickle => serialize_pickle(writer, value)?,
             Encoding::QueryString => serialize_query_string(writer, value)?,
-            encoding => return Err(anyhow!("serializing to {:?} is not supported", encoding)),
+            &encoding => return Err(Error::UnsupportedOutputEncoding(encoding)),
         };
 
         if self.opts.newline {
@@ -122,18 +121,14 @@ fn serialize_csv<W>(writer: &mut W, delimiter: u8, value: &Value) -> Result<()>
 where
     W: std::io::Write,
 {
-    let value = value
-        .as_array()
-        .ok_or_else(|| anyhow!("serializing to CSV requires the input data to be an array"))?;
+    let value = value.as_array().ok_or(Error::CsvArrayExpected)?;
 
     let mut csv_writer = csv::WriterBuilder::new()
         .delimiter(delimiter)
         .from_writer(writer);
 
     for row in value {
-        let row = row
-            .as_array()
-            .ok_or_else(|| anyhow!("CSV rows must be arrays"))?;
+        let row = row.as_array().ok_or(Error::CsvArrayRowExpected)?;
 
         csv_writer.serialize(row)?;
     }

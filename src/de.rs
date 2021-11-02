@@ -1,5 +1,4 @@
-use crate::{Encoding, Value};
-use anyhow::Result;
+use crate::{Encoding, Result, Value};
 use serde::Deserialize;
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -161,7 +160,7 @@ where
                             .map(|(k, v)| (k.clone(), v.clone()))
                             .collect())
                     })
-                    .collect::<Result<_, csv::Error>>()?,
+                    .collect::<Result<_>>()?,
                 )
             }
             None => Value::Array(Vec::new()),
@@ -169,7 +168,7 @@ where
     } else {
         Value::Array(
             iter.map(|v| Ok(serde_json::to_value(v?)?))
-                .collect::<Result<Vec<Value>, anyhow::Error>>()?,
+                .collect::<Result<Vec<Value>>>()?,
         )
     };
 

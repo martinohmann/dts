@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use crate::Result;
 use std::fs::File;
 use std::io::{self, Stdout, Write};
 use std::path::Path;
@@ -18,9 +18,7 @@ impl Writer {
             Some(path) => match path.as_ref().to_str() {
                 Some("-") => Ok(Self::Stdout(io::stdout())),
                 _ => {
-                    let file = std::fs::File::create(path).with_context(|| {
-                        format!("failed to create file: {}", path.as_ref().display())
-                    })?;
+                    let file = std::fs::File::create(path)?;
                     Ok(Self::File(file))
                 }
             },

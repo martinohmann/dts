@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use crate::Result;
 use std::fs::File;
 use std::io::{self, Read, Stdin};
 use std::path::Path;
@@ -16,8 +16,7 @@ impl Reader {
     {
         match &path {
             Some(path) => {
-                let file = std::fs::File::open(path)
-                    .with_context(|| format!("failed to open file: {}", path.as_ref().display()))?;
+                let file = std::fs::File::open(path)?;
                 Ok(Self::File(file))
             }
             None => Ok(Self::Stdin(io::stdin())),
