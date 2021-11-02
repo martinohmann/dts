@@ -101,7 +101,7 @@ fn main() -> Result<()> {
         true => Some(
             files
                 .pop_front()
-                .ok_or_else(|| anyhow!("input file or data on stdin expected"))?,
+                .ok_or(anyhow!("input file or data on stdin expected"))?,
         ),
         false => None,
     };
