@@ -12,7 +12,7 @@ use trnscd::{
 
 /// Simple tool to transcode between different encodings.
 #[derive(Parser, Debug, Clone)]
-#[clap(name = "trnscd")]
+#[clap(name = "trnscd", version)]
 struct Options {
     /// Input encoding, if absent encoding will be detected from input file extension
     #[clap(arg_enum, short = 'i', long)]
