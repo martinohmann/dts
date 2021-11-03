@@ -1,4 +1,7 @@
-/// Provides serializers and deserializers to transcode between different encodings.
+//! Provides serializers and deserializers to transcode between different encodings.
+
+#![deny(missing_docs)]
+
 pub use encoding::*;
 pub use error::*;
 pub use reader::Reader;

@@ -1,4 +1,3 @@
-#![deny(missing_docs)]
 use crate::Result;
 use std::fs::File;
 use std::io::{self, Read, Stdin};

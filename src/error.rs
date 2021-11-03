@@ -1,4 +1,3 @@
-#![deny(missing_docs)]
 use crate::Encoding;
 use thiserror::Error;
 

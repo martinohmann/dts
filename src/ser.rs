@@ -1,58 +1,83 @@
+//! This module provides a `Serializer` which supports serializing values into various output
+//! encodings.
+
 use crate::{Encoding, Error, Result, Value};
 
+/// Options for the `Serializer`. The options are context specific and may only be honored when
+/// serializing into a certain `Encoding`.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SerializeOptions {
+    /// Pretty print the serialized data if supported by the encoding.
     pub pretty: bool,
+    /// Append a trailing newline to the serialized data.
     pub newline: bool,
+    /// When the input is an array of objects and the output encoding is CSV, the field names of
+    /// the first object will be used as CSV headers. Field values of all following objects will
+    /// be matched to the right CSV column based on their key. Missing fields cause serialization
+    /// errors while excess fields are ignored.
     pub keys_as_csv_headers: bool,
 }
 
 impl SerializeOptions {
+    /// Creates new `SerializeOptions`.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
+/// A `SerializerBuilder` can be used to build a `Serializer` with certain
+/// `SerializeOptions`.
 #[derive(Debug, Default, Clone)]
 pub struct SerializerBuilder {
     opts: SerializeOptions,
 }
 
 impl SerializerBuilder {
+    /// Creates a new `SerializerBuilder`.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Pretty print the serialized data if supported by the encoding.
     pub fn pretty(&mut self, yes: bool) -> &mut Self {
         self.opts.pretty = yes;
         self
     }
 
+    /// Append a trailing newline to the serialized data.
     pub fn newline(&mut self, yes: bool) -> &mut Self {
         self.opts.newline = yes;
         self
     }
 
+    /// When the input is an array of objects and the output encoding is CSV, the field names of
+    /// the first object will be used as CSV headers. Field values of all following objects will
+    /// be matched to the right CSV column based on their key. Missing fields cause serialization
+    /// errors while excess fields are ignored.
     pub fn keys_as_csv_headers(&mut self, yes: bool) -> &mut Self {
         self.opts.keys_as_csv_headers = yes;
         self
     }
 
+    /// Builds the `Serializer` for the given `Encoding`.
     pub fn build(&self, encoding: Encoding) -> Serializer {
         Serializer::new(encoding, self.opts.clone())
     }
 }
 
+/// A `Serializer` can serialize a `Value` into an encoded byte stream.
 pub struct Serializer {
     encoding: Encoding,
     opts: SerializeOptions,
 }
 
 impl Serializer {
+    /// Creates a new `Serializer` for `Encoding` with options.
     pub fn new(encoding: Encoding, opts: SerializeOptions) -> Self {
         Self { encoding, opts }
     }
 
+    /// Serializes the given `Value` and writes the encoded data to the writer.
     pub fn serialize<W>(&self, writer: &mut W, value: &Value) -> Result<()>
     where
         W: std::io::Write,

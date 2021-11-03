@@ -1,8 +1,6 @@
 //! This module provides a `Deserializer` which supports deserializing input data with various
 //! encodings into a `Value`.
 
-#![deny(missing_docs)]
-
 use crate::{Encoding, Result, Value};
 use serde::Deserialize;
 

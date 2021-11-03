@@ -1,4 +1,3 @@
-#![deny(missing_docs)]
 use clap::ArgEnum;
 use std::fmt;
 use std::path::Path;

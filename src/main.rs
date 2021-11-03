@@ -1,3 +1,7 @@
+//! trnscd is a simple command line tool to transcode between different input and output encodings.
+
+#![deny(missing_docs)]
+
 use anyhow::{anyhow, Context, Result};
 use clap::{Parser, ValueHint};
 use std::collections::VecDeque;
