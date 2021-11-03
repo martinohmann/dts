@@ -162,46 +162,51 @@ where
         .as_array()
         .ok_or_else(|| Error::new("serializing to csv requires the input data to be an array"))?;
 
-    let mut csv_writer = csv::WriterBuilder::new()
-        .delimiter(delimiter)
-        .from_writer(writer);
+    let mut buf = Vec::new();
 
-    let mut headers: Option<Vec<&String>> = None;
+    {
+        let mut csv_writer = csv::WriterBuilder::new()
+            .delimiter(delimiter)
+            .from_writer(&mut buf);
 
-    for (i, row) in value.iter().enumerate() {
-        if !opts.keys_as_csv_headers {
-            let row_data = row
-                .as_array()
-                .ok_or_else(|| Error::at_row_index(i, "array expected"))?;
+        let mut headers: Option<Vec<&String>> = None;
 
-            csv_writer.serialize(row_data)?;
-        } else {
-            let row = row
-                .as_object()
-                .ok_or_else(|| Error::at_row_index(i, "object expected"))?;
+        for (i, row) in value.iter().enumerate() {
+            if !opts.keys_as_csv_headers {
+                let row_data = row
+                    .as_array()
+                    .ok_or_else(|| Error::at_row_index(i, "array expected"))?;
 
-            // The first row dictates the header fields.
-            if headers.is_none() {
-                let header_data = row.keys().collect();
-                csv_writer.serialize(&header_data)?;
-                headers = Some(header_data);
+                csv_writer.serialize(row_data)?;
+            } else {
+                let row = row
+                    .as_object()
+                    .ok_or_else(|| Error::at_row_index(i, "object expected"))?;
+
+                // The first row dictates the header fields.
+                if headers.is_none() {
+                    let header_data = row.keys().collect();
+                    csv_writer.serialize(&header_data)?;
+                    headers = Some(header_data);
+                }
+
+                let row_data = headers
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .map(|&header| {
+                        row.get(header).ok_or_else(|| {
+                            Error::at_row_index(i, format!("missing field: {}", header))
+                        })
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                csv_writer.serialize(row_data)?;
             }
-
-            let row_data = headers
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|&header| {
-                    row.get(header)
-                        .ok_or_else(|| Error::at_row_index(i, format!("missing field: {}", header)))
-                })
-                .collect::<Result<Vec<_>>>()?;
-
-            csv_writer.serialize(row_data)?;
         }
     }
 
-    Ok(())
+    Ok(writer.write_all(&mut buf)?)
 }
 
 fn serialize_pickle<W>(writer: &mut W, value: &Value) -> Result<()>
