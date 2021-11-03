@@ -50,8 +50,8 @@ struct Options {
 
     /// When the input is an array of objects and the output encoding is CSV or TSV, the field
     /// names of the first object will be used as CSV headers. Field values of all following
-    /// objects will be matched to the right CSV column based on their key. Missing fields cause
-    /// serialization errors while excess fields are ignored.
+    /// objects will be matched to the right CSV column based on their key. Missing fields produce
+    /// empty columns while excess fields are ignored.
     #[clap(long)]
     keys_as_csv_headers: bool,
 

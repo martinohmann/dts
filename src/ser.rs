@@ -13,8 +13,8 @@ pub struct SerializeOptions {
     pub newline: bool,
     /// When the input is an array of objects and the output encoding is CSV, the field names of
     /// the first object will be used as CSV headers. Field values of all following objects will
-    /// be matched to the right CSV column based on their key. Missing fields cause serialization
-    /// errors while excess fields are ignored.
+    /// be matched to the right CSV column based on their key. Missing fields produce empty columns
+    /// while excess fields are ignored.
     pub keys_as_csv_headers: bool,
 }
 
@@ -52,8 +52,8 @@ impl SerializerBuilder {
 
     /// When the input is an array of objects and the output encoding is CSV, the field names of
     /// the first object will be used as CSV headers. Field values of all following objects will
-    /// be matched to the right CSV column based on their key. Missing fields cause serialization
-    /// errors while excess fields are ignored.
+    /// be matched to the right CSV column based on their key. Missing fields produce empty columns
+    /// while excess fields are ignored.
     pub fn keys_as_csv_headers(&mut self, yes: bool) -> &mut Self {
         self.opts.keys_as_csv_headers = yes;
         self
@@ -163,13 +163,15 @@ where
         .ok_or_else(|| Error::new("serializing to csv requires the input data to be an array"))?;
 
     let mut buf = Vec::new();
-
     {
         let mut csv_writer = csv::WriterBuilder::new()
             .delimiter(delimiter)
             .from_writer(&mut buf);
 
         let mut headers: Option<Vec<&String>> = None;
+
+        // Empty string value which will be referenced for missing fields.
+        let empty = Value::String("".into());
 
         for (i, row) in value.iter().enumerate() {
             if !opts.keys_as_csv_headers {
@@ -194,19 +196,15 @@ where
                     .as_ref()
                     .unwrap()
                     .iter()
-                    .map(|&header| {
-                        row.get(header).ok_or_else(|| {
-                            Error::at_row_index(i, format!("missing field: {}", header))
-                        })
-                    })
-                    .collect::<Result<Vec<_>>>()?;
+                    .map(|&header| row.get(header).or(Some(&empty)))
+                    .collect::<Vec<_>>();
 
                 csv_writer.serialize(row_data)?;
             }
         }
     }
 
-    Ok(writer.write_all(&mut buf)?)
+    Ok(writer.write_all(&buf)?)
 }
 
 fn serialize_pickle<W>(writer: &mut W, value: &Value) -> Result<()>
