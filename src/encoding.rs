@@ -93,10 +93,7 @@ pub fn detect_encoding<P>(encoding: Option<Encoding>, path: Option<P>) -> Option
 where
     P: AsRef<Path>,
 {
-    encoding.or_else(|| match &path {
-        Some(path) => Encoding::from_path(path),
-        None => None,
-    })
+    encoding.or_else(|| path.and_then(Encoding::from_path))
 }
 
 #[cfg(test)]
