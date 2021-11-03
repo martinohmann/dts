@@ -47,4 +47,7 @@ pub enum Error {
 
     #[error(transparent)]
     QueryString(#[from] serde_qs::Error),
+
+    #[error(transparent)]
+    Xml(#[from] serde_xml_rs::Error),
 }

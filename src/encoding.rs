@@ -33,6 +33,8 @@ pub enum Encoding {
     /// URL query string
     #[clap(alias = "qs")]
     QueryString,
+    /// Extensible Markup Language
+    Xml,
 }
 
 impl Encoding {
@@ -55,6 +57,7 @@ impl Encoding {
             "hjson" => Some(Encoding::Hjson),
             "csv" => Some(Encoding::Csv),
             "tsv" => Some(Encoding::Tsv),
+            "xml" => Some(Encoding::Xml),
             _ => None,
         }
     }
@@ -72,6 +75,7 @@ impl Encoding {
             Encoding::Tsv => "tsv",
             Encoding::Pickle => "pickle",
             Encoding::QueryString => "query-string",
+            Encoding::Xml => "xml",
         }
     }
 }

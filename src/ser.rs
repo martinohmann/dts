@@ -60,6 +60,7 @@ impl Serializer {
             Encoding::Tsv => serialize_csv(writer, b'\t', value)?,
             Encoding::Pickle => serialize_pickle(writer, value)?,
             Encoding::QueryString => serialize_query_string(writer, value)?,
+            Encoding::Xml => serialize_xml(writer, value)?,
             &encoding => return Err(Error::SerializeUnsupported(encoding)),
         };
 
@@ -148,4 +149,11 @@ where
     W: std::io::Write,
 {
     Ok(serde_qs::to_writer(value, writer)?)
+}
+
+fn serialize_xml<W>(writer: &mut W, value: &Value) -> Result<()>
+where
+    W: std::io::Write,
+{
+    Ok(serde_xml_rs::to_writer(writer, value)?)
 }
