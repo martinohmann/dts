@@ -1,59 +1,88 @@
+//! This module provides a `Deserializer` which supports deserializing input data with various
+//! encodings into a `Value`.
+
+#![deny(missing_docs)]
+
 use crate::{Encoding, Result, Value};
 use serde::Deserialize;
 
+/// Options for the `Deserializer`. The options are context specific and may only be honored when
+/// deserializing from a certain `Encoding`.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DeserializeOptions {
+    /// If the input is multi-document YAML, deserialize all documents into an array. Otherwise old
+    /// deserialize the first document and discard the rest.
     pub all_documents: bool,
+    /// Indicates that an input CSV does not include a header line. If `false`, the first line is
+    /// discarded.
     pub csv_without_headers: bool,
+    /// Indicates that the header fields of an input CSV should be used as keys for each row's
+    /// columns. This means that the deserialized row data will be of type object. Otherwise row
+    /// data will be of type array.
     pub csv_headers_as_keys: bool,
 }
 
 impl DeserializeOptions {
+    /// Creates new `DeserializeOptions`.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
+/// A `DeserializerBuilder` can be used to build a `Deserializer` with certain
+/// `DeserializeOptions`.
 #[derive(Debug, Default, Clone)]
 pub struct DeserializerBuilder {
     opts: DeserializeOptions,
 }
 
 impl DeserializerBuilder {
+    /// Creates a new `DeserializerBuilder`.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// If the input is multi-document YAML, deserialize all documents into an array. Otherwise old
+    /// deserialize the first document and discard the rest.
     pub fn all_documents(&mut self, yes: bool) -> &mut Self {
         self.opts.all_documents = yes;
         self
     }
 
+    /// Indicates that an input CSV does not include a header line. If `false`, the first line is
+    /// discarded.
     pub fn csv_without_headers(&mut self, yes: bool) -> &mut Self {
         self.opts.csv_without_headers = yes;
         self
     }
 
+    /// Indicates that the header fields of an input CSV should be used as keys for each row's
+    /// columns. This means that the deserialized row data will be of type object. Otherwise row
+    /// data will be of type array.
     pub fn csv_headers_as_keys(&mut self, yes: bool) -> &mut Self {
         self.opts.csv_headers_as_keys = yes;
         self
     }
 
+    /// Builds the `Deserializer` for the given `Encoding`.
     pub fn build(&self, encoding: Encoding) -> Deserializer {
         Deserializer::new(encoding, self.opts.clone())
     }
 }
 
+/// A `Deserializer` can deserialize input data from a reader into a `Value`.
 pub struct Deserializer {
     encoding: Encoding,
     opts: DeserializeOptions,
 }
 
 impl Deserializer {
+    /// Creates a new `Deserializer` for `Encoding` with options.
     pub fn new(encoding: Encoding, opts: DeserializeOptions) -> Self {
         Self { encoding, opts }
     }
 
+    /// Reads input data from the given reader and deserializes it in a `Value`.
     pub fn deserialize<R>(&self, reader: &mut R) -> Result<Value>
     where
         R: std::io::Read,
