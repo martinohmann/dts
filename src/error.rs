@@ -10,7 +10,7 @@ pub enum Error {
     Message(String),
 
     #[error("error at row index {0}: {1}")]
-    Row(usize, String),
+    AtRowIndex(usize, String),
 
     #[error("serializing to {0} is not supported")]
     SerializeUnsupported(Encoding),

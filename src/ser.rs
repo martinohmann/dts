@@ -147,13 +147,13 @@ where
         if !opts.keys_as_csv_headers {
             let row_data = row
                 .as_array()
-                .ok_or_else(|| Error::Row(i, "array expected".to_string()))?;
+                .ok_or_else(|| Error::AtRowIndex(i, "array expected".to_string()))?;
 
             csv_writer.serialize(row_data)?;
         } else {
             let row = row
                 .as_object()
-                .ok_or_else(|| Error::Row(i, "object expected".to_string()))?;
+                .ok_or_else(|| Error::AtRowIndex(i, "object expected".to_string()))?;
 
             // The first row dictates the header fields.
             if headers.is_none() {
@@ -168,7 +168,7 @@ where
                 .iter()
                 .map(|&header| {
                     row.get(header)
-                        .ok_or_else(|| Error::Row(i, format!("missing field: {}", header)))
+                        .ok_or_else(|| Error::AtRowIndex(i, format!("missing field: {}", header)))
                 })
                 .collect::<Result<Vec<_>>>()?;
 
