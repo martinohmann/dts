@@ -4,6 +4,7 @@ use crate::{Encoding, Error, Result, Value};
 pub struct SerializeOptions {
     pub pretty: bool,
     pub newline: bool,
+    pub keys_as_csv_headers: bool,
 }
 
 impl SerializeOptions {
@@ -22,13 +23,18 @@ impl SerializerBuilder {
         Self::default()
     }
 
-    pub fn pretty(&mut self, pretty: bool) -> &mut Self {
-        self.opts.pretty = pretty;
+    pub fn pretty(&mut self, yes: bool) -> &mut Self {
+        self.opts.pretty = yes;
         self
     }
 
-    pub fn newline(&mut self, newline: bool) -> &mut Self {
-        self.opts.newline = newline;
+    pub fn newline(&mut self, yes: bool) -> &mut Self {
+        self.opts.newline = yes;
+        self
+    }
+
+    pub fn keys_as_csv_headers(&mut self, yes: bool) -> &mut Self {
+        self.opts.keys_as_csv_headers = yes;
         self
     }
 
@@ -56,8 +62,8 @@ impl Serializer {
             Encoding::Json | Encoding::Json5 => serialize_json(writer, value, &self.opts)?,
             Encoding::Ron => serialize_ron(writer, value, &self.opts)?,
             Encoding::Toml => serialize_toml(writer, value, &self.opts)?,
-            Encoding::Csv => serialize_csv(writer, b',', value)?,
-            Encoding::Tsv => serialize_csv(writer, b'\t', value)?,
+            Encoding::Csv => serialize_csv(writer, b',', value, &self.opts)?,
+            Encoding::Tsv => serialize_csv(writer, b'\t', value, &self.opts)?,
             Encoding::Pickle => serialize_pickle(writer, value)?,
             Encoding::QueryString => serialize_query_string(writer, value)?,
             Encoding::Xml => serialize_xml(writer, value)?,
@@ -118,20 +124,56 @@ where
     Ok(writer.write_all(s.as_bytes())?)
 }
 
-fn serialize_csv<W>(writer: &mut W, delimiter: u8, value: &Value) -> Result<()>
+fn serialize_csv<W>(
+    writer: &mut W,
+    delimiter: u8,
+    value: &Value,
+    opts: &SerializeOptions,
+) -> Result<()>
 where
     W: std::io::Write,
 {
-    let value = value.as_array().ok_or(Error::CsvArrayExpected)?;
+    let value = value
+        .as_array()
+        .ok_or_else(|| Error::new("serializing to csv requires the input data to be an array"))?;
 
     let mut csv_writer = csv::WriterBuilder::new()
         .delimiter(delimiter)
         .from_writer(writer);
 
-    for row in value {
-        let row = row.as_array().ok_or(Error::CsvArrayRowExpected)?;
+    let mut headers: Option<Vec<&String>> = None;
 
-        csv_writer.serialize(row)?;
+    for (i, row) in value.iter().enumerate() {
+        if !opts.keys_as_csv_headers {
+            let row_data = row
+                .as_array()
+                .ok_or_else(|| Error::Row(i, "array expected".to_string()))?;
+
+            csv_writer.serialize(row_data)?;
+        } else {
+            let row = row
+                .as_object()
+                .ok_or_else(|| Error::Row(i, "object expected".to_string()))?;
+
+            // The first row dictates the header fields.
+            if headers.is_none() {
+                let header_data = row.keys().collect();
+                csv_writer.serialize(&header_data)?;
+                headers = Some(header_data);
+            }
+
+            let row_data = headers
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|&header| {
+                    row.get(header)
+                        .ok_or_else(|| Error::Row(i, format!("missing field: {}", header)))
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            csv_writer.serialize(row_data)?;
+        }
     }
 
     Ok(())

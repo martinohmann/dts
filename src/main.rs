@@ -44,6 +44,13 @@ struct Options {
     #[clap(long)]
     csv_headers_as_keys: bool,
 
+    /// When the input is an array of objects and the output encoding is CSV or TSV, the field
+    /// names of the first object will be used as CSV headers. Field values of all following
+    /// objects will be matched to the right CSV column based on their key. Missing fields cause
+    /// serialization errors while excess fields are ignored.
+    #[clap(long)]
+    keys_as_csv_headers: bool,
+
     /// If stdin is not a pipe, the first file is read from. Otherwise it is treated as the output
     /// file. It is possible to provide multiple output files if the data resembles an array. Each
     /// output file will receive an array element. The last output file collects the remaining
@@ -82,6 +89,7 @@ where
     let ser = SerializerBuilder::new()
         .pretty(opts.pretty)
         .newline(opts.newline)
+        .keys_as_csv_headers(opts.keys_as_csv_headers)
         .build(encoding);
 
     let mut writer = Writer::new(file).context("failed to open output file")?;
@@ -101,7 +109,7 @@ fn main() -> Result<()> {
         true => Some(
             files
                 .pop_front()
-                .ok_or(anyhow!("input file or data on stdin expected"))?,
+                .ok_or_else(|| anyhow!("input file or data on stdin expected"))?,
         ),
         false => None,
     };

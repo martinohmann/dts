@@ -105,6 +105,18 @@ fn test_transcode_csv() {
         .unwrap(),
         r#"[{"header00":"row00","header01":"row01"},{"header00":"row10","header01":"row11"}]"#,
     );
+
+    assert_eq!(
+        transcode(
+            r#"[{"header00":"row00","header01":"row01"},{"header00":"row10","header01":"row11"}]"#,
+            DeserializerBuilder::new().build(Json),
+            SerializerBuilder::new()
+                .keys_as_csv_headers(true)
+                .build(Csv),
+        )
+        .unwrap(),
+        "header00,header01\nrow00,row01\nrow10,row11\n",
+    );
 }
 
 #[test]
@@ -161,6 +173,27 @@ fn test_deserialize_errors() {
         "invalidjson",
         DeserializerBuilder::new().build(Json),
         SerializerBuilder::new().build(Yaml),
+    )
+    .is_err());
+}
+
+#[test]
+fn test_serialize_errors() {
+    assert!(transcode(
+        r#"[["header00","row00","header01","row01"],["header00","row10","header01","row11"]]"#,
+        DeserializerBuilder::new().build(Json),
+        SerializerBuilder::new()
+            .keys_as_csv_headers(true)
+            .build(Csv),
+    )
+    .is_err());
+
+    assert!(transcode(
+        r#"[{"header00":"row00","header01":"row01"},{"header01":"row11"}]"#,
+        DeserializerBuilder::new().build(Json),
+        SerializerBuilder::new()
+            .keys_as_csv_headers(true)
+            .build(Csv),
     )
     .is_err());
 }

@@ -6,14 +6,14 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum Error {
+    #[error("{0}")]
+    Message(String),
+
+    #[error("error at row index {0}: {1}")]
+    Row(usize, String),
+
     #[error("serializing to {0} is not supported")]
     SerializeUnsupported(Encoding),
-
-    #[error("serializing to CSV requires the input data to be an array")]
-    CsvArrayExpected,
-
-    #[error("CSV rows must be arrays")]
-    CsvArrayRowExpected,
 
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -50,4 +50,13 @@ pub enum Error {
 
     #[error(transparent)]
     Xml(#[from] serde_xml_rs::Error),
+}
+
+impl Error {
+    pub(crate) fn new<T>(message: T) -> Self
+    where
+        T: AsRef<str>,
+    {
+        Self::Message(message.as_ref().to_string())
+    }
 }

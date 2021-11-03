@@ -24,8 +24,8 @@ impl DeserializerBuilder {
         Self::default()
     }
 
-    pub fn all_documents(&mut self, all_documents: bool) -> &mut Self {
-        self.opts.all_documents = all_documents;
+    pub fn all_documents(&mut self, yes: bool) -> &mut Self {
+        self.opts.all_documents = yes;
         self
     }
 
@@ -169,7 +169,7 @@ where
     } else {
         Value::Array(
             iter.map(|v| Ok(serde_json::to_value(v?)?))
-                .collect::<Result<Vec<Value>>>()?,
+                .collect::<Result<_>>()?,
         )
     };
 
