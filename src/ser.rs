@@ -90,9 +90,9 @@ where
     W: std::io::Write,
 {
     if opts.pretty {
-        serde_json::to_writer_pretty(writer, value)?;
+        serde_json::to_writer_pretty(writer, value)?
     } else {
-        serde_json::to_writer(writer, value)?;
+        serde_json::to_writer(writer, value)?
     }
 
     Ok(())
@@ -147,13 +147,13 @@ where
         if !opts.keys_as_csv_headers {
             let row_data = row
                 .as_array()
-                .ok_or_else(|| Error::AtRowIndex(i, "array expected".to_string()))?;
+                .ok_or_else(|| Error::at_row_index(i, "array expected"))?;
 
             csv_writer.serialize(row_data)?;
         } else {
             let row = row
                 .as_object()
-                .ok_or_else(|| Error::AtRowIndex(i, "object expected".to_string()))?;
+                .ok_or_else(|| Error::at_row_index(i, "object expected"))?;
 
             // The first row dictates the header fields.
             if headers.is_none() {
@@ -168,7 +168,7 @@ where
                 .iter()
                 .map(|&header| {
                     row.get(header)
-                        .ok_or_else(|| Error::AtRowIndex(i, format!("missing field: {}", header)))
+                        .ok_or_else(|| Error::at_row_index(i, format!("missing field: {}", header)))
                 })
                 .collect::<Result<Vec<_>>>()?;
 
