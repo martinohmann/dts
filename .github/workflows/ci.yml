@@ -37,10 +37,10 @@ jobs:
           override: true
 
       - name: Build
-        run: cargo build --verbose --workspace
+        run: cargo build --workspace
 
       - name: Run tests
-        run: cargo test --verbose --workspace
+        run: cargo test --workspace
 
   rustfmt:
     name: rustfmt
