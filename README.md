@@ -5,6 +5,16 @@
 
 A simple tool for transcoding between various input and output encodings.
 
+Requires rust >= 1.56.0.
+
+## Installation from source
+
+Clone the repository and run:
+
+```sh
+cargo install --path .
+```
+
 ## License
 
 The source code of trnscd is released under the MIT License. See the bundled
