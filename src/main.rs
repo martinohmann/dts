@@ -86,19 +86,21 @@ struct OutputOptions {
 
 #[derive(Args, Debug)]
 struct TransformOptions {
-    /// Select data from the decoded input via jsonpath before serializing it into the output
+    /// Select data from the decoded input via jsonpath query before serializing it into the output
     /// encoding. See https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators for
     /// supported operators.
     ///
-    /// When using a jsonpath, the result will always be shaped like an array with zero or more
-    /// elements. See --flatten if you want to remove one level of nesting on single element
-    /// jsonpath filter results.
+    /// When using a jsonpath query, the result will always be shaped like an array with zero or
+    /// more elements. See --flatten if you want to remove one level of nesting on single element
+    /// filter results.
     #[clap(short = 'j', long)]
     jsonpath: Option<String>,
 
     /// If the data is shaped like an array and has only one element, flatten it to the element by
     /// removing one level of nesting. This is applied as the last transformation before
     /// serializing into the output encoding.
+    ///
+    /// Can be used in combination with --jsonpath to flatten single element filter results.
     #[clap(long)]
     flatten: bool,
 }
@@ -126,7 +128,8 @@ fn transform(mut value: Value, opts: &TransformOptions) -> Result<Value> {
     if let Some(selector) = &opts.jsonpath {
         value = value
             .path(selector)
-            .map_err(|e| anyhow!("invalid jsonpath:\n{}", e))?;
+            .map_err(|e| anyhow!(e))
+            .context("invalid jsonpath query")?;
     }
 
     if let Some(array) = value.as_array() {
