@@ -88,13 +88,14 @@ struct OutputOptions {
 struct TransformOptions {
     /// Select data from the decoded input via jsonpath query before serializing it into the output
     /// encoding. See https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators for
-    /// supported operators.
+    /// supported operators. Can be specified multiple times to allow filtering intermediate
+    /// results from the root again.
     ///
     /// When using a jsonpath query, the result will always be shaped like an array with zero or
     /// more elements. See --flatten if you want to remove one level of nesting on single element
     /// filter results.
-    #[clap(short = 'j', long)]
-    jsonpath: Option<String>,
+    #[clap(short = 'j', long, multiple_occurrences = true)]
+    jsonpath: Vec<String>,
 
     /// If the data is shaped like an array and has only one element, flatten it to the element by
     /// removing one level of nesting. This is applied as the last transformation before
@@ -125,7 +126,7 @@ where
 }
 
 fn transform(mut value: Value, opts: &TransformOptions) -> Result<Value> {
-    if let Some(selector) = &opts.jsonpath {
+    for selector in &opts.jsonpath {
         value = value
             .path(selector)
             .map_err(|e| anyhow!(e))
