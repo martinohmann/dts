@@ -111,10 +111,11 @@ impl From<&OutputOptions> for SerializeOptions {
 #[derive(Args, Debug)]
 #[clap(help_heading = "TRANSFORM OPTIONS")]
 struct TransformOptions {
-    /// Select data from the decoded input via jsonpath query before serializing it into the output
-    /// encoding. See https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators for
-    /// supported operators. Can be specified multiple times to allow filtering intermediate
-    /// results from the root again.
+    /// Select data from the decoded input via jsonpath query.
+    ///
+    /// Can be specified multiple times to allow filtering intermediate results from the
+    /// root again. See https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators for supported
+    /// operators.
     ///
     /// When using a jsonpath query, the result will always be shaped like an array with zero or
     /// more elements. See --flatten if you want to remove one level of nesting on single element
@@ -122,13 +123,15 @@ struct TransformOptions {
     #[clap(short = 'j', long, multiple_occurrences = true, number_of_values = 1)]
     jsonpath: Vec<String>,
 
-    /// If the data is shaped like an array and has only one element, flatten it to the element by
-    /// removing one level of nesting. This is applied as the last transformation before
-    /// serializing into the output encoding.
+    /// Remove one level of nesting if the data is shaped like an array.
     ///
-    /// Can be used in combination with --jsonpath to flatten single element filter results.
-    #[clap(long)]
-    flatten: bool,
+    /// Can be specified multiple times. If the has only one element the array will be removed
+    /// entirely, leaving the single element as output.
+    ///
+    /// This is applied as the last transformation before serializing into the output encoding. Can
+    /// be used in combination with --jsonpath to flatten single element filter results.
+    #[clap(short, long, parse(from_occurrences))]
+    flatten: u8,
 }
 
 fn deserialize<P>(file: Option<P>, opts: &InputOptions) -> Result<Value>
@@ -154,13 +157,30 @@ fn transform(mut value: Value, opts: &TransformOptions) -> Result<Value> {
             .context("invalid jsonpath query")?;
     }
 
-    if let Some(array) = value.as_array() {
-        if opts.flatten && array.len() == 1 {
-            return Ok(array[0].clone());
-        }
+    for _ in 0..opts.flatten {
+        flatten(&mut value)
     }
 
     Ok(value)
+}
+
+fn flatten(value: &mut Value) {
+    if let Some(array) = value.as_array() {
+        if array.len() == 1 {
+            *value = array[0].clone();
+        } else {
+            *value = Value::Array(
+                array
+                    .iter()
+                    .map(|v| match v {
+                        Value::Array(a) => a.clone(),
+                        _ => vec![v.clone()],
+                    })
+                    .flatten()
+                    .collect(),
+            )
+        }
+    }
 }
 
 fn serialize<P>(file: Option<P>, value: &Value, opts: &OutputOptions) -> Result<()>
