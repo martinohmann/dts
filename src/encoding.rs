@@ -34,6 +34,9 @@ pub enum Encoding {
     QueryString,
     /// Extensible Markup Language
     Xml,
+    /// Plaintext document
+    #[clap(alias = "txt")]
+    Text,
 }
 
 impl Encoding {
@@ -57,6 +60,7 @@ impl Encoding {
             "csv" => Some(Encoding::Csv),
             "tsv" => Some(Encoding::Tsv),
             "xml" => Some(Encoding::Xml),
+            "txt" | "text" => Some(Encoding::Text),
             _ => None,
         }
     }
@@ -75,6 +79,7 @@ impl Encoding {
             Encoding::Pickle => "pickle",
             Encoding::QueryString => "query-string",
             Encoding::Xml => "xml",
+            Encoding::Text => "text",
         }
     }
 }

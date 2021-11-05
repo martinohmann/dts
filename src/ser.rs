@@ -92,6 +92,7 @@ impl Serializer {
             Encoding::Pickle => serialize_pickle(writer, value)?,
             Encoding::QueryString => serialize_query_string(writer, value)?,
             Encoding::Xml => serialize_xml(writer, value)?,
+            Encoding::Text => serialize_text(writer, value)?,
             &encoding => return Err(Error::SerializeUnsupported(encoding)),
         };
 
@@ -226,4 +227,25 @@ where
     W: std::io::Write,
 {
     Ok(serde_xml_rs::to_writer(writer, value)?)
+}
+
+fn serialize_text<W>(writer: &mut W, value: &Value) -> Result<()>
+where
+    W: std::io::Write,
+{
+    let text = value
+        .as_array()
+        .ok_or_else(|| Error::new("serializing to text requires the input data to be an array"))?
+        .iter()
+        .map(|value| {
+            match value {
+                // Use strings directly to prevent quoting
+                Value::String(s) => Ok(s.to_string()),
+                other => Ok(serde_json::to_string(other)?),
+            }
+        })
+        .collect::<Result<Vec<String>>>()?
+        .join("\n");
+
+    Ok(writer.write_all(text.as_bytes())?)
 }

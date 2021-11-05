@@ -97,6 +97,7 @@ impl Deserializer {
             Encoding::Pickle => deserialize_pickle(reader),
             Encoding::QueryString => deserialize_query_string(reader),
             Encoding::Xml => deserialize_xml(reader),
+            Encoding::Text => deserialize_text(reader),
         }
     }
 }
@@ -224,4 +225,18 @@ where
     R: std::io::Read,
 {
     Ok(serde_xml_rs::from_reader(reader)?)
+}
+
+fn deserialize_text<R>(reader: &mut R) -> Result<Value>
+where
+    R: std::io::Read,
+{
+    let mut s = String::new();
+    reader.read_to_string(&mut s)?;
+
+    Ok(Value::Array(
+        s.lines()
+            .map(|line| Ok(serde_json::to_value(line)?))
+            .collect::<Result<_>>()?,
+    ))
 }
