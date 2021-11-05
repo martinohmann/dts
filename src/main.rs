@@ -9,8 +9,10 @@ use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
 use trnscd::{
-    de::DeserializerBuilder, detect_encoding, ser::SerializerBuilder, Encoding, Reader, Value,
-    Writer,
+    de::{DeserializeOptions, Deserializer},
+    detect_encoding,
+    ser::{SerializeOptions, Serializer},
+    Encoding, Reader, Value, Writer,
 };
 
 /// Simple tool to transcode between different encodings.
@@ -62,6 +64,16 @@ struct InputOptions {
     csv_headers_as_keys: bool,
 }
 
+impl From<&InputOptions> for DeserializeOptions {
+    fn from(opts: &InputOptions) -> Self {
+        Self {
+            all_documents: opts.all_documents,
+            csv_headers_as_keys: opts.csv_headers_as_keys,
+            csv_without_headers: opts.csv_without_headers,
+        }
+    }
+}
+
 #[derive(Args, Debug)]
 struct OutputOptions {
     /// Output encoding, if absent encoding will be detected from output file extension
@@ -82,6 +94,16 @@ struct OutputOptions {
     /// empty columns while excess fields are ignored.
     #[clap(long)]
     keys_as_csv_headers: bool,
+}
+
+impl From<&OutputOptions> for SerializeOptions {
+    fn from(opts: &OutputOptions) -> Self {
+        Self {
+            pretty: opts.pretty,
+            newline: opts.newline,
+            keys_as_csv_headers: opts.keys_as_csv_headers,
+        }
+    }
 }
 
 #[derive(Args, Debug)]
@@ -113,11 +135,7 @@ where
     let encoding = detect_encoding(opts.input_encoding, file.as_ref())
         .context("unable to detect input encoding, please provide it explicitly via -i")?;
 
-    let de = DeserializerBuilder::new()
-        .all_documents(opts.all_documents)
-        .csv_without_headers(opts.csv_without_headers)
-        .csv_headers_as_keys(opts.csv_headers_as_keys)
-        .build(encoding);
+    let de = Deserializer::new(encoding, opts.into());
 
     let mut reader = Reader::new(file).context("failed to open input file")?;
 
@@ -149,11 +167,7 @@ where
     let encoding = detect_encoding(opts.output_encoding, file.as_ref())
         .context("unable to detect output encoding, please provide it explicitly via -o")?;
 
-    let ser = SerializerBuilder::new()
-        .pretty(opts.pretty)
-        .newline(opts.newline)
-        .keys_as_csv_headers(opts.keys_as_csv_headers)
-        .build(encoding);
+    let ser = Serializer::new(encoding, opts.into());
 
     let mut writer = Writer::new(file).context("failed to open output file")?;
 
