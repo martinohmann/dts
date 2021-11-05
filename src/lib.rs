@@ -12,6 +12,7 @@ mod encoding;
 mod error;
 mod reader;
 pub mod ser;
+pub mod transform;
 mod writer;
 
 /// The type deserializer in this crate deserializes into.

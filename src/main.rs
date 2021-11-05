@@ -4,7 +4,6 @@
 
 use anyhow::{anyhow, Context, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};
-use jsonpath_rust::JsonPathQuery;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
@@ -12,7 +11,7 @@ use dts::{
     de::{DeserializeOptions, Deserializer},
     detect_encoding,
     ser::{SerializeOptions, Serializer},
-    Encoding, Reader, Value, Writer,
+    transform, Encoding, Reader, Value, Writer,
 };
 
 /// Simple tool to transcode between different encodings.
@@ -169,38 +168,13 @@ where
 }
 
 fn transform(value: &mut Value, opts: &TransformOptions) -> Result<()> {
-    for selector in &opts.jsonpath {
-        *value = value
-            .clone()
-            .path(selector)
-            .map_err(|e| anyhow!(e))
-            .context("invalid jsonpath query")?;
-    }
+    opts.jsonpath
+        .iter()
+        .try_for_each(|query| transform::filter_in_place(value, query))
+        .context("invalid jsonpath query")?;
 
-    for _ in 0..opts.flatten {
-        flatten(value)
-    }
-
+    (0..opts.flatten).for_each(|_| transform::flatten_in_place(value));
     Ok(())
-}
-
-fn flatten(value: &mut Value) {
-    if let Some(array) = value.as_array() {
-        if array.len() == 1 {
-            *value = array[0].clone();
-        } else {
-            *value = Value::Array(
-                array
-                    .iter()
-                    .map(|v| match v {
-                        Value::Array(a) => a.clone(),
-                        _ => vec![v.clone()],
-                    })
-                    .flatten()
-                    .collect(),
-            )
-        }
-    }
 }
 
 fn serialize<P>(file: Option<P>, value: &Value, opts: &OutputOptions) -> Result<()>
