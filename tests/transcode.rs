@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::path::Path;
 
-use trnscd::{
+use dts::{
     de::{Deserializer, DeserializerBuilder},
     ser::{Serializer, SerializerBuilder},
     Encoding,

@@ -1,9 +1,12 @@
-# trnscd
+# dts
 
-[![Build Status](https://github.com/martinohmann/trnscd/workflows/ci/badge.svg)](https://github.com/martinohmann/trnscd/actions?query=workflow%3Aci)
-![GitHub](https://img.shields.io/github/license/martinohmann/trnscd?color=orange)
+[![Build Status](https://github.com/martinohmann/dts/workflows/ci/badge.svg)](https://github.com/martinohmann/dts/actions?query=workflow%3Aci)
+![GitHub](https://img.shields.io/github/license/martinohmann/dts?color=orange)
 
-A simple tool for transcoding between various input and output encodings.
+__
+
+A simple tool to *deserialize* data from an input encoding, *transform* it
+and *serialize* it back into an output encoding again.
 
 Requires rust >= 1.56.0.
 
@@ -17,5 +20,5 @@ cargo install --path .
 
 ## License
 
-The source code of trnscd is released under the MIT License. See the bundled
+The source code of dts is released under the MIT License. See the bundled
 LICENSE file for details.

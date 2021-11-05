@@ -1,4 +1,4 @@
-//! trnscd is a simple command line tool to transcode between different input and output encodings.
+//! dts is a simple command line tool to transcode between different input and output encodings.
 
 #![deny(missing_docs)]
 
@@ -8,7 +8,7 @@ use jsonpath_rust::JsonPathQuery;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
-use trnscd::{
+use dts::{
     de::{DeserializeOptions, Deserializer},
     detect_encoding,
     ser::{SerializeOptions, Serializer},
@@ -23,7 +23,7 @@ use trnscd::{
 ///
 /// Refer to the input, transform and output options below.
 #[derive(Parser, Debug)]
-#[clap(name = "trnscd", version)]
+#[clap(name = "dts", version)]
 struct Options {
     /// Input and output files.
     ///
