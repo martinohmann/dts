@@ -116,7 +116,7 @@ struct TransformOptions {
     /// When using a jsonpath query, the result will always be shaped like an array with zero or
     /// more elements. See --flatten if you want to remove one level of nesting on single element
     /// filter results.
-    #[clap(short = 'j', long, multiple_occurrences = true)]
+    #[clap(short = 'j', long, multiple_occurrences = true, number_of_values = 1)]
     jsonpath: Vec<String>,
 
     /// If the data is shaped like an array and has only one element, flatten it to the element by
