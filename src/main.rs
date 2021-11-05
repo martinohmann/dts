@@ -42,6 +42,7 @@ struct Options {
 }
 
 #[derive(Args, Debug)]
+#[clap(help_heading = "INPUT OPTIONS")]
 struct InputOptions {
     /// Input encoding, if absent encoding will be detected from input file extension
     #[clap(arg_enum, short = 'i', long)]
@@ -75,6 +76,7 @@ impl From<&InputOptions> for DeserializeOptions {
 }
 
 #[derive(Args, Debug)]
+#[clap(help_heading = "OUTPUT OPTIONS")]
 struct OutputOptions {
     /// Output encoding, if absent encoding will be detected from output file extension
     #[clap(arg_enum, short = 'o', long)]
@@ -107,6 +109,7 @@ impl From<&OutputOptions> for SerializeOptions {
 }
 
 #[derive(Args, Debug)]
+#[clap(help_heading = "TRANSFORM OPTIONS")]
 struct TransformOptions {
     /// Select data from the decoded input via jsonpath query before serializing it into the output
     /// encoding. See https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators for
