@@ -4,6 +4,7 @@ use std::io::{self, Stdout, Write};
 use std::path::Path;
 
 /// A reader that either writes to a `File` or `Stdout`.
+#[derive(Debug)]
 pub enum Writer {
     /// A file writer.
     File(File),
@@ -14,9 +15,26 @@ pub enum Writer {
 impl Writer {
     /// Creates a new `Writer`.
     ///
-    /// If path is `Some`, a `Writer` is constructed that writes to the referenced file. Otherwise
-    /// the returned `Writer` writes to `Stdout`. A special case is made for a path equivalent to
-    /// `Some("-")` which will create a `Stdout` writer.
+    /// If path is `Some`, a `Writer` is constructed that writes to the referenced file.
+    ///
+    /// ```
+    /// # use dts::Writer;
+    /// use tempfile::tempdir;
+    ///
+    /// let dir = tempdir().unwrap();
+    /// let writer = Writer::new(Some(dir.path().join("file.txt")));
+    /// assert!(matches!(writer, Ok(Writer::File(_))));
+    /// ```
+    ///
+    /// Otherwise the returned `Writer` writes to `Stdout`. A special case is made for a path
+    /// equivalent to `Some("-")` which will create a `Stdout` writer as well.
+    ///
+    /// ```
+    /// # use dts::Writer;
+    ///
+    /// assert!(matches!(Writer::new::<&str>(None), Ok(Writer::Stdout(_))));
+    /// assert!(matches!(Writer::new(Some("-")), Ok(Writer::Stdout(_))));
+    /// ```
     ///
     /// Returns an error if path is `Some` and the file cannot be created.
     pub fn new<P>(path: Option<P>) -> Result<Self>
