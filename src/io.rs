@@ -20,7 +20,7 @@ impl Reader {
     /// If path is `Some`, a `Reader` is constructed that reads from the referenced file.
     ///
     /// ```
-    /// # use dts::io::Reader;
+    /// use dts::io::Reader;
     /// use tempfile::NamedTempFile;
     ///
     /// let file = NamedTempFile::new().unwrap();
@@ -32,7 +32,7 @@ impl Reader {
     /// Otherwise the returned `Reader` reads from `Stdin`.
     ///
     /// ```
-    /// # use dts::io::Reader;
+    /// use dts::io::Reader;
     ///
     /// assert!(matches!(Reader::new::<&str>(None), Ok(Reader::Stdin(_))));
     /// ```
@@ -73,7 +73,7 @@ impl Writer {
     /// If path is `Some`, a `Writer` is constructed that writes to the referenced file.
     ///
     /// ```
-    /// # use dts::io::Writer;
+    /// use dts::io::Writer;
     /// use tempfile::tempdir;
     ///
     /// let dir = tempdir().unwrap();
@@ -85,7 +85,7 @@ impl Writer {
     /// equivalent to `Some("-")` which will create a `Stdout` writer as well.
     ///
     /// ```
-    /// # use dts::io::Writer;
+    /// use dts::io::Writer;
     ///
     /// assert!(matches!(Writer::new::<&str>(None), Ok(Writer::Stdout(_))));
     /// assert!(matches!(Writer::new(Some("-")), Ok(Writer::Stdout(_))));

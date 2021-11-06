@@ -33,8 +33,7 @@ impl SerializeOptions {
 /// ## Example
 ///
 /// ```
-/// # use dts::ser::SerializerBuilder;
-/// use dts::Encoding;
+/// use dts::{ser::SerializerBuilder, Encoding};
 ///
 /// let serializer = SerializerBuilder::new()
 ///     .pretty(true)
@@ -98,6 +97,20 @@ impl Serializer {
     }
 
     /// Serializes the given `Value` and writes the encoded data to the writer.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use dts::{ser::SerializerBuilder, Encoding};
+    /// use serde_json::json;
+    ///
+    /// let ser = SerializerBuilder::new().build(Encoding::Json);
+    ///
+    /// let mut buf = Vec::new();
+    /// ser.serialize(&mut buf, &json!(["foo"])).unwrap();
+    ///
+    /// assert_eq!(&buf, r#"["foo"]"#.as_bytes());
+    /// ```
     pub fn serialize<W>(&self, writer: &mut W, value: &Value) -> Result<()>
     where
         W: std::io::Write,

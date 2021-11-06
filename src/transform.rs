@@ -6,8 +6,8 @@ use jsonpath_rust::JsonPathQuery;
 /// Filter value in place according to the jsonpath query.
 ///
 /// ```
-/// # use dts::transform::filter_in_place;
 /// # use pretty_assertions::assert_eq;
+/// use dts::transform::filter_in_place;
 /// use serde_json::json;
 ///
 /// let mut value = json!({
@@ -26,7 +26,7 @@ use jsonpath_rust::JsonPathQuery;
 /// This can fail if parsing the query fails.
 ///
 /// ```
-/// # use dts::transform::filter_in_place;
+/// use dts::transform::filter_in_place;
 /// use serde_json::json;
 ///
 /// let mut value = json!([]);
@@ -46,8 +46,8 @@ where
 /// Remove one level of nesting if the data is shaped like an array.
 ///
 /// ```
-/// # use dts::transform::flatten_in_place;
 /// # use pretty_assertions::assert_eq;
+/// use dts::transform::flatten_in_place;
 /// use serde_json::json;
 ///
 /// let mut value = json!([["foo"], ["bar"], [["baz"], "qux"]]);
@@ -60,8 +60,8 @@ where
 /// output.
 ///
 /// ```
-/// # use dts::transform::flatten_in_place;
 /// # use pretty_assertions::assert_eq;
+/// use dts::transform::flatten_in_place;
 /// use serde_json::json;
 ///
 /// let mut value = json!(["foo"]);
@@ -73,8 +73,8 @@ where
 /// Non-array values will be left untouched.
 ///
 /// ```
-/// # use dts::transform::flatten_in_place;
 /// # use pretty_assertions::assert_eq;
+/// use dts::transform::flatten_in_place;
 /// use serde_json::json;
 ///
 /// let mut value = json!({"foo": "bar"});

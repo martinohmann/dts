@@ -35,8 +35,7 @@ impl DeserializeOptions {
 /// ## Example
 ///
 /// ```
-/// # use dts::de::DeserializerBuilder;
-/// use dts::Encoding;
+/// use dts::{de::DeserializerBuilder, Encoding};
 ///
 /// let deserializer = DeserializerBuilder::new()
 ///     .csv_delimiter(b'\t')
@@ -100,6 +99,20 @@ impl Deserializer {
     }
 
     /// Reads input data from the given reader and deserializes it in a `Value`.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use dts::{de::DeserializerBuilder, Encoding};
+    /// use serde_json::json;
+    ///
+    /// let de = DeserializerBuilder::new().build(Encoding::Json);
+    ///
+    /// let mut buf = r#"["foo"]"#.as_bytes();
+    /// let value = de.deserialize(&mut buf).unwrap();
+    ///
+    /// assert_eq!(value, json!(["foo"]));
+    /// ```
     pub fn deserialize<R>(&self, reader: &mut R) -> Result<Value>
     where
         R: std::io::Read,
