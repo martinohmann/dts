@@ -251,3 +251,92 @@ where
 
     Ok(writer.write_all(text.as_bytes())?)
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    #[test]
+    fn test_serialize_json() {
+        let mut buf = Vec::new();
+
+        let ser = SerializerBuilder::new().build(Encoding::Json);
+        ser.serialize(&mut buf, &json!(["one", "two"])).unwrap();
+        assert_eq!(&buf, "[\"one\",\"two\"]".as_bytes());
+
+        buf.clear();
+
+        let ser = SerializerBuilder::new().pretty(true).build(Encoding::Json);
+        ser.serialize(&mut buf, &json!(["one", "two"])).unwrap();
+        assert_eq!(&buf, "[\n  \"one\",\n  \"two\"\n]".as_bytes());
+    }
+
+    #[test]
+    fn test_serialize_csv() {
+        let mut buf = Vec::new();
+
+        let ser = SerializerBuilder::new().build(Encoding::Csv);
+        ser.serialize(&mut buf, &json!([["one", "two"], ["three", "four"]]))
+            .unwrap();
+        assert_eq!(&buf, "one,two\nthree,four\n".as_bytes());
+
+        buf.clear();
+
+        let ser = SerializerBuilder::new()
+            .keys_as_csv_headers(true)
+            .build(Encoding::Csv);
+        ser.serialize(
+            &mut buf,
+            &json!([
+                {"one": "val1", "two": "val2"},
+                {"one": "val3", "three": "val4"},
+                {"two": "val5"}
+            ]),
+        )
+        .unwrap();
+        assert_eq!(&buf, "one,two\nval1,val2\nval3,\n,val5\n".as_bytes());
+    }
+
+    #[test]
+    fn test_serialize_csv_errors() {
+        let mut buf = Vec::new();
+
+        let ser = SerializerBuilder::new().build(Encoding::Csv);
+        assert!(ser.serialize(&mut buf, &json!("non-array")).is_err());
+        assert!(ser
+            .serialize(&mut buf, &json!([{"non-array": "row"}]))
+            .is_err());
+
+        let ser = SerializerBuilder::new()
+            .keys_as_csv_headers(true)
+            .build(Encoding::Csv);
+        assert!(ser
+            .serialize(&mut buf, &json!([["non-object-row"]]))
+            .is_err());
+    }
+
+    #[test]
+    fn test_serialize_text() {
+        let mut buf = Vec::new();
+
+        let ser = SerializerBuilder::new().build(Encoding::Text);
+        ser.serialize(&mut buf, &json!(["one", "two"])).unwrap();
+        assert_eq!(&buf, "one\ntwo".as_bytes());
+
+        buf.clear();
+
+        ser.serialize(&mut buf, &json!([{"foo": "bar"}, "baz"]))
+            .unwrap();
+        assert_eq!(&buf, "{\"foo\":\"bar\"}\nbaz".as_bytes());
+    }
+
+    #[test]
+    fn test_serialize_text_error() {
+        let mut buf = Vec::new();
+
+        let ser = SerializerBuilder::new().build(Encoding::Text);
+        assert!(ser.serialize(&mut buf, &json!({"foo": "bar"})).is_err());
+    }
+}
