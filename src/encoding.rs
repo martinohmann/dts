@@ -1,3 +1,5 @@
+//! Supported encodings for serialization and deserialization.
+
 use clap::ArgEnum;
 use std::fmt;
 use std::path::Path;

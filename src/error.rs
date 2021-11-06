@@ -1,3 +1,5 @@
+//! Defines the `Error` and `Result` types used by this crate.
+
 use crate::Encoding;
 use thiserror::Error;
 

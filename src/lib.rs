@@ -5,6 +5,7 @@
 pub use encoding::*;
 pub use error::*;
 
+pub mod args;
 pub mod de;
 mod encoding;
 mod error;
