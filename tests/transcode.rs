@@ -1,4 +1,5 @@
 use anyhow::Result;
+use pretty_assertions::assert_eq;
 use std::path::Path;
 
 use dts::{

@@ -22,3 +22,6 @@ thiserror = "1.0.30"
 toml = "0.5.8"
 
 [features]
+
+[dev-dependencies]
+pretty_assertions = "1.0.0"
