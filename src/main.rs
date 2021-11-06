@@ -10,8 +10,9 @@ use std::path::{Path, PathBuf};
 use dts::{
     de::{DeserializeOptions, Deserializer},
     detect_encoding,
+    io::{Reader, Writer},
     ser::{SerializeOptions, Serializer},
-    transform, Encoding, Reader, Value, Writer,
+    transform, Encoding, Value,
 };
 
 /// Simple tool to transcode between different encodings.

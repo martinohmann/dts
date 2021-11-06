@@ -4,16 +4,13 @@
 
 pub use encoding::*;
 pub use error::*;
-pub use reader::Reader;
-pub use writer::Writer;
 
 pub mod de;
 mod encoding;
 mod error;
-mod reader;
+pub mod io;
 pub mod ser;
 pub mod transform;
-mod writer;
 
 /// The type deserializer in this crate deserializes into.
 ///
