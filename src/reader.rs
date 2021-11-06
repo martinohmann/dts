@@ -14,8 +14,25 @@ pub enum Reader {
 impl Reader {
     /// Creates a new `Reader`.
     ///
-    /// If path is `Some`, a `Reader` is constructed that reads from the referenced file. Otherwise
-    /// the returned `Reader` reads from `Stdin`.
+    /// If path is `Some`, a `Reader` is constructed that reads from the referenced file.
+    ///
+    /// ```
+    /// # use dts::Reader;
+    /// use tempfile::NamedTempFile;
+    ///
+    /// let file = NamedTempFile::new().unwrap();
+    ///
+    /// let reader = Reader::new(Some(file.path()));
+    /// assert!(matches!(reader, Ok(Reader::File(_))));
+    /// ```
+    ///
+    /// Otherwise the returned `Reader` reads from `Stdin`.
+    ///
+    /// ```
+    /// # use dts::Reader;
+    ///
+    /// assert!(matches!(Reader::new::<&str>(None), Ok(Reader::Stdin(_))));
+    /// ```
     ///
     /// Returns an error if path is `Some` and the file cannot be opened.
     pub fn new<P>(path: Option<P>) -> Result<Self>
