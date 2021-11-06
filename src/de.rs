@@ -31,6 +31,17 @@ impl DeserializeOptions {
 
 /// A `DeserializerBuilder` can be used to build a `Deserializer` with certain
 /// `DeserializeOptions`.
+///
+/// ## Example
+///
+/// ```
+/// # use dts::de::DeserializerBuilder;
+/// use dts::Encoding;
+///
+/// let deserializer = DeserializerBuilder::new()
+///     .csv_delimiter(b'\t')
+///     .build(Encoding::Csv);
+/// ```
 #[derive(Debug, Default, Clone)]
 pub struct DeserializerBuilder {
     opts: DeserializeOptions,

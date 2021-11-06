@@ -29,6 +29,18 @@ impl SerializeOptions {
 
 /// A `SerializerBuilder` can be used to build a `Serializer` with certain
 /// `SerializeOptions`.
+///
+/// ## Example
+///
+/// ```
+/// # use dts::ser::SerializerBuilder;
+/// use dts::Encoding;
+///
+/// let serializer = SerializerBuilder::new()
+///     .pretty(true)
+///     .newline(true)
+///     .build(Encoding::Json);
+/// ```
 #[derive(Debug, Default, Clone)]
 pub struct SerializerBuilder {
     opts: SerializeOptions,
