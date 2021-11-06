@@ -25,8 +25,6 @@ pub enum Encoding {
     Hjson,
     /// Comma separated values
     Csv,
-    /// Tab separated values
-    Tsv,
     /// Python pickle
     Pickle,
     /// URL query string
@@ -58,7 +56,6 @@ impl Encoding {
             "json5" => Some(Encoding::Json5),
             "hjson" => Some(Encoding::Hjson),
             "csv" => Some(Encoding::Csv),
-            "tsv" => Some(Encoding::Tsv),
             "xml" => Some(Encoding::Xml),
             "txt" | "text" => Some(Encoding::Text),
             _ => None,
@@ -75,7 +72,6 @@ impl Encoding {
             Encoding::Json5 => "json5",
             Encoding::Hjson => "hjson",
             Encoding::Csv => "csv",
-            Encoding::Tsv => "tsv",
             Encoding::Pickle => "pickle",
             Encoding::QueryString => "query-string",
             Encoding::Xml => "xml",

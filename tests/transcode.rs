@@ -136,7 +136,7 @@ fn test_transcode_tsv() {
     assert_eq!(
         transcode(
             "header00\theader01\nrow00\trow01\nrow10\trow11",
-            DeserializerBuilder::new().build(Tsv),
+            DeserializerBuilder::new().csv_delimiter(b'\t').build(Csv),
             SerializerBuilder::new().build(Json),
         )
         .unwrap(),
@@ -148,7 +148,8 @@ fn test_transcode_tsv() {
             "header00\theader01\nrow00\trow01\nrow10\trow11",
             DeserializerBuilder::new()
                 .csv_headers_as_keys(true)
-                .build(Tsv),
+                .csv_delimiter(b'\t')
+                .build(Csv),
             SerializerBuilder::new().build(Json),
         )
         .unwrap(),

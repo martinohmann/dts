@@ -78,6 +78,10 @@ struct InputOptions {
     /// array of arrays.
     #[clap(long)]
     csv_headers_as_keys: bool,
+
+    /// Custom delimiter for CSV input.
+    #[clap(short = 'd', long, parse(try_from_str = parse_csv_delimiter))]
+    csv_input_delimiter: Option<u8>,
 }
 
 impl From<&InputOptions> for DeserializeOptions {
@@ -86,6 +90,7 @@ impl From<&InputOptions> for DeserializeOptions {
             all_documents: opts.all_documents,
             csv_headers_as_keys: opts.csv_headers_as_keys,
             csv_without_headers: opts.csv_without_headers,
+            csv_delimiter: opts.csv_input_delimiter,
         }
     }
 }
@@ -140,6 +145,10 @@ struct OutputOptions {
     /// while excess fields are ignored.
     #[clap(long)]
     keys_as_csv_headers: bool,
+
+    /// Custom delimiter for CSV output.
+    #[clap(short = 'D', long, parse(try_from_str = parse_csv_delimiter))]
+    csv_output_delimiter: Option<u8>,
 }
 
 impl From<&OutputOptions> for SerializeOptions {
@@ -148,7 +157,20 @@ impl From<&OutputOptions> for SerializeOptions {
             pretty: opts.pretty,
             newline: opts.newline,
             keys_as_csv_headers: opts.keys_as_csv_headers,
+            csv_delimiter: opts.csv_output_delimiter,
         }
+    }
+}
+
+fn parse_csv_delimiter(s: &str) -> Result<u8> {
+    let bytes = s.as_bytes();
+
+    if s == "\\t" {
+        Ok(b'\t')
+    } else if bytes.len() == 1 {
+        Ok(bytes[0])
+    } else {
+        Err(anyhow!("expected single byte delimiter or '\\t'"))
     }
 }
 

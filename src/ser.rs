@@ -16,6 +16,8 @@ pub struct SerializeOptions {
     /// be matched to the right CSV column based on their key. Missing fields produce empty columns
     /// while excess fields are ignored.
     pub keys_as_csv_headers: bool,
+    /// Optional custom delimiter for CSV output.
+    pub csv_delimiter: Option<u8>,
 }
 
 impl SerializeOptions {
@@ -59,6 +61,12 @@ impl SerializerBuilder {
         self
     }
 
+    /// Sets a custom CSV delimiter.
+    pub fn csv_delimiter(&mut self, delim: u8) -> &mut Self {
+        self.opts.csv_delimiter = Some(delim);
+        self
+    }
+
     /// Builds the `Serializer` for the given `Encoding`.
     pub fn build(&self, encoding: Encoding) -> Serializer {
         Serializer::new(encoding, self.opts.clone())
@@ -87,8 +95,7 @@ impl Serializer {
             Encoding::Json | Encoding::Json5 => serialize_json(writer, value, &self.opts)?,
             Encoding::Ron => serialize_ron(writer, value, &self.opts)?,
             Encoding::Toml => serialize_toml(writer, value, &self.opts)?,
-            Encoding::Csv => serialize_csv(writer, b',', value, &self.opts)?,
-            Encoding::Tsv => serialize_csv(writer, b'\t', value, &self.opts)?,
+            Encoding::Csv => serialize_csv(writer, value, &self.opts)?,
             Encoding::Pickle => serialize_pickle(writer, value)?,
             Encoding::QueryString => serialize_query_string(writer, value)?,
             Encoding::Xml => serialize_xml(writer, value)?,
@@ -150,12 +157,7 @@ where
     Ok(writer.write_all(s.as_bytes())?)
 }
 
-fn serialize_csv<W>(
-    writer: &mut W,
-    delimiter: u8,
-    value: &Value,
-    opts: &SerializeOptions,
-) -> Result<()>
+fn serialize_csv<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
 where
     W: std::io::Write,
 {
@@ -166,7 +168,7 @@ where
     let mut buf = Vec::new();
     {
         let mut csv_writer = csv::WriterBuilder::new()
-            .delimiter(delimiter)
+            .delimiter(opts.csv_delimiter.unwrap_or(b','))
             .from_writer(&mut buf);
 
         let mut headers: Option<Vec<&String>> = None;

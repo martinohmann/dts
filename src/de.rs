@@ -18,6 +18,8 @@ pub struct DeserializeOptions {
     /// columns. This means that the deserialized row data will be of type object. Otherwise row
     /// data will be of type array.
     pub csv_headers_as_keys: bool,
+    /// Optional custom delimiter for CSV input.
+    pub csv_delimiter: Option<u8>,
 }
 
 impl DeserializeOptions {
@@ -62,6 +64,12 @@ impl DeserializerBuilder {
         self
     }
 
+    /// Sets a custom CSV delimiter.
+    pub fn csv_delimiter(&mut self, delim: u8) -> &mut Self {
+        self.opts.csv_delimiter = Some(delim);
+        self
+    }
+
     /// Builds the `Deserializer` for the given `Encoding`.
     pub fn build(&self, encoding: Encoding) -> Deserializer {
         Deserializer::new(encoding, self.opts.clone())
@@ -92,8 +100,7 @@ impl Deserializer {
             Encoding::Toml => deserialize_toml(reader),
             Encoding::Json5 => deserialize_json5(reader),
             Encoding::Hjson => deserialize_hjson(reader),
-            Encoding::Csv => deserialize_csv(reader, b',', &self.opts),
-            Encoding::Tsv => deserialize_csv(reader, b'\t', &self.opts),
+            Encoding::Csv => deserialize_csv(reader, &self.opts),
             Encoding::Pickle => deserialize_pickle(reader),
             Encoding::QueryString => deserialize_query_string(reader),
             Encoding::Xml => deserialize_xml(reader),
@@ -162,7 +169,7 @@ where
     Ok(deser_hjson::from_str(&s)?)
 }
 
-fn deserialize_csv<R>(reader: &mut R, delimiter: u8, opts: &DeserializeOptions) -> Result<Value>
+fn deserialize_csv<R>(reader: &mut R, opts: &DeserializeOptions) -> Result<Value>
 where
     R: std::io::Read,
 {
@@ -171,7 +178,7 @@ where
     let mut csv_reader = csv::ReaderBuilder::new()
         .trim(csv::Trim::All)
         .has_headers(!keep_first_line)
-        .delimiter(delimiter)
+        .delimiter(opts.csv_delimiter.unwrap_or(b','))
         .from_reader(reader);
 
     let mut iter = csv_reader.deserialize();
