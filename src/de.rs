@@ -247,3 +247,94 @@ where
             .collect::<Result<_>>()?,
     ))
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    #[test]
+    fn test_deserialize_yaml() {
+        let de = DeserializerBuilder::new().build(Encoding::Yaml);
+
+        let mut buf = "---\nfoo: bar".as_bytes();
+
+        assert_eq!(de.deserialize(&mut buf).unwrap(), json!({"foo": "bar"}));
+    }
+
+    #[test]
+    fn test_deserialize_yaml_multi() {
+        let de = DeserializerBuilder::new().build(Encoding::Yaml);
+
+        let mut buf = "---\nfoo: bar\n---\nbaz: qux".as_bytes();
+
+        assert_eq!(de.deserialize(&mut buf).unwrap(), json!({"foo": "bar"}));
+
+        let de = DeserializerBuilder::new()
+            .all_documents(true)
+            .build(Encoding::Yaml);
+
+        let mut buf = "---\nfoo: bar\n---\nbaz: qux".as_bytes();
+
+        assert_eq!(
+            de.deserialize(&mut buf).unwrap(),
+            json!([{"foo": "bar"}, {"baz": "qux"}])
+        );
+    }
+
+    #[test]
+    fn test_deserialize_csv() {
+        let de = DeserializerBuilder::new().build(Encoding::Csv);
+
+        let mut buf = "header1,header2\ncol1,col2".as_bytes();
+
+        assert_eq!(de.deserialize(&mut buf).unwrap(), json!([["col1", "col2"]]));
+
+        let de = DeserializerBuilder::new()
+            .csv_without_headers(true)
+            .build(Encoding::Csv);
+
+        let mut buf = "row1col1,row1col2\nrow2col1,row2col2".as_bytes();
+
+        assert_eq!(
+            de.deserialize(&mut buf).unwrap(),
+            json!([["row1col1", "row1col2"], ["row2col1", "row2col2"]])
+        );
+
+        let de = DeserializerBuilder::new()
+            .csv_headers_as_keys(true)
+            .build(Encoding::Csv);
+
+        let mut buf = "header1,header2\nrow1col1,row1col2\nrow2col1,row2col2".as_bytes();
+
+        assert_eq!(
+            de.deserialize(&mut buf).unwrap(),
+            json!([{"header1":"row1col1", "header2":"row1col2"}, {"header1":"row2col1", "header2":"row2col2"}])
+        );
+
+        let de = DeserializerBuilder::new()
+            .csv_delimiter(b'|')
+            .build(Encoding::Csv);
+
+        let mut buf = "header1|header2\ncol1|col2".as_bytes();
+
+        assert_eq!(de.deserialize(&mut buf).unwrap(), json!([["col1", "col2"]]));
+    }
+
+    #[test]
+    fn test_deserialize_text() {
+        let de = DeserializerBuilder::new().build(Encoding::Text);
+
+        let mut buf = "one\ntwo\nthree\n".as_bytes();
+
+        assert_eq!(
+            de.deserialize(&mut buf).unwrap(),
+            json!(["one", "two", "three"])
+        );
+
+        let mut buf: &[u8] = &[];
+
+        assert_eq!(de.deserialize(&mut buf).unwrap(), json!([]));
+    }
+}
