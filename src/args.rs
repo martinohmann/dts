@@ -179,6 +179,6 @@ fn parse_csv_delimiter(s: &str) -> Result<u8> {
 }
 
 fn parse_unescaped(s: &str) -> Result<String> {
-    unescape(&s)
+    unescape(s)
         .ok_or_else(|| Error::new(format!("string contains invalid escape sequences: '{}'", s)))
 }

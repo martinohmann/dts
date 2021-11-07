@@ -344,7 +344,7 @@ mod test {
 
     #[test]
     fn test_deserialize_text() {
-        let buf = "one\ntwo\nthree\n".as_bytes().to_vec();
+        let buf = "one\ntwo\nthree\n".as_bytes();
         let mut de = DeserializerBuilder::new().build(buf);
 
         assert_eq!(

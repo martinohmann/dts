@@ -37,10 +37,11 @@ impl SerializeOptions {
 /// ```
 /// use dts::{ser::SerializerBuilder, Encoding};
 ///
-/// let serializer = SerializerBuilder::new()
+/// let writer = std::io::stdout();
+/// let mut serializer = SerializerBuilder::new()
 ///     .pretty(true)
 ///     .newline(true)
-///     .build(Encoding::Json);
+///     .build(writer);
 /// ```
 #[derive(Debug, Default, Clone)]
 pub struct SerializerBuilder {
@@ -89,22 +90,28 @@ impl SerializerBuilder {
         self
     }
 
-    /// Builds the `Serializer` for the given `Encoding`.
-    pub fn build(&self, encoding: Encoding) -> Serializer {
-        Serializer::new(encoding, self.opts.clone())
+    /// Builds the `Serializer` for the given writer.
+    pub fn build<W>(&self, writer: W) -> Serializer<W>
+    where
+        W: std::io::Write,
+    {
+        Serializer::new(writer, self.opts.clone())
     }
 }
 
 /// A `Serializer` can serialize a `Value` into an encoded byte stream.
-pub struct Serializer {
-    encoding: Encoding,
+pub struct Serializer<W> {
+    writer: W,
     opts: SerializeOptions,
 }
 
-impl Serializer {
-    /// Creates a new `Serializer` for `Encoding` with options.
-    pub fn new(encoding: Encoding, opts: SerializeOptions) -> Self {
-        Self { encoding, opts }
+impl<W> Serializer<W>
+where
+    W: std::io::Write,
+{
+    /// Creates a new `Serializer` for writer with options.
+    pub fn new(writer: W, opts: SerializeOptions) -> Self {
+        Self { writer, opts }
     }
 
     /// Serializes the given `Value` and writes the encoded data to the writer.
@@ -117,187 +124,166 @@ impl Serializer {
     /// # use std::error::Error;
     /// #
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// let ser = SerializerBuilder::new().build(Encoding::Json);
-    ///
     /// let mut buf = Vec::new();
-    /// ser.serialize(&mut buf, &json!(["foo"]))?;
+    /// let mut ser = SerializerBuilder::new().build(&mut buf);
+    /// ser.serialize(Encoding::Json, &json!(["foo"]))?;
     ///
     /// assert_eq!(&buf, r#"["foo"]"#.as_bytes());
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn serialize<W>(&self, writer: &mut W, value: &Value) -> Result<()>
+    pub fn serialize(&mut self, encoding: Encoding, value: &Value) -> Result<()>
     where
         W: std::io::Write,
     {
-        match &self.encoding {
-            Encoding::Yaml => serialize_yaml(writer, value)?,
-            Encoding::Json | Encoding::Json5 => serialize_json(writer, value, &self.opts)?,
-            Encoding::Ron => serialize_ron(writer, value, &self.opts)?,
-            Encoding::Toml => serialize_toml(writer, value, &self.opts)?,
-            Encoding::Csv => serialize_csv(writer, value, &self.opts)?,
-            Encoding::Pickle => serialize_pickle(writer, value)?,
-            Encoding::QueryString => serialize_query_string(writer, value)?,
-            Encoding::Xml => serialize_xml(writer, value)?,
-            Encoding::Text => serialize_text(writer, value, &self.opts)?,
-            &encoding => return Err(Error::SerializeUnsupported(encoding)),
+        match encoding {
+            Encoding::Yaml => self.serialize_yaml(value)?,
+            Encoding::Json | Encoding::Json5 => self.serialize_json(value)?,
+            Encoding::Ron => self.serialize_ron(value)?,
+            Encoding::Toml => self.serialize_toml(value)?,
+            Encoding::Csv => self.serialize_csv(value)?,
+            Encoding::Pickle => self.serialize_pickle(value)?,
+            Encoding::QueryString => self.serialize_query_string(value)?,
+            Encoding::Xml => self.serialize_xml(value)?,
+            Encoding::Text => self.serialize_text(value)?,
+            encoding => return Err(Error::SerializeUnsupported(encoding)),
         };
 
         if self.opts.newline {
-            writer.write_all(b"\n")?;
+            self.writer.write_all(b"\n")?;
         }
 
         Ok(())
     }
-}
 
-fn serialize_yaml<W>(writer: &mut W, value: &Value) -> Result<()>
-where
-    W: std::io::Write,
-{
-    Ok(serde_yaml::to_writer(writer, value)?)
-}
-
-fn serialize_json<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
-where
-    W: std::io::Write,
-{
-    if opts.pretty {
-        serde_json::to_writer_pretty(writer, value)?
-    } else {
-        serde_json::to_writer(writer, value)?
+    fn serialize_yaml(&mut self, value: &Value) -> Result<()> {
+        Ok(serde_yaml::to_writer(&mut self.writer, value)?)
     }
 
-    Ok(())
-}
+    fn serialize_json(&mut self, value: &Value) -> Result<()> {
+        if self.opts.pretty {
+            serde_json::to_writer_pretty(&mut self.writer, value)?
+        } else {
+            serde_json::to_writer(&mut self.writer, value)?
+        }
 
-fn serialize_ron<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
-where
-    W: std::io::Write,
-{
-    if opts.pretty {
-        ron::ser::to_writer_pretty(writer, value, Default::default())?
-    } else {
-        ron::ser::to_writer(writer, value)?
+        Ok(())
     }
 
-    Ok(())
-}
+    fn serialize_ron(&mut self, value: &Value) -> Result<()> {
+        if self.opts.pretty {
+            ron::ser::to_writer_pretty(&mut self.writer, value, Default::default())?
+        } else {
+            ron::ser::to_writer(&mut self.writer, value)?
+        }
 
-fn serialize_toml<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
-where
-    W: std::io::Write,
-{
-    let s = if opts.pretty {
-        toml::ser::to_string_pretty(value)?
-    } else {
-        toml::ser::to_string(value)?
-    };
+        Ok(())
+    }
 
-    Ok(writer.write_all(s.as_bytes())?)
-}
+    fn serialize_toml(&mut self, value: &Value) -> Result<()> {
+        let s = if self.opts.pretty {
+            toml::ser::to_string_pretty(value)?
+        } else {
+            toml::ser::to_string(value)?
+        };
 
-fn serialize_csv<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
-where
-    W: std::io::Write,
-{
-    let value = value
-        .as_array()
-        .ok_or_else(|| Error::new("serializing to csv requires the input data to be an array"))?;
+        Ok(self.writer.write_all(s.as_bytes())?)
+    }
 
-    // Because individual row items may produce errors during serialization because they are of
-    // unexpected type, write into a buffer first and only flush out to the writer only if
-    // serialization of all rows succeeded. This avoids writing out partial data.
-    let mut buf = Vec::new();
-    {
-        let mut csv_writer = csv::WriterBuilder::new()
-            .delimiter(opts.csv_delimiter.unwrap_or(b','))
-            .from_writer(&mut buf);
+    fn serialize_csv(&mut self, value: &Value) -> Result<()> {
+        let value = value.as_array().ok_or_else(|| {
+            Error::new("serializing to csv requires the input data to be an array")
+        })?;
 
-        let mut headers: Option<Vec<&String>> = None;
+        // Because individual row items may produce errors during serialization because they are of
+        // unexpected type, write into a buffer first and only flush out to the writer only if
+        // serialization of all rows succeeded. This avoids writing out partial data.
+        let mut buf = Vec::new();
+        {
+            let mut csv_writer = csv::WriterBuilder::new()
+                .delimiter(self.opts.csv_delimiter.unwrap_or(b','))
+                .from_writer(&mut buf);
 
-        // Empty string value which will be referenced for missing fields.
-        let empty = Value::String(String::new());
+            let mut headers: Option<Vec<&String>> = None;
 
-        for (i, row) in value.iter().enumerate() {
-            if !opts.keys_as_csv_headers {
-                let row_data = row
-                    .as_array()
-                    .ok_or_else(|| Error::at_row_index(i, "array expected"))?;
+            // Empty string value which will be referenced for missing fields.
+            let empty = Value::String(String::new());
 
-                csv_writer.serialize(row_data)?;
-            } else {
-                let row = row
-                    .as_object()
-                    .ok_or_else(|| Error::at_row_index(i, "object expected"))?;
+            for (i, row) in value.iter().enumerate() {
+                if !self.opts.keys_as_csv_headers {
+                    let row_data = row
+                        .as_array()
+                        .ok_or_else(|| Error::at_row_index(i, "array expected"))?;
 
-                // The first row dictates the header fields.
-                if headers.is_none() {
-                    let header_data = row.keys().collect();
-                    csv_writer.serialize(&header_data)?;
-                    headers = Some(header_data);
+                    csv_writer.serialize(row_data)?;
+                } else {
+                    let row = row
+                        .as_object()
+                        .ok_or_else(|| Error::at_row_index(i, "object expected"))?;
+
+                    // The first row dictates the header fields.
+                    if headers.is_none() {
+                        let header_data = row.keys().collect();
+                        csv_writer.serialize(&header_data)?;
+                        headers = Some(header_data);
+                    }
+
+                    let row_data = headers
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .map(|&header| row.get(header).or(Some(&empty)))
+                        .collect::<Vec<_>>();
+
+                    csv_writer.serialize(row_data)?;
                 }
-
-                let row_data = headers
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .map(|&header| row.get(header).or(Some(&empty)))
-                    .collect::<Vec<_>>();
-
-                csv_writer.serialize(row_data)?;
             }
         }
+
+        Ok(self.writer.write_all(&buf)?)
     }
 
-    Ok(writer.write_all(&buf)?)
-}
+    fn serialize_pickle(&mut self, value: &Value) -> Result<()> {
+        Ok(serde_pickle::to_writer(
+            &mut self.writer,
+            value,
+            Default::default(),
+        )?)
+    }
 
-fn serialize_pickle<W>(writer: &mut W, value: &Value) -> Result<()>
-where
-    W: std::io::Write,
-{
-    Ok(serde_pickle::to_writer(writer, value, Default::default())?)
-}
+    fn serialize_query_string(&mut self, value: &Value) -> Result<()> {
+        Ok(serde_qs::to_writer(value, &mut self.writer)?)
+    }
 
-fn serialize_query_string<W>(writer: &mut W, value: &Value) -> Result<()>
-where
-    W: std::io::Write,
-{
-    Ok(serde_qs::to_writer(value, writer)?)
-}
+    fn serialize_xml(&mut self, value: &Value) -> Result<()> {
+        Ok(serde_xml_rs::to_writer(&mut self.writer, value)?)
+    }
 
-fn serialize_xml<W>(writer: &mut W, value: &Value) -> Result<()>
-where
-    W: std::io::Write,
-{
-    Ok(serde_xml_rs::to_writer(writer, value)?)
-}
+    fn serialize_text(&mut self, value: &Value) -> Result<()> {
+        let sep = self
+            .opts
+            .text_join_separator
+            .clone()
+            .unwrap_or_else(|| String::from("\n"));
 
-fn serialize_text<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
-where
-    W: std::io::Write,
-{
-    let sep = opts
-        .text_join_separator
-        .clone()
-        .unwrap_or_else(|| String::from("\n"));
+        let text = value
+            .as_array()
+            .ok_or_else(|| {
+                Error::new("serializing to text requires the input data to be an array")
+            })?
+            .iter()
+            .map(|value| {
+                match value {
+                    // Use strings directly to prevent quoting
+                    Value::String(s) => Ok(s.to_string()),
+                    other => Ok(serde_json::to_string(other)?),
+                }
+            })
+            .collect::<Result<Vec<String>>>()?
+            .join(&sep);
 
-    let text = value
-        .as_array()
-        .ok_or_else(|| Error::new("serializing to text requires the input data to be an array"))?
-        .iter()
-        .map(|value| {
-            match value {
-                // Use strings directly to prevent quoting
-                Value::String(s) => Ok(s.to_string()),
-                other => Ok(serde_json::to_string(other)?),
-            }
-        })
-        .collect::<Result<Vec<String>>>()?
-        .join(&sep);
-
-    Ok(writer.write_all(text.as_bytes())?)
+        Ok(self.writer.write_all(text.as_bytes())?)
+    }
 }
 
 #[cfg(test)]
@@ -309,15 +295,16 @@ mod test {
     #[test]
     fn test_serialize_json() {
         let mut buf = Vec::new();
-
-        let ser = SerializerBuilder::new().build(Encoding::Json);
-        ser.serialize(&mut buf, &json!(["one", "two"])).unwrap();
+        let mut ser = SerializerBuilder::new().build(&mut buf);
+        ser.serialize(Encoding::Json, &json!(["one", "two"]))
+            .unwrap();
         assert_eq!(&buf, "[\"one\",\"two\"]".as_bytes());
 
         buf.clear();
 
-        let ser = SerializerBuilder::new().pretty(true).build(Encoding::Json);
-        ser.serialize(&mut buf, &json!(["one", "two"])).unwrap();
+        let mut ser = SerializerBuilder::new().pretty(true).build(&mut buf);
+        ser.serialize(Encoding::Json, &json!(["one", "two"]))
+            .unwrap();
         assert_eq!(&buf, "[\n  \"one\",\n  \"two\"\n]".as_bytes());
     }
 
@@ -325,18 +312,18 @@ mod test {
     fn test_serialize_csv() {
         let mut buf = Vec::new();
 
-        let ser = SerializerBuilder::new().build(Encoding::Csv);
-        ser.serialize(&mut buf, &json!([["one", "two"], ["three", "four"]]))
+        let mut ser = SerializerBuilder::new().build(&mut buf);
+        ser.serialize(Encoding::Csv, &json!([["one", "two"], ["three", "four"]]))
             .unwrap();
         assert_eq!(&buf, "one,two\nthree,four\n".as_bytes());
 
         buf.clear();
 
-        let ser = SerializerBuilder::new()
+        let mut ser = SerializerBuilder::new()
             .keys_as_csv_headers(true)
-            .build(Encoding::Csv);
+            .build(&mut buf);
         ser.serialize(
-            &mut buf,
+            Encoding::Csv,
             &json!([
                 {"one": "val1", "two": "val2"},
                 {"one": "val3", "three": "val4"},
@@ -351,31 +338,31 @@ mod test {
     fn test_serialize_csv_errors() {
         let mut buf = Vec::new();
 
-        let ser = SerializerBuilder::new().build(Encoding::Csv);
-        assert!(ser.serialize(&mut buf, &json!("non-array")).is_err());
+        let mut ser = SerializerBuilder::new().build(&mut buf);
+        assert!(ser.serialize(Encoding::Csv, &json!("non-array")).is_err());
         assert!(ser
-            .serialize(&mut buf, &json!([{"non-array": "row"}]))
+            .serialize(Encoding::Csv, &json!([{"non-array": "row"}]))
             .is_err());
 
-        let ser = SerializerBuilder::new()
+        let mut ser = SerializerBuilder::new()
             .keys_as_csv_headers(true)
-            .build(Encoding::Csv);
+            .build(&mut buf);
         assert!(ser
-            .serialize(&mut buf, &json!([["non-object-row"]]))
+            .serialize(Encoding::Csv, &json!([["non-object-row"]]))
             .is_err());
     }
 
     #[test]
     fn test_serialize_text() {
         let mut buf = Vec::new();
-
-        let ser = SerializerBuilder::new().build(Encoding::Text);
-        ser.serialize(&mut buf, &json!(["one", "two"])).unwrap();
+        let mut ser = SerializerBuilder::new().build(&mut buf);
+        ser.serialize(Encoding::Text, &json!(["one", "two"]))
+            .unwrap();
         assert_eq!(&buf, "one\ntwo".as_bytes());
 
-        buf.clear();
-
-        ser.serialize(&mut buf, &json!([{"foo": "bar"}, "baz"]))
+        let mut buf = Vec::new();
+        let mut ser = SerializerBuilder::new().build(&mut buf);
+        ser.serialize(Encoding::Text, &json!([{"foo": "bar"}, "baz"]))
             .unwrap();
         assert_eq!(&buf, "{\"foo\":\"bar\"}\nbaz".as_bytes());
     }
@@ -384,7 +371,9 @@ mod test {
     fn test_serialize_text_error() {
         let mut buf = Vec::new();
 
-        let ser = SerializerBuilder::new().build(Encoding::Text);
-        assert!(ser.serialize(&mut buf, &json!({"foo": "bar"})).is_err());
+        let mut ser = SerializerBuilder::new().build(&mut buf);
+        assert!(ser
+            .serialize(Encoding::Text, &json!({"foo": "bar"}))
+            .is_err());
     }
 }

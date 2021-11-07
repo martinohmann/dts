@@ -47,11 +47,10 @@ where
     let encoding = detect_encoding(opts.output_encoding, file.as_ref())
         .context("unable to detect output encoding, please provide it explicitly via -o")?;
 
-    let ser = Serializer::new(encoding, opts.into());
+    let writer = Writer::new(file).context("failed to open output file")?;
+    let mut ser = Serializer::new(writer, opts.into());
 
-    let mut writer = Writer::new(file).context("failed to open output file")?;
-
-    ser.serialize(&mut writer, value)
+    ser.serialize(encoding, value)
         .context(format!("failed to serialize {}", encoding))
 }
 
