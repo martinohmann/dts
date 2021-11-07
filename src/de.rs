@@ -96,7 +96,7 @@ impl DeserializerBuilder {
     where
         R: std::io::Read,
     {
-        Deserializer::new(reader, self.opts.clone())
+        Deserializer::with_options(reader, self.opts.clone())
     }
 }
 
@@ -110,8 +110,13 @@ impl<R> Deserializer<R>
 where
     R: std::io::Read,
 {
+    /// Creates a new `Deserializer` for reader with default options.
+    pub fn new(reader: R) -> Self {
+        Self::with_options(reader, Default::default())
+    }
+
     /// Creates a new `Deserializer` for reader with options.
-    pub fn new(reader: R, opts: DeserializeOptions) -> Self {
+    pub fn with_options(reader: R, opts: DeserializeOptions) -> Self {
         Self { reader, opts }
     }
 
@@ -276,7 +281,7 @@ mod test {
     #[test]
     fn test_deserialize_yaml() {
         let buf = "---\nfoo: bar".as_bytes();
-        let mut de = DeserializerBuilder::new().build(buf);
+        let mut de = Deserializer::new(buf);
 
         assert_eq!(
             de.deserialize(Encoding::Yaml).unwrap(),
@@ -287,7 +292,7 @@ mod test {
     #[test]
     fn test_deserialize_yaml_multi() {
         let buf = "---\nfoo: bar\n---\nbaz: qux".as_bytes();
-        let mut de = DeserializerBuilder::new().build(buf);
+        let mut de = Deserializer::new(buf);
 
         assert_eq!(
             de.deserialize(Encoding::Yaml).unwrap(),
@@ -306,7 +311,7 @@ mod test {
     #[test]
     fn test_deserialize_csv() {
         let buf = "header1,header2\ncol1,col2".as_bytes();
-        let mut de = DeserializerBuilder::new().build(buf);
+        let mut de = Deserializer::new(buf);
 
         assert_eq!(
             de.deserialize(Encoding::Csv).unwrap(),
@@ -345,7 +350,7 @@ mod test {
     #[test]
     fn test_deserialize_text() {
         let buf = "one\ntwo\nthree\n".as_bytes();
-        let mut de = DeserializerBuilder::new().build(buf);
+        let mut de = Deserializer::new(buf);
 
         assert_eq!(
             de.deserialize(Encoding::Text).unwrap(),
@@ -353,7 +358,7 @@ mod test {
         );
 
         let buf: &[u8] = &[];
-        let mut de = DeserializerBuilder::new().build(buf);
+        let mut de = Deserializer::new(buf);
 
         assert_eq!(de.deserialize(Encoding::Text).unwrap(), json!([]));
     }

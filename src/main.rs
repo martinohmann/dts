@@ -24,7 +24,7 @@ where
         .context("unable to detect input encoding, please provide it explicitly via -i")?;
 
     let reader = Reader::new(file).context("failed to open input file")?;
-    let mut de = Deserializer::new(reader, opts.into());
+    let mut de = Deserializer::with_options(reader, opts.into());
 
     de.deserialize(encoding)
         .context(format!("failed to deserialize {}", encoding))
@@ -48,7 +48,7 @@ where
         .context("unable to detect output encoding, please provide it explicitly via -o")?;
 
     let writer = Writer::new(file).context("failed to open output file")?;
-    let mut ser = Serializer::new(writer, opts.into());
+    let mut ser = Serializer::with_options(writer, opts.into());
 
     ser.serialize(encoding, value)
         .context(format!("failed to serialize {}", encoding))

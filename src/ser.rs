@@ -95,7 +95,7 @@ impl SerializerBuilder {
     where
         W: std::io::Write,
     {
-        Serializer::new(writer, self.opts.clone())
+        Serializer::with_options(writer, self.opts.clone())
     }
 }
 
@@ -109,8 +109,13 @@ impl<W> Serializer<W>
 where
     W: std::io::Write,
 {
+    /// Creates a new `Serializer` for writer with default options.
+    pub fn new(writer: W) -> Self {
+        Self::with_options(writer, Default::default())
+    }
+
     /// Creates a new `Serializer` for writer with options.
-    pub fn new(writer: W, opts: SerializeOptions) -> Self {
+    pub fn with_options(writer: W, opts: SerializeOptions) -> Self {
         Self { writer, opts }
     }
 
@@ -295,7 +300,7 @@ mod test {
     #[test]
     fn test_serialize_json() {
         let mut buf = Vec::new();
-        let mut ser = SerializerBuilder::new().build(&mut buf);
+        let mut ser = Serializer::new(&mut buf);
         ser.serialize(Encoding::Json, &json!(["one", "two"]))
             .unwrap();
         assert_eq!(&buf, "[\"one\",\"two\"]".as_bytes());
@@ -312,7 +317,7 @@ mod test {
     fn test_serialize_csv() {
         let mut buf = Vec::new();
 
-        let mut ser = SerializerBuilder::new().build(&mut buf);
+        let mut ser = Serializer::new(&mut buf);
         ser.serialize(Encoding::Csv, &json!([["one", "two"], ["three", "four"]]))
             .unwrap();
         assert_eq!(&buf, "one,two\nthree,four\n".as_bytes());
@@ -338,7 +343,7 @@ mod test {
     fn test_serialize_csv_errors() {
         let mut buf = Vec::new();
 
-        let mut ser = SerializerBuilder::new().build(&mut buf);
+        let mut ser = Serializer::new(&mut buf);
         assert!(ser.serialize(Encoding::Csv, &json!("non-array")).is_err());
         assert!(ser
             .serialize(Encoding::Csv, &json!([{"non-array": "row"}]))
@@ -355,13 +360,13 @@ mod test {
     #[test]
     fn test_serialize_text() {
         let mut buf = Vec::new();
-        let mut ser = SerializerBuilder::new().build(&mut buf);
+        let mut ser = Serializer::new(&mut buf);
         ser.serialize(Encoding::Text, &json!(["one", "two"]))
             .unwrap();
         assert_eq!(&buf, "one\ntwo".as_bytes());
 
         let mut buf = Vec::new();
-        let mut ser = SerializerBuilder::new().build(&mut buf);
+        let mut ser = Serializer::new(&mut buf);
         ser.serialize(Encoding::Text, &json!([{"foo": "bar"}, "baz"]))
             .unwrap();
         assert_eq!(&buf, "{\"foo\":\"bar\"}\nbaz".as_bytes());
@@ -371,7 +376,7 @@ mod test {
     fn test_serialize_text_error() {
         let mut buf = Vec::new();
 
-        let mut ser = SerializerBuilder::new().build(&mut buf);
+        let mut ser = Serializer::new(&mut buf);
         assert!(ser
             .serialize(Encoding::Text, &json!({"foo": "bar"}))
             .is_err());
