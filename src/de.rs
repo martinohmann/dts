@@ -105,13 +105,17 @@ impl Deserializer {
     /// ```
     /// use dts::{de::DeserializerBuilder, Encoding};
     /// use serde_json::json;
-    ///
+    /// # use std::error::Error;
+    /// #
+    /// # fn main() -> Result<(), Box<dyn Error>> {
     /// let de = DeserializerBuilder::new().build(Encoding::Json);
     ///
     /// let mut buf = r#"["foo"]"#.as_bytes();
-    /// let value = de.deserialize(&mut buf).unwrap();
+    /// let value = de.deserialize(&mut buf)?;
     ///
     /// assert_eq!(value, json!(["foo"]));
+    /// #     Ok(())
+    /// # }
     /// ```
     pub fn deserialize<R>(&self, reader: &mut R) -> Result<Value>
     where

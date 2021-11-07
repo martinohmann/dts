@@ -22,11 +22,15 @@ impl Reader {
     /// ```
     /// use dts::io::Reader;
     /// use tempfile::NamedTempFile;
-    ///
-    /// let file = NamedTempFile::new().unwrap();
+    /// # use std::error::Error;
+    /// #
+    /// # fn main() -> Result<(), Box<dyn Error>> {
+    /// let file = NamedTempFile::new()?;
     ///
     /// let reader = Reader::new(Some(file.path()));
     /// assert!(matches!(reader, Ok(Reader::File(_))));
+    /// #     Ok(())
+    /// # }
     /// ```
     ///
     /// Otherwise the returned `Reader` reads from `Stdin`.
@@ -75,10 +79,14 @@ impl Writer {
     /// ```
     /// use dts::io::Writer;
     /// use tempfile::tempdir;
-    ///
-    /// let dir = tempdir().unwrap();
+    /// # use std::error::Error;
+    /// #
+    /// # fn main() -> Result<(), Box<dyn Error>> {
+    /// let dir = tempdir()?;
     /// let writer = Writer::new(Some(dir.path().join("file.txt")));
     /// assert!(matches!(writer, Ok(Writer::File(_))));
+    /// #     Ok(())
+    /// # }
     /// ```
     ///
     /// Otherwise the returned `Writer` writes to `Stdout`. A special case is made for a path

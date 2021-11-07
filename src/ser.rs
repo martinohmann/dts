@@ -103,13 +103,17 @@ impl Serializer {
     /// ```
     /// use dts::{ser::SerializerBuilder, Encoding};
     /// use serde_json::json;
-    ///
+    /// # use std::error::Error;
+    /// #
+    /// # fn main() -> Result<(), Box<dyn Error>> {
     /// let ser = SerializerBuilder::new().build(Encoding::Json);
     ///
     /// let mut buf = Vec::new();
-    /// ser.serialize(&mut buf, &json!(["foo"])).unwrap();
+    /// ser.serialize(&mut buf, &json!(["foo"]))?;
     ///
     /// assert_eq!(&buf, r#"["foo"]"#.as_bytes());
+    /// #     Ok(())
+    /// # }
     /// ```
     pub fn serialize<W>(&self, writer: &mut W, value: &Value) -> Result<()>
     where

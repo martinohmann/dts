@@ -5,11 +5,15 @@ use jsonpath_rust::JsonPathQuery;
 
 /// Filter value in place according to the jsonpath query.
 ///
+/// ## Example
+///
 /// ```
-/// # use pretty_assertions::assert_eq;
 /// use dts::transform::filter_in_place;
 /// use serde_json::json;
-///
+/// # use pretty_assertions::assert_eq;
+/// # use std::error::Error;
+/// #
+/// # fn main() -> Result<(), Box<dyn Error>> {
 /// let mut value = json!({
 ///   "orders": [
 ///     {"id": 1, "active": true},
@@ -19,11 +23,15 @@ use jsonpath_rust::JsonPathQuery;
 ///   ]
 /// });
 ///
-/// filter_in_place(&mut value, "$.orders[?(@.active)].id");
+/// filter_in_place(&mut value, "$.orders[?(@.active)].id")?;
 /// assert_eq!(value, json!([1, 4]));
+/// #     Ok(())
+/// # }
 /// ```
 ///
-/// This can fail if parsing the query fails.
+/// ## Errors
+///
+/// This function can fail if parsing the query fails.
 ///
 /// ```
 /// use dts::transform::filter_in_place;
@@ -44,6 +52,8 @@ where
 }
 
 /// Remove one level of nesting if the data is shaped like an array.
+///
+/// ## Examples
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
