@@ -18,6 +18,8 @@ pub struct SerializeOptions {
     pub keys_as_csv_headers: bool,
     /// Optional custom delimiter for CSV output.
     pub csv_delimiter: Option<u8>,
+    /// Optional seprator to join text output with.
+    pub text_join_separator: Option<String>,
 }
 
 impl SerializeOptions {
@@ -78,6 +80,15 @@ impl SerializerBuilder {
         self
     }
 
+    /// Sets a custom separator to join text output with.
+    pub fn text_join_separator<S>(&mut self, sep: S) -> &mut Self
+    where
+        S: AsRef<str>,
+    {
+        self.opts.text_join_separator = Some(sep.as_ref().to_owned());
+        self
+    }
+
     /// Builds the `Serializer` for the given `Encoding`.
     pub fn build(&self, encoding: Encoding) -> Serializer {
         Serializer::new(encoding, self.opts.clone())
@@ -128,7 +139,7 @@ impl Serializer {
             Encoding::Pickle => serialize_pickle(writer, value)?,
             Encoding::QueryString => serialize_query_string(writer, value)?,
             Encoding::Xml => serialize_xml(writer, value)?,
-            Encoding::Text => serialize_text(writer, value)?,
+            Encoding::Text => serialize_text(writer, value, &self.opts)?,
             &encoding => return Err(Error::SerializeUnsupported(encoding)),
         };
 
@@ -263,10 +274,15 @@ where
     Ok(serde_xml_rs::to_writer(writer, value)?)
 }
 
-fn serialize_text<W>(writer: &mut W, value: &Value) -> Result<()>
+fn serialize_text<W>(writer: &mut W, value: &Value, opts: &SerializeOptions) -> Result<()>
 where
     W: std::io::Write,
 {
+    let sep = opts
+        .text_join_separator
+        .clone()
+        .unwrap_or_else(|| String::from("\n"));
+
     let text = value
         .as_array()
         .ok_or_else(|| Error::new("serializing to text requires the input data to be an array"))?
@@ -279,7 +295,7 @@ where
             }
         })
         .collect::<Result<Vec<String>>>()?
-        .join("\n");
+        .join(&sep);
 
     Ok(writer.write_all(text.as_bytes())?)
 }

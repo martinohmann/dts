@@ -2,11 +2,12 @@
 //! encodings into a `Value`.
 
 use crate::{Encoding, Result, Value};
+use regex::Regex;
 use serde::Deserialize;
 
 /// Options for the `Deserializer`. The options are context specific and may only be honored when
 /// deserializing from a certain `Encoding`.
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone)]
 pub struct DeserializeOptions {
     /// If the input is multi-document YAML, deserialize all documents into an array. Otherwise old
     /// deserialize the first document and discard the rest.
@@ -20,6 +21,8 @@ pub struct DeserializeOptions {
     pub csv_headers_as_keys: bool,
     /// Optional custom delimiter for CSV input.
     pub csv_delimiter: Option<u8>,
+    /// Optional regex pattern to split text input at.
+    pub text_split_pattern: Option<Regex>,
 }
 
 impl DeserializeOptions {
@@ -80,6 +83,12 @@ impl DeserializerBuilder {
         self
     }
 
+    /// Sets regex pattern to split text at.
+    pub fn text_split_pattern(&mut self, pattern: Regex) -> &mut Self {
+        self.opts.text_split_pattern = Some(pattern);
+        self
+    }
+
     /// Builds the `Deserializer` for the given `Encoding`.
     pub fn build(&self, encoding: Encoding) -> Deserializer {
         Deserializer::new(encoding, self.opts.clone())
@@ -132,7 +141,7 @@ impl Deserializer {
             Encoding::Pickle => deserialize_pickle(reader),
             Encoding::QueryString => deserialize_query_string(reader),
             Encoding::Xml => deserialize_xml(reader),
-            Encoding::Text => deserialize_text(reader),
+            Encoding::Text => deserialize_text(reader, &self.opts),
         }
     }
 }
@@ -262,16 +271,23 @@ where
     Ok(serde_xml_rs::from_reader(reader)?)
 }
 
-fn deserialize_text<R>(reader: &mut R) -> Result<Value>
+fn deserialize_text<R>(reader: &mut R, opts: &DeserializeOptions) -> Result<Value>
 where
     R: std::io::Read,
 {
     let mut s = String::new();
     reader.read_to_string(&mut s)?;
 
+    let pattern = match &opts.text_split_pattern {
+        Some(pattern) => pattern.clone(),
+        None => Regex::new("\n")?,
+    };
+
     Ok(Value::Array(
-        s.lines()
-            .map(|line| Ok(serde_json::to_value(line)?))
+        pattern
+            .split(&s)
+            .filter(|m| !m.is_empty())
+            .map(|m| Ok(serde_json::to_value(m)?))
             .collect::<Result<_>>()?,
     ))
 }

@@ -2,7 +2,9 @@
 
 use crate::{de::DeserializeOptions, ser::SerializeOptions, Encoding, Error, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};
+use regex::Regex;
 use std::path::PathBuf;
+use unescape::unescape;
 
 /// Simple tool to transcode between different encodings.
 ///
@@ -73,6 +75,10 @@ pub struct InputOptions {
     /// Custom delimiter for CSV input.
     #[clap(short = 'd', long, parse(try_from_str = parse_csv_delimiter))]
     pub csv_input_delimiter: Option<u8>,
+
+    /// Regex pattern to split text input at.
+    #[clap(short = 's', long)]
+    pub text_split_pattern: Option<Regex>,
 }
 
 impl From<&InputOptions> for DeserializeOptions {
@@ -82,6 +88,7 @@ impl From<&InputOptions> for DeserializeOptions {
             csv_headers_as_keys: opts.csv_headers_as_keys,
             csv_without_headers: opts.csv_without_headers,
             csv_delimiter: opts.csv_input_delimiter,
+            text_split_pattern: opts.text_split_pattern.clone(),
         }
     }
 }
@@ -142,6 +149,10 @@ pub struct OutputOptions {
     /// Custom delimiter for CSV output.
     #[clap(short = 'D', long, parse(try_from_str = parse_csv_delimiter))]
     pub csv_output_delimiter: Option<u8>,
+
+    /// Custom separator to join text output with.
+    #[clap(short = 'J', long, parse(try_from_str = parse_unescaped))]
+    pub text_join_separator: Option<String>,
 }
 
 impl From<&OutputOptions> for SerializeOptions {
@@ -151,18 +162,23 @@ impl From<&OutputOptions> for SerializeOptions {
             newline: opts.newline,
             keys_as_csv_headers: opts.keys_as_csv_headers,
             csv_delimiter: opts.csv_output_delimiter,
+            text_join_separator: opts.text_join_separator.clone(),
         }
     }
 }
 
 fn parse_csv_delimiter(s: &str) -> Result<u8> {
-    let bytes = s.as_bytes();
+    let unescaped = parse_unescaped(s)?;
+    let bytes = unescaped.as_bytes();
 
-    if s == "\\t" {
-        Ok(b'\t')
-    } else if bytes.len() == 1 {
+    if bytes.len() == 1 {
         Ok(bytes[0])
     } else {
-        Err(Error::new("expected single byte delimiter or '\\t'"))
+        Err(Error::new("expected single byte delimiter"))
     }
+}
+
+fn parse_unescaped(s: &str) -> Result<String> {
+    unescape(&s)
+        .ok_or_else(|| Error::new(format!("string contains invalid escape sequences: '{}'", s)))
 }

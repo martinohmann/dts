@@ -69,6 +69,10 @@ pub enum Error {
     /// Error emitted by serde_xml.
     #[error(transparent)]
     Xml(#[from] serde_xml_rs::Error),
+
+    /// Error emitted by regex.
+    #[error(transparent)]
+    Regex(#[from] regex::Error),
 }
 
 impl Error {
