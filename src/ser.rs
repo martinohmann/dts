@@ -194,6 +194,9 @@ where
         .as_array()
         .ok_or_else(|| Error::new("serializing to csv requires the input data to be an array"))?;
 
+    // Because individual row items may produce errors during serialization because they are of
+    // unexpected type, write into a buffer first and only flush out to the writer only if
+    // serialization of all rows succeeded. This avoids writing out partial data.
     let mut buf = Vec::new();
     {
         let mut csv_writer = csv::WriterBuilder::new()
@@ -203,7 +206,7 @@ where
         let mut headers: Option<Vec<&String>> = None;
 
         // Empty string value which will be referenced for missing fields.
-        let empty = Value::String("".into());
+        let empty = Value::String(String::new());
 
         for (i, row) in value.iter().enumerate() {
             if !opts.keys_as_csv_headers {
