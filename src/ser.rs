@@ -316,7 +316,6 @@ mod test {
     #[test]
     fn test_serialize_csv() {
         let mut buf = Vec::new();
-
         let mut ser = Serializer::new(&mut buf);
         ser.serialize(Encoding::Csv, &json!([["one", "two"], ["three", "four"]]))
             .unwrap();
@@ -342,7 +341,6 @@ mod test {
     #[test]
     fn test_serialize_csv_errors() {
         let mut buf = Vec::new();
-
         let mut ser = Serializer::new(&mut buf);
         assert!(ser.serialize(Encoding::Csv, &json!("non-array")).is_err());
         assert!(ser
@@ -375,7 +373,6 @@ mod test {
     #[test]
     fn test_serialize_text_error() {
         let mut buf = Vec::new();
-
         let mut ser = Serializer::new(&mut buf);
         assert!(ser
             .serialize(Encoding::Text, &json!({"foo": "bar"}))
