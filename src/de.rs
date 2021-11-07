@@ -40,9 +40,11 @@ impl DeserializeOptions {
 /// ```
 /// use dts::{de::DeserializerBuilder, Encoding};
 ///
+/// let buf = r#"["foo"]"#.as_bytes();
+///
 /// let deserializer = DeserializerBuilder::new()
 ///     .csv_delimiter(b'\t')
-///     .build(Encoding::Csv);
+///     .build(buf);
 /// ```
 #[derive(Debug, Default, Clone)]
 pub struct DeserializerBuilder {
@@ -89,22 +91,28 @@ impl DeserializerBuilder {
         self
     }
 
-    /// Builds the `Deserializer` for the given `Encoding`.
-    pub fn build(&self, encoding: Encoding) -> Deserializer {
-        Deserializer::new(encoding, self.opts.clone())
+    /// Builds the `Deserializer` for the given reader.
+    pub fn build<R>(&self, reader: R) -> Deserializer<R>
+    where
+        R: std::io::Read,
+    {
+        Deserializer::new(reader, self.opts.clone())
     }
 }
 
 /// A `Deserializer` can deserialize input data from a reader into a `Value`.
-pub struct Deserializer {
-    encoding: Encoding,
+pub struct Deserializer<R> {
+    reader: R,
     opts: DeserializeOptions,
 }
 
-impl Deserializer {
-    /// Creates a new `Deserializer` for `Encoding` with options.
-    pub fn new(encoding: Encoding, opts: DeserializeOptions) -> Self {
-        Self { encoding, opts }
+impl<R> Deserializer<R>
+where
+    R: std::io::Read,
+{
+    /// Creates a new `Deserializer` for reader with options.
+    pub fn new(reader: R, opts: DeserializeOptions) -> Self {
+        Self { reader, opts }
     }
 
     /// Reads input data from the given reader and deserializes it in a `Value`.
@@ -117,179 +125,146 @@ impl Deserializer {
     /// # use std::error::Error;
     /// #
     /// # fn main() -> Result<(), Box<dyn Error>> {
-    /// let de = DeserializerBuilder::new().build(Encoding::Json);
+    /// let buf = r#"["foo"]"#.as_bytes();
     ///
-    /// let mut buf = r#"["foo"]"#.as_bytes();
-    /// let value = de.deserialize(&mut buf)?;
+    /// let mut de = DeserializerBuilder::new().build(buf);
+    /// let value = de.deserialize(Encoding::Json)?;
     ///
     /// assert_eq!(value, json!(["foo"]));
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn deserialize<R>(&self, reader: &mut R) -> Result<Value>
-    where
-        R: std::io::Read,
-    {
-        match &self.encoding {
-            Encoding::Yaml => deserialize_yaml(reader, &self.opts),
-            Encoding::Json => deserialize_json(reader),
-            Encoding::Ron => deserialize_ron(reader),
-            Encoding::Toml => deserialize_toml(reader),
-            Encoding::Json5 => deserialize_json5(reader),
-            Encoding::Hjson => deserialize_hjson(reader),
-            Encoding::Csv => deserialize_csv(reader, &self.opts),
-            Encoding::Pickle => deserialize_pickle(reader),
-            Encoding::QueryString => deserialize_query_string(reader),
-            Encoding::Xml => deserialize_xml(reader),
-            Encoding::Text => deserialize_text(reader, &self.opts),
-        }
-    }
-}
-
-fn deserialize_yaml<R>(reader: &mut R, opts: &DeserializeOptions) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    let mut values = Vec::new();
-
-    for doc in serde_yaml::Deserializer::from_reader(reader) {
-        let value = Value::deserialize(doc)?;
-
-        if opts.all_documents {
-            values.push(value);
-        } else {
-            return Ok(value);
+    pub fn deserialize(&mut self, encoding: Encoding) -> Result<Value> {
+        match encoding {
+            Encoding::Yaml => self.deserialize_yaml(),
+            Encoding::Json => self.deserialize_json(),
+            Encoding::Ron => self.deserialize_ron(),
+            Encoding::Toml => self.deserialize_toml(),
+            Encoding::Json5 => self.deserialize_json5(),
+            Encoding::Hjson => self.deserialize_hjson(),
+            Encoding::Csv => self.deserialize_csv(),
+            Encoding::Pickle => self.deserialize_pickle(),
+            Encoding::QueryString => self.deserialize_query_string(),
+            Encoding::Xml => self.deserialize_xml(),
+            Encoding::Text => self.deserialize_text(),
         }
     }
 
-    Ok(Value::Array(values))
-}
+    fn deserialize_yaml(&mut self) -> Result<Value> {
+        let mut values = Vec::new();
 
-fn deserialize_json<R>(reader: &mut R) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    Ok(serde_json::from_reader(reader)?)
-}
+        for doc in serde_yaml::Deserializer::from_reader(&mut self.reader) {
+            let value = Value::deserialize(doc)?;
 
-fn deserialize_ron<R>(reader: &mut R) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    Ok(ron::de::from_reader(reader)?)
-}
-
-fn deserialize_toml<R>(reader: &mut R) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    let mut buf = Vec::new();
-    reader.read_to_end(&mut buf)?;
-    Ok(toml::de::from_slice(&buf)?)
-}
-
-fn deserialize_json5<R>(reader: &mut R) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    let mut s = String::new();
-    reader.read_to_string(&mut s)?;
-    Ok(json5::from_str(&s)?)
-}
-
-fn deserialize_hjson<R>(reader: &mut R) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    let mut s = String::new();
-    reader.read_to_string(&mut s)?;
-    Ok(deser_hjson::from_str(&s)?)
-}
-
-fn deserialize_csv<R>(reader: &mut R, opts: &DeserializeOptions) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    let keep_first_line = opts.csv_without_headers || opts.csv_headers_as_keys;
-
-    let mut csv_reader = csv::ReaderBuilder::new()
-        .trim(csv::Trim::All)
-        .has_headers(!keep_first_line)
-        .delimiter(opts.csv_delimiter.unwrap_or(b','))
-        .from_reader(reader);
-
-    let mut iter = csv_reader.deserialize();
-
-    let value = if opts.csv_headers_as_keys {
-        match iter.next() {
-            Some(headers) => {
-                let headers: Vec<String> = headers?;
-
-                Value::Array(
-                    iter.map(|record| {
-                        Ok(headers
-                            .iter()
-                            .zip(record?.iter())
-                            .map(|(k, v)| (k.clone(), v.clone()))
-                            .collect())
-                    })
-                    .collect::<Result<_>>()?,
-                )
+            if self.opts.all_documents {
+                values.push(value);
+            } else {
+                return Ok(value);
             }
-            None => Value::Array(Vec::new()),
         }
-    } else {
-        Value::Array(
-            iter.map(|v| Ok(serde_json::to_value(v?)?))
+
+        Ok(Value::Array(values))
+    }
+
+    fn deserialize_json(&mut self) -> Result<Value> {
+        Ok(serde_json::from_reader(&mut self.reader)?)
+    }
+
+    fn deserialize_ron(&mut self) -> Result<Value> {
+        Ok(ron::de::from_reader(&mut self.reader)?)
+    }
+
+    fn deserialize_toml(&mut self) -> Result<Value> {
+        let mut buf = Vec::new();
+        self.reader.read_to_end(&mut buf)?;
+        Ok(toml::de::from_slice(&buf)?)
+    }
+
+    fn deserialize_json5(&mut self) -> Result<Value> {
+        let mut s = String::new();
+        self.reader.read_to_string(&mut s)?;
+        Ok(json5::from_str(&s)?)
+    }
+
+    fn deserialize_hjson(&mut self) -> Result<Value> {
+        let mut s = String::new();
+        self.reader.read_to_string(&mut s)?;
+        Ok(deser_hjson::from_str(&s)?)
+    }
+
+    fn deserialize_csv(&mut self) -> Result<Value> {
+        let keep_first_line = self.opts.csv_without_headers || self.opts.csv_headers_as_keys;
+
+        let mut csv_reader = csv::ReaderBuilder::new()
+            .trim(csv::Trim::All)
+            .has_headers(!keep_first_line)
+            .delimiter(self.opts.csv_delimiter.unwrap_or(b','))
+            .from_reader(&mut self.reader);
+
+        let mut iter = csv_reader.deserialize();
+
+        let value = if self.opts.csv_headers_as_keys {
+            match iter.next() {
+                Some(headers) => {
+                    let headers: Vec<String> = headers?;
+
+                    Value::Array(
+                        iter.map(|record| {
+                            Ok(headers
+                                .iter()
+                                .zip(record?.iter())
+                                .map(|(k, v)| (k.clone(), v.clone()))
+                                .collect())
+                        })
+                        .collect::<Result<_>>()?,
+                    )
+                }
+                None => Value::Array(Vec::new()),
+            }
+        } else {
+            Value::Array(
+                iter.map(|v| Ok(serde_json::to_value(v?)?))
+                    .collect::<Result<_>>()?,
+            )
+        };
+
+        Ok(value)
+    }
+
+    fn deserialize_pickle(&mut self) -> Result<Value> {
+        Ok(serde_pickle::from_reader(
+            &mut self.reader,
+            Default::default(),
+        )?)
+    }
+
+    fn deserialize_query_string(&mut self) -> Result<Value> {
+        let mut s = String::new();
+        self.reader.read_to_string(&mut s)?;
+        Ok(Value::Object(serde_qs::from_str(&s)?))
+    }
+
+    fn deserialize_xml(&mut self) -> Result<Value> {
+        Ok(serde_xml_rs::from_reader(&mut self.reader)?)
+    }
+
+    fn deserialize_text(&mut self) -> Result<Value> {
+        let mut s = String::new();
+        self.reader.read_to_string(&mut s)?;
+
+        let pattern = match &self.opts.text_split_pattern {
+            Some(pattern) => pattern.clone(),
+            None => Regex::new("\n")?,
+        };
+
+        Ok(Value::Array(
+            pattern
+                .split(&s)
+                .filter(|m| !m.is_empty())
+                .map(|m| Ok(serde_json::to_value(m)?))
                 .collect::<Result<_>>()?,
-        )
-    };
-
-    Ok(value)
-}
-
-fn deserialize_pickle<R>(reader: &mut R) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    Ok(serde_pickle::from_reader(reader, Default::default())?)
-}
-
-fn deserialize_query_string<R>(reader: &mut R) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    let mut s = String::new();
-    reader.read_to_string(&mut s)?;
-    Ok(Value::Object(serde_qs::from_str(&s)?))
-}
-
-fn deserialize_xml<R>(reader: &mut R) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    Ok(serde_xml_rs::from_reader(reader)?)
-}
-
-fn deserialize_text<R>(reader: &mut R, opts: &DeserializeOptions) -> Result<Value>
-where
-    R: std::io::Read,
-{
-    let mut s = String::new();
-    reader.read_to_string(&mut s)?;
-
-    let pattern = match &opts.text_split_pattern {
-        Some(pattern) => pattern.clone(),
-        None => Regex::new("\n")?,
-    };
-
-    Ok(Value::Array(
-        pattern
-            .split(&s)
-            .filter(|m| !m.is_empty())
-            .map(|m| Ok(serde_json::to_value(m)?))
-            .collect::<Result<_>>()?,
-    ))
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -300,85 +275,86 @@ mod test {
 
     #[test]
     fn test_deserialize_yaml() {
-        let de = DeserializerBuilder::new().build(Encoding::Yaml);
+        let buf = "---\nfoo: bar".as_bytes();
+        let mut de = DeserializerBuilder::new().build(buf);
 
-        let mut buf = "---\nfoo: bar".as_bytes();
-
-        assert_eq!(de.deserialize(&mut buf).unwrap(), json!({"foo": "bar"}));
+        assert_eq!(
+            de.deserialize(Encoding::Yaml).unwrap(),
+            json!({"foo": "bar"})
+        );
     }
 
     #[test]
     fn test_deserialize_yaml_multi() {
-        let de = DeserializerBuilder::new().build(Encoding::Yaml);
-
-        let mut buf = "---\nfoo: bar\n---\nbaz: qux".as_bytes();
-
-        assert_eq!(de.deserialize(&mut buf).unwrap(), json!({"foo": "bar"}));
-
-        let de = DeserializerBuilder::new()
-            .all_documents(true)
-            .build(Encoding::Yaml);
-
-        let mut buf = "---\nfoo: bar\n---\nbaz: qux".as_bytes();
+        let buf = "---\nfoo: bar\n---\nbaz: qux".as_bytes();
+        let mut de = DeserializerBuilder::new().build(buf);
 
         assert_eq!(
-            de.deserialize(&mut buf).unwrap(),
+            de.deserialize(Encoding::Yaml).unwrap(),
+            json!({"foo": "bar"})
+        );
+
+        let buf = "---\nfoo: bar\n---\nbaz: qux".as_bytes();
+        let mut de = DeserializerBuilder::new().all_documents(true).build(buf);
+
+        assert_eq!(
+            de.deserialize(Encoding::Yaml).unwrap(),
             json!([{"foo": "bar"}, {"baz": "qux"}])
         );
     }
 
     #[test]
     fn test_deserialize_csv() {
-        let de = DeserializerBuilder::new().build(Encoding::Csv);
-
-        let mut buf = "header1,header2\ncol1,col2".as_bytes();
-
-        assert_eq!(de.deserialize(&mut buf).unwrap(), json!([["col1", "col2"]]));
-
-        let de = DeserializerBuilder::new()
-            .csv_without_headers(true)
-            .build(Encoding::Csv);
-
-        let mut buf = "row1col1,row1col2\nrow2col1,row2col2".as_bytes();
+        let buf = "header1,header2\ncol1,col2".as_bytes();
+        let mut de = DeserializerBuilder::new().build(buf);
 
         assert_eq!(
-            de.deserialize(&mut buf).unwrap(),
+            de.deserialize(Encoding::Csv).unwrap(),
+            json!([["col1", "col2"]])
+        );
+
+        let buf = "row1col1,row1col2\nrow2col1,row2col2".as_bytes();
+        let mut de = DeserializerBuilder::new()
+            .csv_without_headers(true)
+            .build(buf);
+
+        assert_eq!(
+            de.deserialize(Encoding::Csv).unwrap(),
             json!([["row1col1", "row1col2"], ["row2col1", "row2col2"]])
         );
 
-        let de = DeserializerBuilder::new()
+        let buf = "header1,header2\nrow1col1,row1col2\nrow2col1,row2col2".as_bytes();
+        let mut de = DeserializerBuilder::new()
             .csv_headers_as_keys(true)
-            .build(Encoding::Csv);
-
-        let mut buf = "header1,header2\nrow1col1,row1col2\nrow2col1,row2col2".as_bytes();
+            .build(buf);
 
         assert_eq!(
-            de.deserialize(&mut buf).unwrap(),
+            de.deserialize(Encoding::Csv).unwrap(),
             json!([{"header1":"row1col1", "header2":"row1col2"}, {"header1":"row2col1", "header2":"row2col2"}])
         );
 
-        let de = DeserializerBuilder::new()
-            .csv_delimiter(b'|')
-            .build(Encoding::Csv);
+        let buf = "header1|header2\ncol1|col2".as_bytes();
+        let mut de = DeserializerBuilder::new().csv_delimiter(b'|').build(buf);
 
-        let mut buf = "header1|header2\ncol1|col2".as_bytes();
-
-        assert_eq!(de.deserialize(&mut buf).unwrap(), json!([["col1", "col2"]]));
+        assert_eq!(
+            de.deserialize(Encoding::Csv).unwrap(),
+            json!([["col1", "col2"]])
+        );
     }
 
     #[test]
     fn test_deserialize_text() {
-        let de = DeserializerBuilder::new().build(Encoding::Text);
-
-        let mut buf = "one\ntwo\nthree\n".as_bytes();
+        let buf = "one\ntwo\nthree\n".as_bytes().to_vec();
+        let mut de = DeserializerBuilder::new().build(buf);
 
         assert_eq!(
-            de.deserialize(&mut buf).unwrap(),
+            de.deserialize(Encoding::Text).unwrap(),
             json!(["one", "two", "three"])
         );
 
-        let mut buf: &[u8] = &[];
+        let buf: &[u8] = &[];
+        let mut de = DeserializerBuilder::new().build(buf);
 
-        assert_eq!(de.deserialize(&mut buf).unwrap(), json!([]));
+        assert_eq!(de.deserialize(Encoding::Text).unwrap(), json!([]));
     }
 }

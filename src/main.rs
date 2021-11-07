@@ -23,11 +23,10 @@ where
     let encoding = detect_encoding(opts.input_encoding, file.as_ref())
         .context("unable to detect input encoding, please provide it explicitly via -i")?;
 
-    let de = Deserializer::new(encoding, opts.into());
+    let reader = Reader::new(file).context("failed to open input file")?;
+    let mut de = Deserializer::new(reader, opts.into());
 
-    let mut reader = Reader::new(file).context("failed to open input file")?;
-
-    de.deserialize(&mut reader)
+    de.deserialize(encoding)
         .context(format!("failed to deserialize {}", encoding))
 }
 
