@@ -26,5 +26,6 @@ unescape = "0.1.0"
 [features]
 
 [dev-dependencies]
+assert_cmd = "2.0.2"
 pretty_assertions = "1.0.0"
 tempfile = "3.2.0"

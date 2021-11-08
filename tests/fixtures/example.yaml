@@ -1,0 +1,84 @@
+---
+users:
+  - id: 6189643191d9e7fe060114f0
+    isActive: true
+    balance: "$2,509.69"
+    picture: "http://placehold.it/32x32"
+    age: 34
+    eyeColor: blue
+    name: Rena Franklin
+    gender: female
+    company: VITRICOMP
+    email: renafranklin@vitricomp.com
+    phone: +1 (851) 579-2333
+    address: "548 Manhattan Court, Somerset, North Dakota, 9737"
+    about: "Ex laboris magna officia quis adipisicing laboris exercitation. Ut non incididunt velit Lorem. Eu officia ut eiusmod labore excepteur amet velit commodo mollit est proident sit mollit. Qui amet consequat aute velit tempor sint labore aliquip nulla consequat. Irure deserunt sit commodo laboris sit non consectetur excepteur officia commodo.\r\n"
+    registered: "2019-04-22T05:49:21 -02:00"
+    latitude: 31.180897
+    longitude: -106.807272
+    tags:
+      - enim
+      - officia
+      - do
+      - ullamco
+      - voluptate
+    friends:
+      - id: 61896431a6546aad2d840a88
+        name: Florine Acevedo
+      - id: 618964dc6fabe8b6bc673abb
+        name: Roxanne Woods
+      - id: 618964dcee90f14682191e15
+        name: Hines Jackson
+  - id: 61896431b3d9c0729b0d35e6
+    isActive: true
+    balance: "$1,533.07"
+    picture: "http://placehold.it/32x32"
+    age: 27
+    eyeColor: brown
+    name: Dena Stone
+    gender: female
+    company: ZAJ
+    email: denastone@zaj.com
+    phone: +1 (822) 541-3135
+    address: "416 Oxford Street, Balm, Indiana, 5900"
+    about: "Aute mollit quis reprehenderit consequat do laborum. Veniam reprehenderit aliqua in velit eu tempor tempor ullamco culpa qui ad. Ad fugiat est excepteur sint do occaecat eiusmod voluptate velit anim laboris. Esse duis Lorem amet in aliqua cillum enim. Et proident ullamco qui non cillum occaecat est do deserunt. Quis pariatur dolore velit eu duis ullamco occaecat exercitation proident labore minim consequat voluptate ex.\r\n"
+    registered: "2019-03-05T05:26:01 -01:00"
+    latitude: 65.453177
+    longitude: 102.591909
+    tags:
+      - aute
+      - elit
+      - mollit
+      - sit
+    friends:
+      - id: 6189643146646d84cd519d62
+        name: Dawn Joyce
+  - id: 618964315cabd70b6541dcae
+    isActive: false
+    balance: "$3,970.08"
+    picture: "http://placehold.it/32x32"
+    age: 37
+    eyeColor: blue
+    name: Stacy Horton
+    gender: female
+    company: AVIT
+    email: stacyhorton@avit.com
+    phone: +1 (922) 549-2426
+    address: "780 Nautilus Avenue, Delwood, Pennsylvania, 8513"
+    about: "Commodo tempor nostrud ex adipisicing adipisicing. Anim culpa consequat enim tempor deserunt esse nostrud dolore. Anim sunt incididunt ut occaecat consectetur deserunt laboris excepteur cillum dolor. Nulla in enim in tempor commodo nisi. Cillum nostrud eiusmod ullamco ea deserunt duis anim exercitation quis.\r\n"
+    registered: "2014-09-05T08:05:33 -02:00"
+    latitude: 89.138415
+    longitude: -139.356254
+    tags:
+      - non
+      - deserunt
+      - eiusmod
+      - sit
+      - aliquip
+      - reprehenderit
+      - voluptate
+    friends:
+      - id: 618964317d23d69f9acebddf
+        name: Natalie Rosario
+      - id: 61896431c417b533ef7ba58c
+        name: Colon Kinney
