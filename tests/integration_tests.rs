@@ -61,3 +61,24 @@ fn json_to_csv_filtered_flattened_with_keys() {
         .code(0)
         .stdout(read("tests/fixtures/friends.csv").unwrap());
 }
+
+#[test]
+fn json_to_csv_collections_as_json() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .args(&[
+            "-i",
+            "json",
+            "-o",
+            "csv",
+            "-j",
+            ".users[*]",
+            "--keys-as-csv-headers",
+        ])
+        .pipe_stdin("tests/fixtures/example.json")
+        .unwrap()
+        .assert()
+        .success()
+        .code(0)
+        .stdout(read("tests/fixtures/users.csv").unwrap());
+}

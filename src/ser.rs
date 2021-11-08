@@ -1,7 +1,7 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{Encoding, Error, Result, Value};
+use crate::{transform, Encoding, Error, Result, Value};
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
@@ -211,16 +211,13 @@ where
 
             let mut headers: Option<Vec<&String>> = None;
 
-            // Empty string value which will be referenced for missing fields.
-            let empty = Value::String(String::new());
-
             for (i, row) in value.iter().enumerate() {
-                if !self.opts.keys_as_csv_headers {
-                    let row_data = row
-                        .as_array()
-                        .ok_or_else(|| Error::at_row_index(i, "array expected"))?;
-
-                    csv_writer.serialize(row_data)?;
+                let row_data = if !self.opts.keys_as_csv_headers {
+                    row.as_array()
+                        .ok_or_else(|| Error::at_row_index(i, "array expected"))?
+                        .iter()
+                        .map(transform::collections_to_json)
+                        .collect::<Result<Vec<_>>>()
                 } else {
                     let row = row
                         .as_object()
@@ -233,15 +230,16 @@ where
                         headers = Some(header_data);
                     }
 
-                    let row_data = headers
+                    headers
                         .as_ref()
                         .unwrap()
                         .iter()
-                        .map(|&header| row.get(header).or(Some(&empty)))
-                        .collect::<Vec<_>>();
+                        .map(|&header| row.get(header).unwrap_or(&Value::Null))
+                        .map(transform::collections_to_json)
+                        .collect::<Result<Vec<_>>>()
+                };
 
-                    csv_writer.serialize(row_data)?;
-                }
+                csv_writer.serialize(row_data?)?;
             }
         }
 
@@ -319,7 +317,7 @@ mod test {
         let mut ser = Serializer::new(&mut buf);
         ser.serialize(Encoding::Csv, &json!([["one", "two"], ["three", "four"]]))
             .unwrap();
-        assert_eq!(&buf, "one,two\nthree,four\n".as_bytes());
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), "one,two\nthree,four\n");
 
         buf.clear();
 
@@ -335,7 +333,10 @@ mod test {
             ]),
         )
         .unwrap();
-        assert_eq!(&buf, "one,two\nval1,val2\nval3,\n,val5\n".as_bytes());
+        assert_eq!(
+            std::str::from_utf8(&buf).unwrap(),
+            "one,two\nval1,val2\nval3,\n,val5\n"
+        );
     }
 
     #[test]

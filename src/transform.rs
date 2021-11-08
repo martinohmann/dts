@@ -110,3 +110,36 @@ pub fn flatten_in_place(value: &mut Value) {
         };
     }
 }
+
+/// If value is of variant `Value::Object` or `Value::Array`, convert it to a `Value::String`
+/// containing the json encoded string representation of the value.
+pub(crate) fn collections_to_json(value: &Value) -> Result<Value> {
+    match value {
+        Value::Array(value) => Ok(Value::String(serde_json::to_string(value)?)),
+        Value::Object(value) => Ok(Value::String(serde_json::to_string(value)?)),
+        _ => Ok(value.clone()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    #[test]
+    fn test_collections_to_json() {
+        assert_eq!(
+            collections_to_json(&json!({"foo": "bar"})).unwrap(),
+            json!(r#"{"foo":"bar"}"#)
+        );
+        assert_eq!(
+            collections_to_json(&json!(["foo", "bar"])).unwrap(),
+            json!(r#"["foo","bar"]"#)
+        );
+        assert_eq!(collections_to_json(&json!("foo")).unwrap(), json!("foo"));
+        assert_eq!(collections_to_json(&json!(true)).unwrap(), json!(true));
+        assert_eq!(collections_to_json(&json!(1)).unwrap(), json!(1));
+        assert_eq!(collections_to_json(&Value::Null).unwrap(), Value::Null);
+    }
+}
