@@ -137,10 +137,7 @@ where
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn serialize(&mut self, encoding: Encoding, value: &Value) -> Result<()>
-    where
-        W: std::io::Write,
-    {
+    pub fn serialize(&mut self, encoding: Encoding, value: &Value) -> Result<()> {
         match encoding {
             Encoding::Yaml => self.serialize_yaml(value)?,
             Encoding::Json | Encoding::Json5 => self.serialize_json(value)?,
