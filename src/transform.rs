@@ -2,6 +2,7 @@
 
 use crate::{Error, Result, Value};
 use jsonpath_rust::JsonPathQuery;
+use std::cmp::Ordering;
 
 /// Filter value in place according to the jsonpath query.
 ///
@@ -124,8 +125,6 @@ pub(crate) fn collections_to_json(value: &Value) -> Result<Value> {
 #[derive(PartialEq, Eq)]
 struct SortableValue<'a>(&'a Value);
 
-use std::cmp::Ordering;
-
 impl<'a> PartialOrd for SortableValue<'a> {
     fn partial_cmp(&self, other: &SortableValue) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -134,19 +133,17 @@ impl<'a> PartialOrd for SortableValue<'a> {
 
 impl<'a> Ord for SortableValue<'a> {
     fn cmp(&self, other: &SortableValue) -> Ordering {
-        use serde_json::Value::*;
-
         // Sort order: primitives, arrays, objects. Original order is preserved as much as possible
         // by avoiding to compare the values wrapped by each variant directly.
-        match (self, other) {
-            (SortableValue(Array(_)), SortableValue(Array(_))) => Ordering::Equal,
-            (SortableValue(Array(_)), SortableValue(Object(_))) => Ordering::Less,
-            (SortableValue(Array(_)), _) => Ordering::Greater,
-            (SortableValue(Object(_)), SortableValue(Object(_))) => Ordering::Equal,
-            (SortableValue(Object(_)), SortableValue(Array(_))) => Ordering::Greater,
-            (SortableValue(Object(_)), _) => Ordering::Greater,
-            (_, SortableValue(Array(_))) => Ordering::Less,
-            (_, SortableValue(Object(_))) => Ordering::Less,
+        match (self.0, other.0) {
+            (Value::Array(_), Value::Array(_)) => Ordering::Equal,
+            (Value::Array(_), Value::Object(_)) => Ordering::Less,
+            (Value::Array(_), _) => Ordering::Greater,
+            (Value::Object(_), Value::Object(_)) => Ordering::Equal,
+            (Value::Object(_), Value::Array(_)) => Ordering::Greater,
+            (Value::Object(_), _) => Ordering::Greater,
+            (_, Value::Array(_)) => Ordering::Less,
+            (_, Value::Object(_)) => Ordering::Less,
             (_, _) => Ordering::Equal,
         }
     }
