@@ -69,7 +69,7 @@ pub struct InputOptions {
     /// When reading CSV, this flag will deserialize the input into an array of maps with each
     /// field keyed by the corresponding header value. Otherwise, the input is deserialized into an
     /// array of arrays.
-    #[clap(long)]
+    #[clap(short = 'H', long)]
     pub csv_headers_as_keys: bool,
 
     /// Custom delimiter for CSV input.
@@ -143,7 +143,7 @@ pub struct OutputOptions {
     /// the first object will be used as CSV headers. Field values of all following objects will be
     /// matched to the right CSV column based on their key. Missing fields produce empty columns
     /// while excess fields are ignored.
-    #[clap(long)]
+    #[clap(short = 'K', long)]
     pub keys_as_csv_headers: bool,
 
     /// Custom delimiter for CSV output.
