@@ -160,7 +160,7 @@ impl<'a> Ord for SortableValue<'a> {
 // The value is updated in place.
 //
 // Returns a reference to the modified value to simplify usage in iterators.
-pub(crate) fn collections_to_end<'a>(value: &'a mut Value) -> &'a Value {
+pub(crate) fn collections_to_end(value: &mut Value) -> &Value {
     if let Some(array) = value.as_array_mut() {
         let mut sortable: Vec<SortableValue> = array
             .iter_mut()
