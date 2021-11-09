@@ -183,6 +183,9 @@ where
     }
 
     fn serialize_toml(&mut self, value: &Value) -> Result<()> {
+        let mut value = value.clone();
+        let value = transform::collections_to_end(&mut value);
+
         let s = if self.opts.pretty {
             toml::ser::to_string_pretty(value)?
         } else {
