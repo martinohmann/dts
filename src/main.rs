@@ -36,7 +36,14 @@ fn transform(value: &mut Value, opts: &TransformOptions) -> Result<()> {
         .try_for_each(|query| transform::filter_in_place(value, query))
         .context("invalid jsonpath query")?;
 
-    (0..opts.flatten).for_each(|_| transform::flatten_in_place(value));
+    for _ in 0..opts.flatten_arrays {
+        transform::flatten_arrays_in_place(value);
+    }
+
+    if let Some(prefix) = &opts.flatten_keys {
+        transform::flatten_keys_in_place(value, prefix)
+    }
+
     Ok(())
 }
 

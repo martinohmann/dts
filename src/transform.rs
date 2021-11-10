@@ -2,7 +2,9 @@
 
 use crate::{Error, Result, Value};
 use jsonpath_rust::JsonPathQuery;
+use serde_json::Map;
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 
 /// Filter value in place according to the jsonpath query.
 ///
@@ -58,12 +60,12 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_in_place;
+/// use dts::transform::flatten_arrays_in_place;
 /// use serde_json::json;
 ///
 /// let mut value = json!([["foo"], ["bar"], [["baz"], "qux"]]);
 ///
-/// flatten_in_place(&mut value);
+/// flatten_arrays_in_place(&mut value);
 /// assert_eq!(value, json!(["foo", "bar", ["baz"], "qux"]));
 /// ```
 ///
@@ -72,12 +74,12 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_in_place;
+/// use dts::transform::flatten_arrays_in_place;
 /// use serde_json::json;
 ///
 /// let mut value = json!(["foo"]);
 ///
-/// flatten_in_place(&mut value);
+/// flatten_arrays_in_place(&mut value);
 /// assert_eq!(value, json!("foo"));
 /// ```
 ///
@@ -85,15 +87,15 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_in_place;
+/// use dts::transform::flatten_arrays_in_place;
 /// use serde_json::json;
 ///
 /// let mut value = json!({"foo": "bar"});
 ///
-/// flatten_in_place(&mut value);
+/// flatten_arrays_in_place(&mut value);
 /// assert_eq!(value, json!({"foo": "bar"}));
 /// ```
-pub fn flatten_in_place(value: &mut Value) {
+pub fn flatten_arrays_in_place(value: &mut Value) {
     if let Some(array) = value.as_array() {
         *value = if array.len() == 1 {
             array[0].clone()
@@ -109,6 +111,157 @@ pub fn flatten_in_place(value: &mut Value) {
                     .collect(),
             )
         };
+    }
+}
+
+/// Flattens value to an object with flat keys.
+///
+/// ## Examples
+///
+/// Nested map with array:
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::flatten_keys_in_place;
+/// use serde_json::json;
+///
+/// let mut value = json!({"foo": {"bar": ["baz", "qux"]}});
+///
+/// flatten_keys_in_place(&mut value, "data");
+///
+/// assert_eq!(
+///     value,
+///     json!({
+///         "data": {},
+///         "data.foo": {},
+///         "data.foo.bar": [],
+///         "data.foo.bar[0]": "baz",
+///         "data.foo.bar[1]": "qux"
+///     })
+/// );
+/// ```
+///
+/// Array value with prefix "array":
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::flatten_keys_in_place;
+/// use serde_json::json;
+///
+/// let mut value = json!(["foo", "bar", "baz"]);
+///
+/// flatten_keys_in_place(&mut value, "array");
+///
+/// assert_eq!(
+///     value,
+///     json!({
+///         "array": [],
+///         "array[0]": "foo",
+///         "array[1]": "bar",
+///         "array[2]": "baz"
+///     })
+/// );
+/// ```
+///
+/// Single primitive value:
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::flatten_keys_in_place;
+/// use serde_json::json;
+///
+/// let mut value = json!("foo");
+///
+/// flatten_keys_in_place(&mut value, "data");
+///
+/// assert_eq!(value, json!({"data": "foo"}));
+/// ```
+pub fn flatten_keys_in_place(value: &mut Value, prefix: &str) {
+    let mut flattener = KeyFlattener::new(value, prefix);
+    let map = Map::from_iter(flattener.flatten().into_iter());
+    *value = Value::Object(map)
+}
+
+struct KeyFlattener<'a> {
+    value: &'a Value,
+    prefix: &'a str,
+    map: BTreeMap<String, Value>,
+    stack: Vec<String>,
+}
+
+impl<'a> KeyFlattener<'a> {
+    fn new(value: &'a Value, prefix: &'a str) -> Self {
+        Self {
+            value,
+            prefix,
+            map: BTreeMap::new(),
+            stack: Vec::new(),
+        }
+    }
+
+    fn flatten(&mut self) -> BTreeMap<String, Value> {
+        self.map_value(self.value);
+        self.map.clone()
+    }
+
+    fn map_value(&mut self, value: &Value) {
+        match value {
+            Value::Array(array) => {
+                self.map.insert(self.key(), Value::Array(Vec::new()));
+                for (index, value) in array.iter().enumerate() {
+                    self.stack.push(FlattenKey::Index(index).to_string());
+                    self.map_value(value);
+                    self.stack.pop();
+                }
+            }
+            Value::Object(object) => {
+                self.map.insert(self.key(), Value::Object(Map::new()));
+                for (key, value) in object.iter() {
+                    self.stack.push(FlattenKey::Key(key).to_string());
+                    self.map_value(value);
+                    self.stack.pop();
+                }
+            }
+            value => {
+                self.map.insert(self.key(), value.clone());
+            }
+        }
+    }
+
+    fn key(&self) -> String {
+        self.stack
+            .iter()
+            .fold(String::from(self.prefix), |mut acc, key| {
+                if !acc.is_empty() && !key.starts_with('[') {
+                    acc.push('.');
+                }
+                acc.push_str(key);
+                acc
+            })
+    }
+}
+
+enum FlattenKey<'a> {
+    Index(usize),
+    Key(&'a str),
+}
+
+impl<'a> ToString for FlattenKey<'a> {
+    fn to_string(&self) -> String {
+        match self {
+            FlattenKey::Index(index) => format!("[{}]", index),
+            FlattenKey::Key(key) => {
+                let no_escape = key
+                    .chars()
+                    .all(|c| c == '_' || c.is_numeric() || c.is_alphabetic());
+
+                if no_escape {
+                    key.to_string()
+                } else {
+                    format!("[\"{}\"]", key.escape_default().collect::<String>())
+                }
+            }
+        }
     }
 }
 

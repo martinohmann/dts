@@ -104,8 +104,8 @@ pub struct TransformOptions {
     /// operators.
     ///
     /// When using a jsonpath query, the result will always be shaped like an array with zero or
-    /// more elements. See --flatten if you want to remove one level of nesting on single element
-    /// filter results.
+    /// more elements. See --flatten-arrays if you want to remove one level of nesting on single
+    /// element filter results.
     #[clap(short = 'j', long, multiple_occurrences = true, number_of_values = 1)]
     pub jsonpath: Vec<String>,
 
@@ -117,8 +117,18 @@ pub struct TransformOptions {
     ///
     /// This is applied as the last transformation before serializing into the output encoding. Can
     /// be used in combination with --jsonpath to flatten single element filter results.
-    #[clap(short, long, parse(from_occurrences))]
-    pub flatten: u8,
+    #[clap(short = 'f', long, parse(from_occurrences))]
+    pub flatten_arrays: u8,
+
+    /// Flattens the input to an object with flat keys.
+    ///
+    /// The flag accepts an optional value for the key prefix. If the value is omitted, the key
+    /// prefix is "data".
+    ///
+    /// The structure of the result is similar to the output of `gron`:
+    /// <https://github.com/TomNomNom/gron>.
+    #[clap(short = 'F', long, default_missing_value("data"))]
+    pub flatten_keys: Option<String>,
 }
 
 /// Options that configure the behaviour of output serialization.

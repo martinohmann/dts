@@ -51,7 +51,7 @@ fn json_to_csv_filtered_flattened_with_keys() {
             "csv",
             "-j",
             "..friends",
-            "--flatten",
+            "--flatten-arrays",
             "--keys-as-csv-headers",
         ])
         .pipe_stdin("tests/fixtures/example.json")
