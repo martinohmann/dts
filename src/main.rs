@@ -13,7 +13,7 @@ use dts::{
     detect_encoding,
     io::{Reader, Writer},
     ser::Serializer,
-    transform, Value,
+    transform, Encoding, Value,
 };
 
 fn deserialize<P>(file: Option<P>, opts: &InputOptions) -> Result<Value>
@@ -44,8 +44,7 @@ fn serialize<P>(file: Option<P>, value: &Value, opts: &OutputOptions) -> Result<
 where
     P: AsRef<Path>,
 {
-    let encoding = detect_encoding(opts.output_encoding, file.as_ref())
-        .context("unable to detect output encoding, please provide it explicitly via -o")?;
+    let encoding = detect_encoding(opts.output_encoding, file.as_ref()).unwrap_or(Encoding::Json);
 
     let writer = Writer::new(file).context("failed to open output file")?;
     let mut ser = Serializer::with_options(writer, opts.into());

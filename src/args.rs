@@ -126,6 +126,9 @@ pub struct TransformOptions {
 #[clap(help_heading = "OUTPUT OPTIONS")]
 pub struct OutputOptions {
     /// Set the output encoding. If absent encoding will be detected from output file extension.
+    ///
+    /// If the encoding is not explicitly set and it cannot be inferred from the output file
+    /// extension (or the output is stdout), the fallback is to encode output as JSON.
     #[clap(arg_enum, short = 'o', long, setting = ArgSettings::HidePossibleValues)]
     pub output_encoding: Option<Encoding>,
 
