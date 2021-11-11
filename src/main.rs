@@ -44,6 +44,10 @@ fn transform(value: &mut Value, opts: &TransformOptions) -> Result<()> {
         transform::flatten_keys_in_place(value, prefix)
     }
 
+    if opts.remove_empty_values {
+        transform::remove_empty_values_in_place(value);
+    }
+
     Ok(())
 }
 

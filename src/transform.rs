@@ -265,6 +265,92 @@ impl<'a> ToString for FlattenKey<'a> {
     }
 }
 
+/// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
+/// removed.
+///
+/// ## Examples
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::remove_empty_values_in_place;
+/// use dts::Value;
+/// use serde_json::json;
+///
+/// let mut value = Value::Null;
+///
+/// remove_empty_values_in_place(&mut value);
+///
+/// assert_eq!(value, Value::Null);
+/// ```
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::remove_empty_values_in_place;
+/// use dts::Value;
+/// use serde_json::json;
+///
+/// let mut value = json!({});
+///
+/// remove_empty_values_in_place(&mut value);
+///
+/// assert_eq!(value, json!({}));
+/// ```
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::remove_empty_values_in_place;
+/// use serde_json::json;
+///
+/// let mut value = json!(["foo", null, "bar"]);
+///
+/// remove_empty_values_in_place(&mut value);
+///
+/// assert_eq!(value, json!(["foo", "bar"]));
+/// ```
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::remove_empty_values_in_place;
+/// use serde_json::json;
+///
+/// let mut value = json!({"foo": ["bar", null, {}, "baz"], "qux": {"adf": {}}});
+///
+/// remove_empty_values_in_place(&mut value);
+///
+/// assert_eq!(value, json!({"foo": ["bar", "baz"]}));
+/// ```
+pub fn remove_empty_values_in_place(value: &mut Value) {
+    if let Some(array) = value.as_array_mut() {
+        *array = array
+            .iter_mut()
+            .filter_map(|value| {
+                remove_empty_values_in_place(value);
+
+                match value {
+                    Value::Null => None,
+                    Value::Array(array) if array.is_empty() => None,
+                    Value::Object(object) if object.is_empty() => None,
+                    _ => Some(value.clone()),
+                }
+            })
+            .collect()
+    } else if let Some(object) = value.as_object_mut() {
+        *object = object
+            .iter_mut()
+            .filter_map(|(key, value)| {
+                remove_empty_values_in_place(value);
+
+                match value {
+                    Value::Null => None,
+                    Value::Array(array) if array.is_empty() => None,
+                    Value::Object(object) if object.is_empty() => None,
+                    _ => Some((key.clone(), value.clone())),
+                }
+            })
+            .collect()
+    }
+}
+
 /// If value is of variant `Value::Object` or `Value::Array`, convert it to a `Value::String`
 /// containing the json encoded string representation of the value.
 pub(crate) fn collections_to_json(value: &Value) -> Result<Value> {

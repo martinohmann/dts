@@ -129,6 +129,12 @@ pub struct TransformOptions {
     /// <https://github.com/TomNomNom/gron>.
     #[clap(short = 'F', long, default_missing_value("data"))]
     pub flatten_keys: Option<String>,
+
+    /// Recursively removes nulls, empty arrays and empty objects from the data.
+    ///
+    /// Top level empty values are not removed.
+    #[clap(short, long)]
+    pub remove_empty_values: bool,
 }
 
 /// Options that configure the behaviour of output serialization.
