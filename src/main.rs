@@ -30,25 +30,28 @@ where
         .context(format!("failed to deserialize {}", encoding))
 }
 
-fn transform(value: &mut Value, opts: &TransformOptions) -> Result<()> {
-    opts.jsonpath
+fn transform(value: &Value, opts: &TransformOptions) -> Result<Value> {
+    let mut value = opts
+        .jsonpath
         .iter()
-        .try_for_each(|query| transform::filter_in_place(value, query))
+        .try_fold(value.clone(), |value, query| {
+            transform::filter_jsonpath(&value, query)
+        })
         .context("invalid jsonpath query")?;
 
     for _ in 0..opts.flatten_arrays {
-        transform::flatten_arrays_in_place(value);
+        value = transform::flatten_arrays(&value);
     }
 
     if let Some(prefix) = &opts.flatten_keys {
-        transform::flatten_keys_in_place(value, prefix)
+        value = transform::flatten_keys(&value, prefix)
     }
 
     if opts.remove_empty_values {
-        transform::remove_empty_values_in_place(value);
+        value = transform::remove_empty_values(&value);
     }
 
-    Ok(())
+    Ok(value)
 }
 
 fn serialize<P>(file: Option<P>, value: &Value, opts: &OutputOptions) -> Result<()>
@@ -80,9 +83,8 @@ fn main() -> Result<()> {
         false => None,
     };
 
-    let mut value = deserialize(input_file, &opts.input)?;
-
-    transform(&mut value, &opts.transform)?;
+    let value = deserialize(input_file, &opts.input)?;
+    let mut value = transform(&value, &opts.transform)?;
 
     if files.len() <= 1 {
         serialize(files.get(0), &value, &opts.output)

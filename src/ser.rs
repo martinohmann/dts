@@ -218,7 +218,7 @@ where
                         .ok_or_else(|| Error::at_row_index(i, "array expected"))?
                         .iter()
                         .map(transform::collections_to_json)
-                        .collect::<Result<Vec<_>>>()
+                        .collect::<Vec<_>>()
                 } else {
                     let row = row
                         .as_object()
@@ -237,10 +237,10 @@ where
                         .iter()
                         .map(|&header| row.get(header).unwrap_or(&Value::Null))
                         .map(transform::collections_to_json)
-                        .collect::<Result<Vec<_>>>()
+                        .collect::<Vec<_>>()
                 };
 
-                csv_writer.serialize(row_data?)?;
+                csv_writer.serialize(row_data)?;
             }
         }
 
@@ -290,9 +290,7 @@ where
     }
 
     fn serialize_gron(&mut self, value: &Value) -> Result<()> {
-        let mut value = value.clone();
-
-        transform::flatten_keys_in_place(&mut value, "json");
+        let value = transform::flatten_keys(value, "json");
 
         // SAFETY: Value is always an object at this point.
         let object = value.as_object().unwrap();

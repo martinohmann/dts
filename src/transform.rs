@@ -6,12 +6,12 @@ use serde_json::Map;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-/// Filter value in place according to the jsonpath query.
+/// Filter value according to the jsonpath query.
 ///
 /// ## Example
 ///
 /// ```
-/// use dts::transform::filter_in_place;
+/// use dts::transform::filter_jsonpath;
 /// use serde_json::json;
 /// # use pretty_assertions::assert_eq;
 /// # use std::error::Error;
@@ -26,8 +26,7 @@ use std::collections::BTreeMap;
 ///   ]
 /// });
 ///
-/// filter_in_place(&mut value, "$.orders[?(@.active)].id")?;
-/// assert_eq!(value, json!([1, 4]));
+/// assert_eq!(filter_jsonpath(&mut value, "$.orders[?(@.active)].id")?, json!([1, 4]));
 /// #     Ok(())
 /// # }
 /// ```
@@ -37,21 +36,93 @@ use std::collections::BTreeMap;
 /// This function can fail if parsing the query fails.
 ///
 /// ```
-/// use dts::transform::filter_in_place;
+/// use dts::transform::filter_jsonpath;
 /// use serde_json::json;
 ///
-/// let mut value = json!([]);
-/// assert!(filter_in_place(&mut value, "$[").is_err());
+/// let value = json!([]);
+/// assert!(filter_jsonpath(&value, "$[").is_err());
 /// ```
-pub fn filter_in_place<Q>(value: &mut Value, query: Q) -> Result<()>
+pub fn filter_jsonpath<Q>(value: &Value, query: Q) -> Result<Value>
 where
     Q: AsRef<str>,
 {
-    value
-        .clone()
-        .path(query.as_ref())
-        .map(|filtered| *value = filtered)
-        .map_err(Error::new)
+    value.clone().path(query.as_ref()).map_err(Error::new)
+}
+
+/// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
+/// removed.
+///
+/// ## Examples
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::remove_empty_values;
+/// use dts::Value;
+/// use serde_json::json;
+///
+/// let value = Value::Null;
+///
+/// assert_eq!(remove_empty_values(&value), Value::Null);
+/// ```
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::remove_empty_values;
+/// use dts::Value;
+/// use serde_json::json;
+///
+/// let mut value = json!({});
+///
+/// assert_eq!(remove_empty_values(&value), json!({}));
+/// ```
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::remove_empty_values;
+/// use serde_json::json;
+///
+/// let value = json!(["foo", null, "bar"]);
+///
+/// assert_eq!(remove_empty_values(&value), json!(["foo", "bar"]));
+/// ```
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::remove_empty_values;
+/// use serde_json::json;
+///
+/// let value = json!({"foo": ["bar", null, {}, "baz"], "qux": {"adf": {}}});
+///
+/// assert_eq!(remove_empty_values(&value), json!({"foo": ["bar", "baz"]}));
+/// ```
+pub fn remove_empty_values(value: &Value) -> Value {
+    match value {
+        Value::Array(array) => Value::Array(
+            array
+                .iter()
+                .map(remove_empty_values)
+                .filter_map(|value| match value {
+                    Value::Null => None,
+                    Value::Array(array) if array.is_empty() => None,
+                    Value::Object(object) if object.is_empty() => None,
+                    value => Some(value),
+                })
+                .collect(),
+        ),
+        Value::Object(object) => Value::Object(
+            object
+                .iter()
+                .map(|(key, value)| (key, remove_empty_values(value)))
+                .filter_map(|(key, value)| match value {
+                    Value::Null => None,
+                    Value::Array(array) if array.is_empty() => None,
+                    Value::Object(object) if object.is_empty() => None,
+                    value => Some((key.clone(), value)),
+                })
+                .collect(),
+        ),
+        value => value.clone(),
+    }
 }
 
 /// Remove one level of nesting if the data is shaped like an array.
@@ -60,13 +131,12 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_arrays_in_place;
+/// use dts::transform::flatten_arrays;
 /// use serde_json::json;
 ///
-/// let mut value = json!([["foo"], ["bar"], [["baz"], "qux"]]);
+/// let value = json!([["foo"], ["bar"], [["baz"], "qux"]]);
 ///
-/// flatten_arrays_in_place(&mut value);
-/// assert_eq!(value, json!(["foo", "bar", ["baz"], "qux"]));
+/// assert_eq!(flatten_arrays(&value), json!(["foo", "bar", ["baz"], "qux"]));
 /// ```
 ///
 /// If the has only one element the array will be removed entirely, leaving the single element as
@@ -74,43 +144,39 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_arrays_in_place;
+/// use dts::transform::flatten_arrays;
 /// use serde_json::json;
 ///
-/// let mut value = json!(["foo"]);
+/// let value = json!(["foo"]);
 ///
-/// flatten_arrays_in_place(&mut value);
-/// assert_eq!(value, json!("foo"));
+/// assert_eq!(flatten_arrays(&value), json!("foo"));
 /// ```
 ///
 /// Non-array values will be left untouched.
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_arrays_in_place;
+/// use dts::transform::flatten_arrays;
 /// use serde_json::json;
 ///
-/// let mut value = json!({"foo": "bar"});
+/// let value = json!({"foo": "bar"});
 ///
-/// flatten_arrays_in_place(&mut value);
-/// assert_eq!(value, json!({"foo": "bar"}));
+/// assert_eq!(flatten_arrays(&value), json!({"foo": "bar"}));
 /// ```
-pub fn flatten_arrays_in_place(value: &mut Value) {
-    if let Some(array) = value.as_array() {
-        *value = if array.len() == 1 {
-            array[0].clone()
-        } else {
-            Value::Array(
-                array
-                    .iter()
-                    .map(|v| match v {
-                        Value::Array(a) => a.clone(),
-                        _ => vec![v.clone()],
-                    })
-                    .flatten()
-                    .collect(),
-            )
-        };
+pub fn flatten_arrays(value: &Value) -> Value {
+    match value {
+        Value::Array(array) if array.len() == 1 => array[0].clone(),
+        Value::Array(array) => Value::Array(
+            array
+                .iter()
+                .map(|v| match v {
+                    Value::Array(a) => a.clone(),
+                    _ => vec![v.clone()],
+                })
+                .flatten()
+                .collect(),
+        ),
+        value => value.clone(),
     }
 }
 
@@ -122,12 +188,12 @@ pub fn flatten_arrays_in_place(value: &mut Value) {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_keys_in_place;
+/// use dts::transform::flatten_keys;
 /// use serde_json::json;
 ///
-/// let mut value = json!({"foo": {"bar": ["baz", "qux"]}});
+/// let value = json!({"foo": {"bar": ["baz", "qux"]}});
 ///
-/// flatten_keys_in_place(&mut value, "data");
+/// let value = flatten_keys(&value, "data");
 ///
 /// assert_eq!(
 ///     value,
@@ -145,12 +211,12 @@ pub fn flatten_arrays_in_place(value: &mut Value) {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_keys_in_place;
+/// use dts::transform::flatten_keys;
 /// use serde_json::json;
 ///
-/// let mut value = json!(["foo", "bar", "baz"]);
+/// let value = json!(["foo", "bar", "baz"]);
 ///
-/// flatten_keys_in_place(&mut value, "array");
+/// let value = flatten_keys(&value, "array");
 ///
 /// assert_eq!(
 ///     value,
@@ -167,19 +233,19 @@ pub fn flatten_arrays_in_place(value: &mut Value) {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_keys_in_place;
+/// use dts::transform::flatten_keys;
 /// use serde_json::json;
 ///
-/// let mut value = json!("foo");
+/// let value = json!("foo");
 ///
-/// flatten_keys_in_place(&mut value, "data");
-///
-/// assert_eq!(value, json!({"data": "foo"}));
+/// assert_eq!(flatten_keys(&value, "data"), json!({"data": "foo"}));
 /// ```
-pub fn flatten_keys_in_place(value: &mut Value, prefix: &str) {
-    let mut flattener = KeyFlattener::new(value, prefix);
-    let map = Map::from_iter(flattener.flatten().into_iter());
-    *value = Value::Object(map)
+pub fn flatten_keys<P>(value: &Value, prefix: P) -> Value
+where
+    P: AsRef<str>,
+{
+    let mut flattener = KeyFlattener::new(value, prefix.as_ref());
+    Value::Object(Map::from_iter(flattener.flatten().into_iter()))
 }
 
 struct KeyFlattener<'a> {
@@ -264,99 +330,14 @@ impl<'a> ToString for FlattenKey<'a> {
     }
 }
 
-/// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
-/// removed.
-///
-/// ## Examples
-///
-/// ```
-/// # use pretty_assertions::assert_eq;
-/// use dts::transform::remove_empty_values_in_place;
-/// use dts::Value;
-/// use serde_json::json;
-///
-/// let mut value = Value::Null;
-///
-/// remove_empty_values_in_place(&mut value);
-///
-/// assert_eq!(value, Value::Null);
-/// ```
-///
-/// ```
-/// # use pretty_assertions::assert_eq;
-/// use dts::transform::remove_empty_values_in_place;
-/// use dts::Value;
-/// use serde_json::json;
-///
-/// let mut value = json!({});
-///
-/// remove_empty_values_in_place(&mut value);
-///
-/// assert_eq!(value, json!({}));
-/// ```
-///
-/// ```
-/// # use pretty_assertions::assert_eq;
-/// use dts::transform::remove_empty_values_in_place;
-/// use serde_json::json;
-///
-/// let mut value = json!(["foo", null, "bar"]);
-///
-/// remove_empty_values_in_place(&mut value);
-///
-/// assert_eq!(value, json!(["foo", "bar"]));
-/// ```
-///
-/// ```
-/// # use pretty_assertions::assert_eq;
-/// use dts::transform::remove_empty_values_in_place;
-/// use serde_json::json;
-///
-/// let mut value = json!({"foo": ["bar", null, {}, "baz"], "qux": {"adf": {}}});
-///
-/// remove_empty_values_in_place(&mut value);
-///
-/// assert_eq!(value, json!({"foo": ["bar", "baz"]}));
-/// ```
-pub fn remove_empty_values_in_place(value: &mut Value) {
-    if let Some(array) = value.as_array_mut() {
-        *array = array
-            .iter_mut()
-            .filter_map(|value| {
-                remove_empty_values_in_place(value);
-
-                match value {
-                    Value::Null => None,
-                    Value::Array(array) if array.is_empty() => None,
-                    Value::Object(object) if object.is_empty() => None,
-                    _ => Some(value.clone()),
-                }
-            })
-            .collect()
-    } else if let Some(object) = value.as_object_mut() {
-        *object = object
-            .iter_mut()
-            .filter_map(|(key, value)| {
-                remove_empty_values_in_place(value);
-
-                match value {
-                    Value::Null => None,
-                    Value::Array(array) if array.is_empty() => None,
-                    Value::Object(object) if object.is_empty() => None,
-                    _ => Some((key.clone(), value.clone())),
-                }
-            })
-            .collect()
-    }
-}
-
 /// If value is of variant `Value::Object` or `Value::Array`, convert it to a `Value::String`
 /// containing the json encoded string representation of the value.
-pub(crate) fn collections_to_json(value: &Value) -> Result<Value> {
-    match value {
-        Value::Array(value) => Ok(Value::String(serde_json::to_string(value)?)),
-        Value::Object(value) => Ok(Value::String(serde_json::to_string(value)?)),
-        _ => Ok(value.clone()),
+pub(crate) fn collections_to_json(value: &Value) -> Value {
+    if value.is_array() || value.is_object() {
+        // SAFETY: serialization of serde_json::Value cannot fail.
+        Value::String(serde_json::to_string(value).unwrap())
+    } else {
+        value.clone()
     }
 }
 
@@ -433,17 +414,17 @@ mod tests {
     #[test]
     fn test_collections_to_json() {
         assert_eq!(
-            collections_to_json(&json!({"foo": "bar"})).unwrap(),
+            collections_to_json(&json!({"foo": "bar"})),
             json!(r#"{"foo":"bar"}"#)
         );
         assert_eq!(
-            collections_to_json(&json!(["foo", "bar"])).unwrap(),
+            collections_to_json(&json!(["foo", "bar"])),
             json!(r#"["foo","bar"]"#)
         );
-        assert_eq!(collections_to_json(&json!("foo")).unwrap(), json!("foo"));
-        assert_eq!(collections_to_json(&json!(true)).unwrap(), json!(true));
-        assert_eq!(collections_to_json(&json!(1)).unwrap(), json!(1));
-        assert_eq!(collections_to_json(&Value::Null).unwrap(), Value::Null);
+        assert_eq!(collections_to_json(&json!("foo")), json!("foo"));
+        assert_eq!(collections_to_json(&json!(true)), json!(true));
+        assert_eq!(collections_to_json(&json!(1)), json!(1));
+        assert_eq!(collections_to_json(&Value::Null), Value::Null);
     }
 
     #[test]
