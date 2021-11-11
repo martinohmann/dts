@@ -37,6 +37,8 @@ pub enum Encoding {
     /// Plaintext document
     #[clap(alias = "txt")]
     Text,
+    /// Gron <https://github.com/TomNomNom/gron>
+    Gron,
 }
 
 impl Encoding {
@@ -78,6 +80,7 @@ impl Encoding {
             Encoding::QueryString => "query-string",
             Encoding::Xml => "xml",
             Encoding::Text => "text",
+            Encoding::Gron => "gron",
         }
     }
 }

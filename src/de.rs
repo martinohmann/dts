@@ -1,7 +1,7 @@
 //! This module provides a `Deserializer` which supports deserializing input data with various
 //! encodings into a `Value`.
 
-use crate::{Encoding, Result, Value};
+use crate::{Encoding, Error, Result, Value};
 use regex::Regex;
 use serde::Deserialize;
 
@@ -152,6 +152,7 @@ where
             Encoding::QueryString => self.deserialize_query_string(),
             Encoding::Xml => self.deserialize_xml(),
             Encoding::Text => self.deserialize_text(),
+            encoding => Err(Error::DeserializeUnsupported(encoding)),
         }
     }
 

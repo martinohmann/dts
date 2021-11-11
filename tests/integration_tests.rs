@@ -82,3 +82,16 @@ fn json_to_csv_collections_as_json() {
         .code(0)
         .stdout(read("tests/fixtures/users.csv").unwrap());
 }
+
+#[test]
+fn json_to_gron() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .args(&["-i", "json", "-o", "gron"])
+        .pipe_stdin("tests/fixtures/example.json")
+        .unwrap()
+        .assert()
+        .success()
+        .code(0)
+        .stdout(read("tests/fixtures/example.js").unwrap());
+}

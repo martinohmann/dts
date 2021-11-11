@@ -18,6 +18,10 @@ pub enum Error {
     #[error("error at row index {0}: {1}")]
     AtRowIndex(usize, String),
 
+    /// Indicates that deserialization is not supported for the given Encoding.
+    #[error("deserializing {0} is not supported")]
+    DeserializeUnsupported(Encoding),
+
     /// Indicates that serialization is not supported for the given Encoding.
     #[error("serializing to {0} is not supported")]
     SerializeUnsupported(Encoding),

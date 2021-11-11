@@ -148,6 +148,7 @@ where
             Encoding::QueryString => self.serialize_query_string(value)?,
             Encoding::Xml => self.serialize_xml(value)?,
             Encoding::Text => self.serialize_text(value)?,
+            Encoding::Gron => self.serialize_gron(value)?,
             encoding => return Err(Error::SerializeUnsupported(encoding)),
         };
 
@@ -286,6 +287,23 @@ where
             .join(&sep);
 
         Ok(self.writer.write_all(text.as_bytes())?)
+    }
+
+    fn serialize_gron(&mut self, value: &Value) -> Result<()> {
+        let mut value = value.clone();
+
+        transform::flatten_keys_in_place(&mut value, "json");
+
+        // SAFETY: Value is always an object at this point.
+        let object = value.as_object().unwrap();
+
+        let mut lines: Vec<String> = Vec::with_capacity(object.len());
+
+        for (key, value) in object {
+            lines.push(format!("{} = {};", key, serde_json::to_string(value)?));
+        }
+
+        Ok(self.writer.write_all(lines.join("\n").as_bytes())?)
     }
 }
 
