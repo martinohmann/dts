@@ -229,15 +229,14 @@ impl<'a> KeyFlattener<'a> {
     }
 
     fn key(&self) -> String {
-        self.stack
-            .iter()
-            .fold(String::from(self.prefix), |mut acc, key| {
-                if !acc.is_empty() && !key.starts_with('[') {
-                    acc.push('.');
-                }
-                acc.push_str(key);
-                acc
-            })
+        let acc = FlattenKey::Key(self.prefix).to_string();
+        self.stack.iter().fold(acc, |mut acc, key| {
+            if !acc.is_empty() && !key.starts_with('[') {
+                acc.push('.');
+            }
+            acc.push_str(key);
+            acc
+        })
     }
 }
 
