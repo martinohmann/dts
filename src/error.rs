@@ -77,6 +77,10 @@ pub enum Error {
     /// Error emitted by regex.
     #[error(transparent)]
     Regex(#[from] regex::Error),
+
+    /// Error emitted by ureq.
+    #[error(transparent)]
+    Ureq(#[from] ureq::Error),
 }
 
 impl Error {

@@ -4,14 +4,16 @@ use crate::Result;
 use std::fs::File;
 use std::io::{self, Read, Stdin, Stdout, Write};
 use std::path::Path;
+use url::Url;
 
-/// A reader that either reads a `File` or `Stdin`.
-#[derive(Debug)]
+/// A reader that either reads a `File`, `Stdin` or from a boxed reader.
 pub enum Reader {
     /// A file reader.
     File(File),
     /// Stdin reader.
     Stdin(Stdin),
+    /// Boxed reader.
+    Boxed(Box<dyn Read + 'static>),
 }
 
 impl Reader {
@@ -33,6 +35,8 @@ impl Reader {
     /// # }
     /// ```
     ///
+    /// The path may point to a remote file which will be downloaded.
+    ///
     /// Otherwise the returned `Reader` reads from `Stdin`.
     ///
     /// ```
@@ -41,15 +45,60 @@ impl Reader {
     /// assert!(matches!(Reader::new::<&str>(None), Ok(Reader::Stdin(_))));
     /// ```
     ///
-    /// Returns an error if path is `Some` and the file cannot be opened.
+    /// Returns an error if path is `Some` and the file cannot be opened or downloaded.
     pub fn new<P>(path: Option<P>) -> Result<Self>
     where
         P: AsRef<Path>,
     {
         match &path {
-            Some(path) => Ok(Self::File(File::open(path)?)),
+            Some(path) => match Url::from_file_path(path) {
+                Ok(url) => {
+                    if url.scheme() == "file" {
+                        Self::from_path(path)
+                    } else {
+                        Self::from_url(url)
+                    }
+                }
+                Err(_) => Self::from_path(path),
+            },
             None => Ok(Self::Stdin(io::stdin())),
         }
+    }
+
+    /// Creates a new `Reader` from a local file.
+    ///
+    /// ```
+    /// use dts::io::Reader;
+    /// use tempfile::NamedTempFile;
+    /// # use std::error::Error;
+    /// #
+    /// # fn main() -> Result<(), Box<dyn Error>> {
+    /// let file = NamedTempFile::new()?;
+    ///
+    /// let reader = Reader::from_path(file.path());
+    /// assert!(matches!(reader, Ok(Reader::File(_))));
+    /// #     Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Returns an error if the file cannot be opened.
+    pub fn from_path<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        Ok(Self::File(File::open(path)?))
+    }
+
+    /// Creates a new `Reader` which reads from a remote url.
+    ///
+    /// Returns an error if url cannot be parsed or the remote file cannot be downloaded.
+    fn from_url<U>(url: U) -> Result<Self>
+    where
+        U: AsRef<str>,
+    {
+        let reader = ureq::get(url.as_ref()).call()?.into_reader();
+
+        Ok(Self::Boxed(Box::new(reader)))
     }
 }
 
@@ -58,6 +107,7 @@ impl Read for Reader {
         match self {
             Self::File(ref mut file) => file.read(buf),
             Self::Stdin(ref mut stdin) => stdin.read(buf),
+            Self::Boxed(ref mut reader) => reader.read(buf),
         }
     }
 }

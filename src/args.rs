@@ -19,7 +19,7 @@ pub struct Options {
     /// Input and output files.
     ///
     /// If stdin is not a pipe, the first file is the input file that is read from. Otherwise it is
-    /// treated as an output file.
+    /// treated as an output file. The input file many also be a remote URL.
     ///
     /// It is possible to provide multiple output files if the data resembles an array. Each output
     /// file will receive an array element. The last output file collects the remaining elements if
