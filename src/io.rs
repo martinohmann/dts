@@ -51,16 +51,19 @@ impl Reader {
         P: AsRef<Path>,
     {
         match &path {
-            Some(path) => match Url::from_file_path(path) {
-                Ok(url) => {
-                    if url.scheme() == "file" {
-                        Self::from_path(path)
-                    } else {
-                        Self::from_url(url)
+            Some(path) => {
+                // @FIXME(mohmann): this looks like it can be improved. Maybe not pass in Path but
+                // use str instead?
+                if let Some(path) = path.as_ref().to_str() {
+                    if let Ok(url) = Url::parse(path) {
+                        if url.scheme() != "file" {
+                            return Self::from_url(url);
+                        }
                     }
                 }
-                Err(_) => Self::from_path(path),
-            },
+
+                Self::from_path(path)
+            }
             None => Ok(Self::Stdin(io::stdin())),
         }
     }
