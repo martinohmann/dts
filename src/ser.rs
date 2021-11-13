@@ -1,7 +1,7 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{transform, Encoding, Error, Result, Value};
+use crate::{transform, value_to_string, Encoding, Error, Result, Value};
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
@@ -279,11 +279,11 @@ where
             .map(|value| {
                 match value {
                     // Use strings directly to prevent quoting
-                    Value::String(s) => Ok(s.to_string()),
-                    other => Ok(serde_json::to_string(other)?),
+                    Value::String(s) => s.to_string(),
+                    other => value_to_string(other),
                 }
             })
-            .collect::<Result<Vec<String>>>()?
+            .collect::<Vec<String>>()
             .join(&sep);
 
         Ok(self.writer.write_all(text.as_bytes())?)
@@ -292,13 +292,13 @@ where
     fn serialize_gron(&mut self, value: &Value) -> Result<()> {
         let value = transform::flatten_keys(value, "json");
 
-        // SAFETY: Value is always an object at this point.
+        // Value is always an object at this point.
         let object = value.as_object().unwrap();
 
-        let mut lines: Vec<String> = Vec::with_capacity(object.len());
+        let mut lines = Vec::with_capacity(object.len());
 
         for (key, value) in object {
-            lines.push(format!("{} = {};", key, serde_json::to_string(value)?));
+            lines.push(format!("{} = {};", key, value_to_string(value)));
         }
 
         Ok(self.writer.write_all(lines.join("\n").as_bytes())?)

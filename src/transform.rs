@@ -1,6 +1,6 @@
 //! Data transformation utilities.
 
-use crate::{Error, Result, Value};
+use crate::{value_to_string, Error, Result, Value};
 use jsonpath_rust::JsonPathQuery;
 use serde_json::Map;
 use std::cmp::Ordering;
@@ -334,8 +334,7 @@ impl<'a> ToString for FlattenKey<'a> {
 /// containing the json encoded string representation of the value.
 pub(crate) fn collections_to_json(value: &Value) -> Value {
     if value.is_array() || value.is_object() {
-        // SAFETY: serialization of serde_json::Value cannot fail.
-        Value::String(serde_json::to_string(value).unwrap())
+        Value::String(value_to_string(value))
     } else {
         value.clone()
     }
@@ -444,11 +443,11 @@ mod tests {
         // the same with the order ignored.
         let expected_value =
             json!({"seven": "eight", "one": {"five": "six", "two": {"three": "four"}}});
-        let expected = serde_json::to_string(&expected_value).unwrap();
+        let expected = value_to_string(&expected_value);
 
         let mut value = json!({"one": {"two": {"three": "four"}, "five": "six"}, "seven": "eight"});
         collections_to_end(&mut value);
-        let result = serde_json::to_string(&value).unwrap();
+        let result = value_to_string(&value);
 
         assert_eq!(result, expected);
     }

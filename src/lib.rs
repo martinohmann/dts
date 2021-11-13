@@ -18,3 +18,9 @@ pub mod transform;
 /// We use serde_json::Value as our internal deserialization format for now as it should have all
 /// the necessary features we need for internal data transformation.
 pub type Value = serde_json::Value;
+
+// Serializing a `Value` as `String` can never fail so this function removes the need to wrap the
+// string with `Result` which simplifies error handling at the call sites.
+pub(crate) fn value_to_string(value: &Value) -> String {
+    serde_json::to_string(value).unwrap()
+}
