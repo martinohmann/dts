@@ -5,6 +5,7 @@
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use std::path::Path;
+use std::path::PathBuf;
 
 use dts::{
     args::{InputOptions, Options, OutputOptions, TransformOptions},
@@ -15,10 +16,7 @@ use dts::{
     transform, Encoding, Value,
 };
 
-fn deserialize<P>(file: Option<P>, opts: &InputOptions) -> Result<Value>
-where
-    P: AsRef<Path>,
-{
+fn deserialize(file: Option<&PathBuf>, opts: &InputOptions) -> Result<Value> {
     let encoding = detect_encoding(opts.input_encoding, file.as_ref())
         .context("unable to detect input encoding, please provide it explicitly via -i")?;
 
