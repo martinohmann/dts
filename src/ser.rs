@@ -1,7 +1,7 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{transform, value_to_string, Encoding, Error, Result, Value};
+use crate::{transform, value_to_array, value_to_string, Encoding, Error, Result, Value};
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
@@ -197,10 +197,6 @@ where
     }
 
     fn serialize_csv(&mut self, value: &Value) -> Result<()> {
-        let value = value.as_array().ok_or_else(|| {
-            Error::new("serializing to csv requires the input data to be an array")
-        })?;
-
         // Because individual row items may produce errors during serialization because they are of
         // unexpected type, write into a buffer first and only flush out to the writer only if
         // serialization of all rows succeeded. This avoids writing out partial data.
@@ -212,7 +208,7 @@ where
 
             let mut headers: Option<Vec<&String>> = None;
 
-            for (i, row) in value.iter().enumerate() {
+            for (i, row) in value_to_array(value).iter().enumerate() {
                 let row_data = if !self.opts.keys_as_csv_headers {
                     row.as_array()
                         .ok_or_else(|| Error::at_row_index(i, "array expected"))?
@@ -268,13 +264,9 @@ where
             .opts
             .text_join_separator
             .clone()
-            .unwrap_or_else(|| String::from("\n"));
+            .unwrap_or_else(|| String::from('\n'));
 
-        let text = value
-            .as_array()
-            .ok_or_else(|| {
-                Error::new("serializing to text requires the input data to be an array")
-            })?
+        let text = value_to_array(value)
             .iter()
             .map(|value| {
                 match value {
@@ -353,6 +345,15 @@ mod test {
             std::str::from_utf8(&buf).unwrap(),
             "one,two\nval1,val2\nval3,\n,val5\n"
         );
+
+        buf.clear();
+
+        let mut ser = SerializerBuilder::new()
+            .keys_as_csv_headers(true)
+            .build(&mut buf);
+        ser.serialize(Encoding::Csv, &json!({"one": "val1", "two": "val2"}))
+            .unwrap();
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), "one,two\nval1,val2\n");
     }
 
     #[test]
@@ -385,14 +386,11 @@ mod test {
         ser.serialize(Encoding::Text, &json!([{"foo": "bar"}, "baz"]))
             .unwrap();
         assert_eq!(&buf, "{\"foo\":\"bar\"}\nbaz".as_bytes());
-    }
 
-    #[test]
-    fn test_serialize_text_error() {
         let mut buf = Vec::new();
         let mut ser = Serializer::new(&mut buf);
-        assert!(ser
-            .serialize(Encoding::Text, &json!({"foo": "bar"}))
-            .is_err());
+        ser.serialize(Encoding::Text, &json!({"foo": "bar"}))
+            .unwrap();
+        assert_eq!(&buf, "{\"foo\":\"bar\"}".as_bytes());
     }
 }
