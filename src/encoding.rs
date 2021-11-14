@@ -95,18 +95,17 @@ impl fmt::Display for Encoding {
 ///
 /// If encoding is `Some` it is returned. Otherwise it attempts to create the `Encoding` from the
 /// provided path.
-pub fn detect_encoding<P>(encoding: Option<Encoding>, path: Option<P>) -> Option<Encoding>
+pub fn detect_encoding<P>(encoding: Option<Encoding>, path: P) -> Option<Encoding>
 where
     P: AsRef<Path>,
 {
-    encoding.or_else(|| path.and_then(Encoding::from_path))
+    encoding.or_else(|| Encoding::from_path(path))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
-    use std::path::PathBuf;
 
     #[test]
     fn test_encoding_from_path() {
@@ -123,19 +122,16 @@ mod tests {
 
     #[test]
     fn test_detect_encoding() {
-        assert_eq!(detect_encoding::<PathBuf>(None, None), None);
+        assert_eq!(detect_encoding(None, "-"), None);
         assert_eq!(
-            detect_encoding::<PathBuf>(Some(Encoding::Yaml), None),
+            detect_encoding(Some(Encoding::Yaml), "-"),
             Some(Encoding::Yaml)
         );
         assert_eq!(
-            detect_encoding(Some(Encoding::Yaml), Some("foo.json")),
+            detect_encoding(Some(Encoding::Yaml), "foo.json"),
             Some(Encoding::Yaml)
         );
-        assert_eq!(
-            detect_encoding(None, Some("foo.json")),
-            Some(Encoding::Json)
-        );
-        assert_eq!(detect_encoding(None, Some("foo.bak")), None);
+        assert_eq!(detect_encoding(None, "foo.json"), Some(Encoding::Json));
+        assert_eq!(detect_encoding(None, "foo.bak"), None);
     }
 }

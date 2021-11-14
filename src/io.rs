@@ -19,7 +19,15 @@ pub enum Reader {
 impl Reader {
     /// Creates a new `Reader`.
     ///
-    /// If path is `Some`, a `Reader` is constructed that reads from the referenced file.
+    /// If path is `-`, a `Reader` is constructed that reads from stdin.
+    ///
+    /// ```
+    /// use dts::io::Reader;
+    ///
+    /// assert!(matches!(Reader::new("-"), Ok(Reader::Stdin(_))));
+    /// ```
+    ///
+    /// Otherwise the returned `Reader` reads from the referenced file.
     ///
     /// ```
     /// use dts::io::Reader;
@@ -29,7 +37,7 @@ impl Reader {
     /// # fn main() -> Result<(), Box<dyn Error>> {
     /// let file = NamedTempFile::new()?;
     ///
-    /// let reader = Reader::new(Some(file.path()));
+    /// let reader = Reader::new(file.path());
     /// assert!(matches!(reader, Ok(Reader::File(_))));
     /// #     Ok(())
     /// # }
@@ -37,36 +45,23 @@ impl Reader {
     ///
     /// The path may point to a remote file which will be downloaded.
     ///
-    /// Otherwise the returned `Reader` reads from `Stdin`. A special case is made for a path
-    /// equivalent to `Some("-")` which will create a `Stdin` reader as well.
-    ///
-    /// ```
-    /// use dts::io::Reader;
-    ///
-    /// assert!(matches!(Reader::new::<&str>(None), Ok(Reader::Stdin(_))));
-    /// assert!(matches!(Reader::new(Some("-")), Ok(Reader::Stdin(_))));
-    /// ```
-    ///
-    /// Returns an error if path is `Some` and the file cannot be opened or downloaded.
-    pub fn new<P>(path: Option<P>) -> Result<Self>
+    /// Returns an error if the referenced file cannot be opened or downloaded.
+    pub fn new<P>(path: P) -> Result<Self>
     where
         P: AsRef<Path>,
     {
-        match &path {
-            Some(path) => match path.as_ref().to_str() {
-                Some("-") => Ok(Self::Stdin(io::stdin())),
-                Some(path) => {
-                    if let Ok(url) = Url::parse(path) {
-                        if url.scheme() != "file" {
-                            return Self::from_url(url);
-                        }
+        match path.as_ref().to_str() {
+            Some("-") => Ok(Self::Stdin(io::stdin())),
+            Some(path) => {
+                if let Ok(url) = Url::parse(path) {
+                    if url.scheme() != "file" {
+                        return Self::from_url(url);
                     }
-
-                    Self::from_path(path)
                 }
-                None => Self::from_path(path),
-            },
-            None => Ok(Self::Stdin(io::stdin())),
+
+                Self::from_path(path)
+            }
+            None => Self::from_path(path),
         }
     }
 
@@ -129,7 +124,15 @@ pub enum Writer {
 impl Writer {
     /// Creates a new `Writer`.
     ///
-    /// If path is `Some`, a `Writer` is constructed that writes to the referenced file.
+    /// If path is `-`, a `Writer` is constructed that writes to stdout.
+    ///
+    /// ```
+    /// use dts::io::Writer;
+    ///
+    /// assert!(matches!(Writer::new("-"), Ok(Writer::Stdout(_))));
+    /// ```
+    ///
+    /// Otherwise the returned `Writer` writes to the referenced file.
     ///
     /// ```
     /// use dts::io::Writer;
@@ -138,28 +141,20 @@ impl Writer {
     /// #
     /// # fn main() -> Result<(), Box<dyn Error>> {
     /// let dir = tempdir()?;
-    /// let writer = Writer::new(Some(dir.path().join("file.txt")));
+    /// let writer = Writer::new(dir.path().join("file.txt"));
     /// assert!(matches!(writer, Ok(Writer::File(_))));
     /// #     Ok(())
     /// # }
     /// ```
     ///
-    /// Otherwise the returned `Writer` writes to `Stdout`.
-    ///
-    /// ```
-    /// use dts::io::Writer;
-    ///
-    /// assert!(matches!(Writer::new::<&str>(None), Ok(Writer::Stdout(_))));
-    /// ```
-    ///
-    /// Returns an error if path is `Some` and the file cannot be created.
-    pub fn new<P>(path: Option<P>) -> Result<Self>
+    /// Returns an error if the file referenced by path cannot be created.
+    pub fn new<P>(path: P) -> Result<Self>
     where
         P: AsRef<Path>,
     {
-        match &path {
-            Some(path) => Ok(Self::File(File::create(path)?)),
-            None => Ok(Self::Stdout(io::stdout())),
+        match path.as_ref().to_str() {
+            Some("-") => Ok(Self::Stdout(io::stdout())),
+            _ => Ok(Self::File(File::create(path)?)),
         }
     }
 }

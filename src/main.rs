@@ -4,8 +4,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use dts::{
     args::{InputOptions, Options, OutputOptions, TransformOptions},
@@ -16,11 +15,12 @@ use dts::{
     transform, Encoding, Value,
 };
 
-fn deserialize(file: Option<&PathBuf>, opts: &InputOptions) -> Result<Value> {
-    let encoding = detect_encoding(opts.input_encoding, file.as_ref())
+fn deserialize(file: &Path, opts: &InputOptions) -> Result<Value> {
+    let encoding = detect_encoding(opts.input_encoding, file)
         .context("unable to detect input encoding, please provide it explicitly via -i")?;
 
-    let reader = Reader::new(file).context("failed to open input file")?;
+    let reader = Reader::new(file)
+        .with_context(|| format!("failed to open input file: {}", file.display()))?;
     let mut de = Deserializer::with_options(reader, opts.into());
 
     de.deserialize(encoding)
@@ -52,10 +52,16 @@ fn transform(value: &Value, opts: &TransformOptions) -> Result<Value> {
 }
 
 fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {
-    let file = opts.output_file.as_ref();
+    // Output file or stdout.
+    let file = &opts
+        .output_file
+        .clone()
+        .unwrap_or_else(|| PathBuf::from("-"));
+
     let encoding = detect_encoding(opts.output_encoding, file).unwrap_or(Encoding::Json);
 
-    let writer = Writer::new(file).context("failed to open output file")?;
+    let writer = Writer::new(file)
+        .with_context(|| format!("failed to open output file: {}", file.display()))?;
     let mut ser = Serializer::with_options(writer, opts.into());
 
     ser.serialize(encoding, value)
@@ -74,11 +80,11 @@ fn main() -> Result<()> {
 
     let value = match files.len() {
         0 => return Err(anyhow!("input file or data on stdin expected")),
-        1 => deserialize(files.get(0), &opts.input)?,
+        1 => deserialize(&files[0], &opts.input)?,
         _ => Value::Array(
             files
                 .iter()
-                .map(|file| deserialize(Some(file), &opts.input))
+                .map(|file| deserialize(file, &opts.input))
                 .collect::<Result<Vec<_>>>()?,
         ),
     };
