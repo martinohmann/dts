@@ -4,7 +4,6 @@
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use std::collections::VecDeque;
 use std::path::Path;
 
 use dts::{
@@ -54,11 +53,9 @@ fn transform(value: &Value, opts: &TransformOptions) -> Result<Value> {
     Ok(value)
 }
 
-fn serialize<P>(file: Option<P>, value: &Value, opts: &OutputOptions) -> Result<()>
-where
-    P: AsRef<Path>,
-{
-    let encoding = detect_encoding(opts.output_encoding, file.as_ref()).unwrap_or(Encoding::Json);
+fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {
+    let file = opts.output_file.as_ref();
+    let encoding = detect_encoding(opts.output_encoding, file).unwrap_or(Encoding::Json);
 
     let writer = Writer::new(file).context("failed to open output file")?;
     let mut ser = Serializer::with_options(writer, opts.into());
@@ -70,46 +67,25 @@ where
 fn main() -> Result<()> {
     let opts = Options::parse();
 
-    let mut files = VecDeque::from(opts.files.clone());
+    let mut files = opts.files.clone();
 
-    // If stdin is not a pipe, use the first filename as the input and remove it from the list.
-    // Otherwise it's an output filename.
-    let input_file = match atty::is(atty::Stream::Stdin) {
-        true => Some(
+    if !atty::is(atty::Stream::Stdin) {
+        // Input is piped on stdin.
+        files.insert(0, Path::new("-").to_path_buf());
+    }
+
+    let value = match files.len() {
+        0 => return Err(anyhow!("input file or data on stdin expected")),
+        1 => deserialize(files.get(0), &opts.input)?,
+        _ => Value::Array(
             files
-                .pop_front()
-                .ok_or_else(|| anyhow!("input file or data on stdin expected"))?,
+                .iter()
+                .map(|file| deserialize(Some(file), &opts.input))
+                .collect::<Result<Vec<_>>>()?,
         ),
-        false => None,
     };
 
-    let value = deserialize(input_file, &opts.input)?;
-    let mut value = transform(&value, &opts.transform)?;
+    let value = transform(&value, &opts.transform)?;
 
-    if files.len() <= 1 {
-        serialize(files.get(0), &value, &opts.output)
-    } else {
-        let values = match value.as_array_mut() {
-            Some(values) => {
-                if files.len() < values.len() {
-                    // There are more values than files. The last file takes an array of the left
-                    // over values.
-                    let rest = values.split_off(files.len() - 1);
-                    values.push(Value::Array(rest));
-                }
-
-                values
-            }
-            None => {
-                return Err(anyhow!(
-                    "when using multiple output files, the data must be an array"
-                ))
-            }
-        };
-
-        files
-            .iter()
-            .zip(values.iter())
-            .try_for_each(|(file, value)| serialize(Some(file), value, &opts.output))
-    }
+    serialize(&value, &opts.output)
 }

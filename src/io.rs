@@ -37,12 +37,14 @@ impl Reader {
     ///
     /// The path may point to a remote file which will be downloaded.
     ///
-    /// Otherwise the returned `Reader` reads from `Stdin`.
+    /// Otherwise the returned `Reader` reads from `Stdin`. A special case is made for a path
+    /// equivalent to `Some("-")` which will create a `Stdin` reader as well.
     ///
     /// ```
     /// use dts::io::Reader;
     ///
     /// assert!(matches!(Reader::new::<&str>(None), Ok(Reader::Stdin(_))));
+    /// assert!(matches!(Reader::new(Some("-")), Ok(Reader::Stdin(_))));
     /// ```
     ///
     /// Returns an error if path is `Some` and the file cannot be opened or downloaded.
@@ -51,19 +53,19 @@ impl Reader {
         P: AsRef<Path>,
     {
         match &path {
-            Some(path) => {
-                // @FIXME(mohmann): this looks like it can be improved. Maybe not pass in Path but
-                // use str instead?
-                if let Some(path) = path.as_ref().to_str() {
+            Some(path) => match path.as_ref().to_str() {
+                Some("-") => Ok(Self::Stdin(io::stdin())),
+                Some(path) => {
                     if let Ok(url) = Url::parse(path) {
                         if url.scheme() != "file" {
                             return Self::from_url(url);
                         }
                     }
-                }
 
-                Self::from_path(path)
-            }
+                    Self::from_path(path)
+                }
+                None => Self::from_path(path),
+            },
             None => Ok(Self::Stdin(io::stdin())),
         }
     }
@@ -142,14 +144,12 @@ impl Writer {
     /// # }
     /// ```
     ///
-    /// Otherwise the returned `Writer` writes to `Stdout`. A special case is made for a path
-    /// equivalent to `Some("-")` which will create a `Stdout` writer as well.
+    /// Otherwise the returned `Writer` writes to `Stdout`.
     ///
     /// ```
     /// use dts::io::Writer;
     ///
     /// assert!(matches!(Writer::new::<&str>(None), Ok(Writer::Stdout(_))));
-    /// assert!(matches!(Writer::new(Some("-")), Ok(Writer::Stdout(_))));
     /// ```
     ///
     /// Returns an error if path is `Some` and the file cannot be created.
@@ -158,10 +158,7 @@ impl Writer {
         P: AsRef<Path>,
     {
         match &path {
-            Some(path) => match path.as_ref().to_str() {
-                Some("-") => Ok(Self::Stdout(io::stdout())),
-                _ => Ok(Self::File(File::create(path)?)),
-            },
+            Some(path) => Ok(Self::File(File::create(path)?)),
             None => Ok(Self::Stdout(io::stdout())),
         }
     }

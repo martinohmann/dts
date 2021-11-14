@@ -16,16 +16,12 @@ use unescape::unescape;
 #[derive(Parser, Debug)]
 #[clap(name = "dts", version)]
 pub struct Options {
-    /// Input and output files.
+    /// Input files.
     ///
-    /// If stdin is not a pipe, the first file is the input file that is read from. Otherwise it is
-    /// treated as an output file. The input file many also be a remote URL.
-    ///
-    /// It is possible to provide multiple output files if the data resembles an array. Each output
-    /// file will receive an array element. The last output file collects the remaining elements if
-    /// there are more elements than files.
-    ///
-    /// Passing '-' as filename or providing no output files will write the data to stdout instead.
+    /// If multiple files are provides, the decoded data is read into an array. The input files
+    /// many also be remote URLs. Data may also be provided on stdin. If stdin is used in
+    /// combination with one or more input files, the data from stdin will be read into the first
+    /// element of the resulting array.
     #[clap(name = "FILE", parse(from_os_str), value_hint = ValueHint::FilePath)]
     pub files: Vec<PathBuf>,
 
@@ -147,6 +143,10 @@ pub struct OutputOptions {
     /// extension (or the output is stdout), the fallback is to encode output as JSON.
     #[clap(arg_enum, short = 'o', long, setting = ArgSettings::HidePossibleValues)]
     pub output_encoding: Option<Encoding>,
+
+    /// Output file. If absent, the encoded data is written to stdout.
+    #[clap(short = 'O', long, parse(from_os_str), value_hint = ValueHint::FilePath)]
+    pub output_file: Option<PathBuf>,
 
     /// Produce pretty output if supported by the encoder.
     #[clap(short = 'p', long)]
