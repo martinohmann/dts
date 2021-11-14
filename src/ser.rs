@@ -282,18 +282,14 @@ where
     }
 
     fn serialize_gron(&mut self, value: &Value) -> Result<()> {
-        let value = transform::flatten_keys(value, "json");
+        let output = transform::flatten_keys(value, "json")
+            .as_object()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| format!("{} = {};\n", k, value_to_string(v)))
+            .collect::<String>();
 
-        // Value is always an object at this point.
-        let object = value.as_object().unwrap();
-
-        let mut lines = Vec::with_capacity(object.len());
-
-        for (key, value) in object {
-            lines.push(format!("{} = {};", key, value_to_string(value)));
-        }
-
-        Ok(self.writer.write_all(lines.join("\n").as_bytes())?)
+        Ok(self.writer.write_all(output.as_bytes())?)
     }
 }
 
