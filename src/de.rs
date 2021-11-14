@@ -9,9 +9,6 @@ use serde::Deserialize;
 /// deserializing from a certain `Encoding`.
 #[derive(Debug, Default, Clone)]
 pub struct DeserializeOptions {
-    /// If the input is multi-document YAML, deserialize all documents into an array. Otherwise old
-    /// deserialize the first document and discard the rest.
-    pub all_documents: bool,
     /// Indicates that an input CSV does not include a header line. If `false`, the first line is
     /// discarded.
     pub csv_without_headers: bool,
@@ -55,13 +52,6 @@ impl DeserializerBuilder {
     /// Creates a new `DeserializerBuilder`.
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// If the input is multi-document YAML, deserialize all documents into an array. Otherwise old
-    /// deserialize the first document and discard the rest.
-    pub fn all_documents(&mut self, yes: bool) -> &mut Self {
-        self.opts.all_documents = yes;
-        self
     }
 
     /// Indicates that an input CSV does not include a header line. If `false`, the first line is
@@ -157,19 +147,17 @@ where
     }
 
     fn deserialize_yaml(&mut self) -> Result<Value> {
-        let mut values = Vec::new();
+        let values = serde_yaml::Deserializer::from_reader(&mut self.reader)
+            .map(Value::deserialize)
+            .collect::<Result<Vec<_>, _>>()?;
 
-        for doc in serde_yaml::Deserializer::from_reader(&mut self.reader) {
-            let value = Value::deserialize(doc)?;
-
-            if self.opts.all_documents {
-                values.push(value);
-            } else {
-                return Ok(value);
-            }
+        // If this was not multi-document YAML, just take the first document's value without
+        // wrapping it into an array.
+        if values.len() == 1 {
+            Ok(values[0].clone())
+        } else {
+            Ok(Value::Array(values))
         }
-
-        Ok(Value::Array(values))
     }
 
     fn deserialize_json(&mut self) -> Result<Value> {
@@ -291,14 +279,6 @@ mod test {
     #[test]
     fn test_deserialize_yaml_multi() {
         let mut de = Deserializer::new("---\nfoo: bar\n---\nbaz: qux".as_bytes());
-        assert_eq!(
-            de.deserialize(Encoding::Yaml).unwrap(),
-            json!({"foo": "bar"})
-        );
-
-        let mut de = DeserializerBuilder::new()
-            .all_documents(true)
-            .build("---\nfoo: bar\n---\nbaz: qux".as_bytes());
         assert_eq!(
             de.deserialize(Encoding::Yaml).unwrap(),
             json!([{"foo": "bar"}, {"baz": "qux"}])

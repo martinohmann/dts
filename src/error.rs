@@ -4,7 +4,7 @@ use crate::Encoding;
 use thiserror::Error;
 
 /// A type alias for `Result<T, Error>`.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// The error returned by all fallible operations within this crate.
 #[non_exhaustive]

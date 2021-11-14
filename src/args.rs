@@ -47,12 +47,6 @@ pub struct InputOptions {
     #[clap(arg_enum, short = 'i', long, setting = ArgSettings::HidePossibleValues)]
     pub input_encoding: Option<Encoding>,
 
-    /// Deserialize inputs that can contain multiple documents (e.g. YAML) into an array.
-    ///
-    /// Otherwise, only deserialize the first document.
-    #[clap(short = 'A', long)]
-    pub all_documents: bool,
-
     /// Indicate that CSV input does not include a header row.
     ///
     /// If this flag is absent, the first line of CSV input is treated as headers and will be
@@ -80,7 +74,6 @@ pub struct InputOptions {
 impl From<&InputOptions> for DeserializeOptions {
     fn from(opts: &InputOptions) -> Self {
         Self {
-            all_documents: opts.all_documents,
             csv_headers_as_keys: opts.csv_headers_as_keys,
             csv_without_headers: opts.csv_without_headers,
             csv_delimiter: opts.csv_input_delimiter,
