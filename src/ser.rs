@@ -268,12 +268,9 @@ where
 
         let text = value_to_array(value)
             .iter()
-            .map(|value| {
-                match value {
-                    // Use strings directly to prevent quoting
-                    Value::String(s) => s.to_string(),
-                    other => value_to_string(other),
-                }
+            .map(|value| match value {
+                Value::String(s) => s.clone(),
+                other => value_to_string(other),
             })
             .collect::<Vec<String>>()
             .join(&sep);
