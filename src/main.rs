@@ -28,27 +28,7 @@ fn deserialize(file: &Path, opts: &InputOptions) -> Result<Value> {
 }
 
 fn transform(value: &Value, opts: &TransformOptions) -> Result<Value> {
-    let mut value = opts
-        .jsonpath
-        .iter()
-        .try_fold(value.clone(), |value, query| {
-            transform::filter_jsonpath(&value, query)
-        })
-        .context("invalid jsonpath query")?;
-
-    for _ in 0..opts.flatten_arrays {
-        value = transform::flatten_arrays(&value);
-    }
-
-    if let Some(prefix) = &opts.flatten_keys {
-        value = transform::flatten_keys(&value, prefix)
-    }
-
-    if opts.remove_empty_values {
-        value = transform::remove_empty_values(&value);
-    }
-
-    Ok(value)
+    transform::apply_chain(&opts.transform, value).context("failed to transform value")
 }
 
 fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {

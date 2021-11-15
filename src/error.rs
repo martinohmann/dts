@@ -81,6 +81,10 @@ pub enum Error {
     /// Error emitted by ureq.
     #[error(transparent)]
     Ureq(#[from] ureq::Error),
+
+    /// JsonPath query parse error.
+    #[error("failed to parse jsonpath query:\n{0}")]
+    JsonPath(String),
 }
 
 impl Error {

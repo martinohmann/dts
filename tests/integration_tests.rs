@@ -49,9 +49,8 @@ fn json_to_csv_filtered_flattened_with_keys() {
             "json",
             "-o",
             "csv",
-            "-j",
-            "..friends",
-            "--flatten-arrays",
+            "--transform",
+            "j=..friends,f",
             "--keys-as-csv-headers",
         ])
         .pipe_stdin("tests/fixtures/example.json")
@@ -66,15 +65,7 @@ fn json_to_csv_filtered_flattened_with_keys() {
 fn json_to_csv_collections_as_json() {
     Command::cargo_bin("dts")
         .unwrap()
-        .args(&[
-            "-i",
-            "json",
-            "-o",
-            "csv",
-            "-j",
-            ".users[*]",
-            "--keys-as-csv-headers",
-        ])
+        .args(&["-i", "json", "-o", "csv", "-t", "jsonpath=.users[*]", "-K"])
         .pipe_stdin("tests/fixtures/example.json")
         .unwrap()
         .assert()

@@ -1,9 +1,11 @@
 //! Command line arguments for dts.
 
-use crate::{de::DeserializeOptions, ser::SerializeOptions, Encoding, Error, Result};
+use crate::{de::DeserializeOptions, ser::SerializeOptions};
+use crate::{transform::Transformation, Encoding, Error, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};
 use regex::Regex;
 use std::path::PathBuf;
+use std::str::FromStr;
 use unescape::unescape;
 
 /// Simple tool to transcode between different encodings.
@@ -86,6 +88,22 @@ impl From<&InputOptions> for DeserializeOptions {
 #[derive(Args, Debug)]
 #[clap(help_heading = "TRANSFORM OPTIONS")]
 pub struct TransformOptions {
+    /// Comma-separated list of transformation options. Can be specified multiple times.
+    ///
+    /// Transformation options have a short and a long form and optionally take a value separated
+    /// by `=`. For some options the value is mandatory. Transformations are applied in the order
+    /// they are defined.
+    ///
+    /// ## Example
+    ///
+    /// dts input.json --transform f,F,jsonpath='[*]' -t remove-empty-values
+    ///
+    /// The following transform options are available:
+    ///
+    /// ## JSONPath query filter
+    ///
+    /// Option: `j=<query>` or `jsonpath=<query>`.
+    ///
     /// Select data from the decoded input via jsonpath query. Can be specified multiple times to
     /// allow starting the filtering from the root element again.
     ///
@@ -95,9 +113,11 @@ pub struct TransformOptions {
     /// When using a jsonpath query, the result will always be shaped like an array with zero or
     /// more elements. See --flatten-arrays if you want to remove one level of nesting on single
     /// element filter results.
-    #[clap(short = 'j', long, multiple_occurrences = true, number_of_values = 1)]
-    pub jsonpath: Vec<String>,
-
+    ///
+    /// ## Flatten arrays
+    ///
+    /// Option: `f` or `flatten-arrays`.
+    ///
     /// Remove one level of nesting if the data is shaped like an array. Can be specified multiple
     /// times.
     ///
@@ -106,9 +126,11 @@ pub struct TransformOptions {
     ///
     /// This is applied as the last transformation before serializing into the output encoding. Can
     /// be used in combination with --jsonpath to flatten single element filter results.
-    #[clap(short = 'f', long, parse(from_occurrences))]
-    pub flatten_arrays: u8,
-
+    ///
+    /// ## Flatten keys
+    ///
+    /// Option: `F[=<prefix>]` or `flatten-keys[=<prefix>]`.
+    ///
     /// Flattens the input to an object with flat keys.
     ///
     /// The flag accepts an optional value for the key prefix. If the value is omitted, the key
@@ -116,14 +138,17 @@ pub struct TransformOptions {
     ///
     /// The structure of the result is similar to the output of `gron`:
     /// <https://github.com/TomNomNom/gron>.
-    #[clap(short = 'F', long, default_missing_value("data"))]
-    pub flatten_keys: Option<String>,
-
+    ///
+    /// ## Remove empty values
+    ///
+    /// Option: `r` or `remove-empty-values`.
+    ///
     /// Recursively removes nulls, empty arrays and empty objects from the data.
     ///
     /// Top level empty values are not removed.
-    #[clap(short, long)]
-    pub remove_empty_values: bool,
+    #[clap(short = 't', long, parse(try_from_str = Transformation::from_str))]
+    #[clap(multiple_occurrences = true, number_of_values = 1)]
+    pub transform: Vec<Transformation>,
 }
 
 /// Options that configure the behaviour of output serialization.
