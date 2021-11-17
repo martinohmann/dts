@@ -100,7 +100,7 @@ pub struct TransformOptions {
     ///
     /// ## Example
     ///
-    /// dts input.json --transform f,F,jsonpath='[*]' -t remove-empty-values
+    /// dts input.json --transform f,F,jsonpath='$.items' -t remove-empty-values
     ///
     /// The following transform options are available:
     ///
