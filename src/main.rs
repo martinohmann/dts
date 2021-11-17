@@ -114,14 +114,47 @@ fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {
         .context(format!("failed to serialize {}", encoding))
 }
 
+fn glob_dir(path: &Path, pattern: &str) -> Result<Vec<PathBuf>> {
+    let matches = glob::glob(&path.join(pattern).to_string_lossy())
+        .context("invalid glob pattern")?
+        .filter_map(|entry| match entry {
+            Ok(path) => match path.is_file() {
+                true => Some(Ok(path)),
+                false => None,
+            },
+            Err(err) => Some(Err(err)),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(matches)
+}
+
 fn main() -> Result<()> {
     let opts = Options::parse();
 
-    let mut paths = opts.paths.clone();
+    let mut paths = Vec::with_capacity(opts.paths.len());
 
     if !atty::is(atty::Stream::Stdin) {
         // Input is piped on stdin.
-        paths.insert(0, Path::new("-").to_path_buf());
+        paths.push(PathBuf::from("-"));
+    }
+
+    for path in &opts.paths {
+        if path.is_file() {
+            paths.push(path.clone());
+        } else {
+            match &opts.input.glob {
+                Some(pattern) => {
+                    let mut matches = glob_dir(path, pattern)?;
+                    paths.append(&mut matches);
+                }
+                None => {
+                    return Err(anyhow!(
+                        "--glob is required if input paths contain directories"
+                    ))
+                }
+            }
+        }
     }
 
     let value = match paths.len() {

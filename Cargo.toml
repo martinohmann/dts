@@ -24,6 +24,7 @@ toml = "0.5.8"
 unescape = "0.1.0"
 ureq = "2.3.0"
 url = "2.2.2"
+glob = "0.3.0"
 
 [dependencies.serde]
 features = ["derive"]
