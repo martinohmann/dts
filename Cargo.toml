@@ -2,10 +2,13 @@
 edition = "2021"
 name = "dts"
 version = "0.1.0"
+
 [dependencies]
 anyhow = "1.0.44"
 atty = "0.2.14"
 clap = "3.0.0-beta.5"
+crossbeam-channel = "0.5.1"
+crossbeam-utils = "0.8.5"
 csv = "1.1.6"
 deser-hjson = "1.0.2"
 json5 = "0.4.1"
@@ -34,5 +37,3 @@ version = "1.0.68"
 assert_cmd = "2.0.2"
 pretty_assertions = "1.0.0"
 tempfile = "3.2.0"
-
-[features]

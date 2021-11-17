@@ -18,14 +18,14 @@ use unescape::unescape;
 #[derive(Parser, Debug)]
 #[clap(name = "dts", version)]
 pub struct Options {
-    /// Input files.
+    /// Input file paths.
     ///
     /// If multiple files are provides, the decoded data is read into an array. The input files
     /// many also be remote URLs. Data may also be provided on stdin. If stdin is used in
     /// combination with one or more input files, the data from stdin will be read into the first
     /// element of the resulting array.
     #[clap(name = "FILE", parse(from_os_str), value_hint = ValueHint::FilePath)]
-    pub files: Vec<PathBuf>,
+    pub paths: Vec<PathBuf>,
 
     /// Options for deserializing the input.
     #[clap(flatten)]
@@ -71,6 +71,10 @@ pub struct InputOptions {
     /// Regex pattern to split text input at.
     #[clap(short = 's', long)]
     pub text_split_pattern: Option<Regex>,
+
+    /// Number of threads to use for deserialization.
+    #[clap(short = 'j', long, default_value = "10")]
+    pub threads: usize,
 }
 
 impl From<&InputOptions> for DeserializeOptions {
