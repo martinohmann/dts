@@ -93,20 +93,23 @@ fn deserialize_many(paths: &[PathBuf], opts: &InputOptions) -> Result<Value> {
 
         let map = results
             .iter()
-            .map(|result| {
-                Ok((
-                    relative_path(result.path, &cwd)?
+            .map(|res| {
+                (
+                    // Making a path relative can fail if path is "-" for stdin. We just fall back
+                    // to the full path here instead.
+                    relative_path(res.path, &cwd)
+                        .unwrap_or_else(|| res.path.clone())
                         .to_string_lossy()
                         .to_string(),
-                    result.value.clone(),
-                ))
+                    res.value.clone(),
+                )
             })
-            .collect::<Result<IndexMap<_, _>>>()?;
+            .collect::<IndexMap<_, _>>();
 
         Ok(Value::Object(Map::from_iter(map)))
     } else {
         Ok(Value::Array(
-            results.iter().map(|result| result.value.clone()).collect(),
+            results.iter().map(|res| res.value.clone()).collect(),
         ))
     }
 }
@@ -158,17 +161,11 @@ fn glob_dir(path: &Path, opts: &InputOptions) -> Result<Vec<PathBuf>> {
     }
 }
 
-fn relative_path(path: &Path, base: &Path) -> Result<PathBuf> {
-    let path = canonicalize(path)?;
-    let base = canonicalize(base)?;
+fn relative_path(path: &Path, base: &Path) -> Option<PathBuf> {
+    let path = canonicalize(path).ok()?;
+    let base = canonicalize(base).ok()?;
 
-    pathdiff::diff_paths(&path, &base).ok_or_else(|| {
-        anyhow!(
-            "failed to calculate path diff between {} and {}",
-            path.display(),
-            base.display()
-        )
-    })
+    pathdiff::diff_paths(&path, &base)
 }
 
 fn main() -> Result<()> {
