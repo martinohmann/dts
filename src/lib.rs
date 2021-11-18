@@ -1,16 +1,22 @@
 //! Provides serializers and deserializers to transcode between different encodings.
 
-#![deny(missing_docs)]
+#![warn(missing_docs)]
+
+use std::fs::canonicalize;
+use std::path::{Path, PathBuf};
 
 pub use encoding::*;
 pub use error::*;
+pub use sink::Sink;
+pub use source::Source;
 
 pub mod args;
 pub mod de;
 mod encoding;
 mod error;
-pub mod io;
 pub mod ser;
+mod sink;
+mod source;
 pub mod transform;
 
 /// The type deserializer in this crate deserializes into.
@@ -31,5 +37,30 @@ pub(crate) fn value_to_array(value: &Value) -> Vec<Value> {
     match value {
         Value::Array(array) => array.clone(),
         _ => vec![value.clone()],
+    }
+}
+
+trait PathExt {
+    fn relative_to<P>(&self, path: P) -> Option<PathBuf>
+    where
+        P: AsRef<Path>;
+
+    fn relative_to_cwd(&self) -> Option<PathBuf> {
+        std::env::current_dir()
+            .ok()
+            .and_then(|base| self.relative_to(base))
+    }
+}
+
+impl<T> PathExt for T
+where
+    T: AsRef<Path>,
+{
+    fn relative_to<P>(&self, base: P) -> Option<PathBuf>
+    where
+        P: AsRef<Path>,
+    {
+        let (path, base) = (canonicalize(self).ok()?, canonicalize(base).ok()?);
+        pathdiff::diff_paths(path, base)
     }
 }

@@ -276,7 +276,6 @@ dependencies = [
  "csv",
  "deser-hjson",
  "glob",
- "indexmap",
  "json5",
  "jsonpath-rust",
  "pathdiff",

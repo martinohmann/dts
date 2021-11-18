@@ -1,10 +1,9 @@
 //! Command line arguments for dts.
 
 use crate::{de::DeserializeOptions, ser::SerializeOptions};
-use crate::{transform::Transformation, Encoding, Error, Result};
+use crate::{transform::Transformation, Encoding, Error, Result, Sink, Source};
 use clap::{ArgSettings, Args, Parser, ValueHint};
 use regex::Regex;
-use std::path::PathBuf;
 use std::str::FromStr;
 use unescape::unescape;
 
@@ -18,14 +17,14 @@ use unescape::unescape;
 #[derive(Parser, Debug)]
 #[clap(name = "dts", version)]
 pub struct Options {
-    /// Input file paths.
+    /// Input sources.
     ///
     /// If multiple files are provides, the decoded data is read into an array. The input files
     /// many also be remote URLs. Data may also be provided on stdin. If stdin is used in
     /// combination with one or more input files, the data from stdin will be read into the first
     /// element of the resulting array.
-    #[clap(name = "FILE", parse(from_os_str), value_hint = ValueHint::FilePath)]
-    pub paths: Vec<PathBuf>,
+    #[clap(name = "SOURCE")]
+    pub sources: Vec<Source>,
 
     /// Options for deserializing the input.
     #[clap(flatten)]
@@ -181,8 +180,9 @@ pub struct OutputOptions {
     pub output_encoding: Option<Encoding>,
 
     /// Output file. If absent, the encoded data is written to stdout.
-    #[clap(short = 'O', long, parse(from_os_str), value_hint = ValueHint::FilePath)]
-    pub output_file: Option<PathBuf>,
+    #[clap(short = 'O', long, value_hint = ValueHint::FilePath)]
+    #[clap(default_value = "-", setting = ArgSettings::HideDefaultValue)]
+    pub output_file: Sink,
 
     /// Produce pretty output if supported by the encoder.
     #[clap(short = 'p', long)]

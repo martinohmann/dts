@@ -6,68 +6,68 @@ use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use crossbeam_channel::bounded;
 use crossbeam_utils::thread;
-use indexmap::IndexMap;
 use serde_json::Map;
-use std::fs::canonicalize;
 use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
 use dts::{
     args::{InputOptions, Options, OutputOptions, TransformOptions},
     de::Deserializer,
-    detect_encoding,
-    io::{Reader, Writer},
     ser::Serializer,
-    transform, Encoding, Error, Value,
+    transform, Encoding, Error, Source, Value,
 };
 
-fn deserialize(path: &Path, opts: &InputOptions) -> Result<Value> {
-    let encoding = detect_encoding(opts.input_encoding, path)
+fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
+    let encoding = opts
+        .input_encoding
+        .or_else(|| source.encoding())
         .context("unable to detect input encoding, please provide it explicitly via -i")?;
 
-    let reader = Reader::new(path)
-        .with_context(|| format!("failed to open input file: {}", path.display()))?;
+    let reader = source
+        .to_reader()
+        .with_context(|| format!("failed to create reader for source: {}", source))?;
+
     let mut de = Deserializer::with_options(BufReader::new(reader), opts.into());
 
     de.deserialize(encoding)
-        .with_context(|| format!("error in {}", path.display()))
+        .with_context(|| format!("error in source: {}", source))
         .with_context(|| format!("failed to deserialize {}", encoding))
 }
 
 struct DeserializeResult<'a> {
     index: usize,
-    path: &'a PathBuf,
+    source: &'a Source,
     value: Value,
 }
 
-fn deserialize_many(paths: &[PathBuf], opts: &InputOptions) -> Result<Value> {
-    // We need minimum one worker and max paths.len().
-    let workers = paths.len().min(opts.threads).max(1);
+fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
+    // We need minimum one worker and max sources.len().
+    let workers = sources.len().min(opts.threads).max(1);
 
-    let (tx_res, rx_res) = bounded(paths.len());
+    let (tx_res, rx_res) = bounded(sources.len());
 
     thread::scope(|scope| {
-        let (tx_paths, rx_paths) = bounded(paths.len());
+        let (tx_sources, rx_sources) = bounded(sources.len());
 
         scope.spawn(move |_| {
-            for (index, path) in paths.iter().enumerate() {
-                // Send the index down the channel along with the paths so that we can order
+            for (index, source) in sources.iter().enumerate() {
+                // Send the index down the channel along with the source so that we can order
                 // results later after collecting them.
-                if tx_paths.send((index, path)).is_err() {
+                if tx_sources.send((index, source)).is_err() {
                     break;
                 }
             }
         });
 
         for _ in 0..workers {
-            let (tx_res, rx_paths) = (tx_res.clone(), rx_paths.clone());
+            let (tx_res, rx_sources) = (tx_res.clone(), rx_sources.clone());
 
             scope.spawn(move |_| {
-                for (index, path) in rx_paths.iter() {
-                    // Propagate the index and path down the result channel.
-                    let result = deserialize(path, opts).map(|value| DeserializeResult {
+                for (index, source) in rx_sources.iter() {
+                    // Propagate the index and source down the result channel.
+                    let result = deserialize(source, opts).map(|value| DeserializeResult {
                         index,
-                        path,
+                        source,
                         value,
                     });
 
@@ -89,28 +89,15 @@ fn deserialize_many(paths: &[PathBuf], opts: &InputOptions) -> Result<Value> {
     results.sort_by(|a, b| a.index.cmp(&b.index));
 
     if opts.file_paths {
-        let cwd = std::env::current_dir()?;
-
-        let map = results
+        let iter = results
             .iter()
-            .map(|res| {
-                (
-                    // Making a path relative can fail if path is "-" for stdin. We just fall back
-                    // to the full path here instead.
-                    relative_path(res.path, &cwd)
-                        .unwrap_or_else(|| res.path.clone())
-                        .to_string_lossy()
-                        .to_string(),
-                    res.value.clone(),
-                )
-            })
-            .collect::<IndexMap<_, _>>();
+            .map(|res| (res.source.to_string(), res.value.clone()));
 
-        Ok(Value::Object(Map::from_iter(map)))
+        Ok(Value::Object(Map::from_iter(iter)))
     } else {
-        Ok(Value::Array(
-            results.iter().map(|res| res.value.clone()).collect(),
-        ))
+        let iter = results.iter().map(|res| res.value.clone());
+
+        Ok(Value::Array(Vec::from_iter(iter)))
     }
 }
 
@@ -119,16 +106,17 @@ fn transform(value: &Value, opts: &TransformOptions) -> Result<Value> {
 }
 
 fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {
-    // Output file or stdout.
-    let file = &opts
-        .output_file
-        .clone()
-        .unwrap_or_else(|| PathBuf::from("-"));
+    let sink = &opts.output_file;
 
-    let encoding = detect_encoding(opts.output_encoding, file).unwrap_or(Encoding::Json);
+    let encoding = opts
+        .output_encoding
+        .or_else(|| sink.encoding())
+        .unwrap_or(Encoding::Json);
 
-    let writer = Writer::new(file)
-        .with_context(|| format!("failed to open output file: {}", file.display()))?;
+    let writer = sink
+        .to_writer()
+        .with_context(|| format!("failed to create writer for sink: {}", sink))?;
+
     let mut ser = Serializer::with_options(BufWriter::new(writer), opts.into());
 
     match ser.serialize(encoding, value) {
@@ -139,71 +127,65 @@ fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {
     .with_context(|| format!("failed to serialize {}", encoding))
 }
 
-fn glob_dir(path: &Path, opts: &InputOptions) -> Result<Vec<PathBuf>> {
-    match &opts.glob {
-        Some(pattern) => {
-            let matches = glob::glob(&path.join(pattern).to_string_lossy())
-                .context("invalid glob pattern")?
-                .filter_map(|entry| match entry {
-                    Ok(path) => match path.is_file() {
-                        true => Some(Ok(path)),
-                        false => None,
-                    },
-                    Err(err) => Some(Err(err)),
-                })
-                .collect::<Result<Vec<_>, _>>()?;
+fn glob_dir(path: &Path, pattern: &str) -> Result<Vec<PathBuf>> {
+    let matches = glob::glob(&path.join(pattern).to_string_lossy())?
+        .filter_map(|entry| match entry {
+            Ok(path) => match path.is_file() {
+                true => Some(Ok(path)),
+                false => None,
+            },
+            Err(err) => Some(Err(err)),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
-            Ok(matches)
-        }
-        None => Err(anyhow!(
-            "--glob is required if input paths contain directories"
-        )),
-    }
-}
-
-fn relative_path(path: &Path, base: &Path) -> Option<PathBuf> {
-    let path = canonicalize(path).ok()?;
-    let base = canonicalize(base).ok()?;
-
-    pathdiff::diff_paths(&path, &base)
+    Ok(matches)
 }
 
 fn main() -> Result<()> {
     let opts = Options::parse();
 
-    let mut paths = Vec::with_capacity(opts.paths.len());
+    let mut sources = Vec::with_capacity(opts.sources.len());
 
     if !atty::is(atty::Stream::Stdin) {
         // Input is piped on stdin.
-        paths.push(PathBuf::from("-"));
+        sources.push(Source::Stdin);
     }
 
     let mut force_collection = false;
 
-    for path in &opts.paths {
-        if !path.exists() {
-            return Err(anyhow!(
-                "file or directory does not exist: {}",
-                path.display()
-            ));
-        } else if path.is_file() {
-            paths.push(path.clone());
-        } else {
-            // Force deserialization into a collection (array or object with file paths as keys
-            // depending on the input options) even if all directory globs only produces a single
-            // file path. This will ensure that deserializing the files that resulted from
-            // directory globs always produces a consistent structure of the data.
-            force_collection = true;
+    for source in &opts.sources {
+        match source.as_path() {
+            Some(path) => {
+                if !path.exists() {
+                    return Err(anyhow!("file or directory does not exist: {}", source));
+                } else if path.is_file() {
+                    sources.push(path.into());
+                } else {
+                    let pattern = opts
+                        .input
+                        .glob
+                        .as_ref()
+                        .context("--glob is required if sources contain directories")?;
 
-            let mut matches = glob_dir(path, &opts.input)?;
-            paths.append(&mut matches);
+                    // Force deserialization into a collection (array or object with file paths as keys
+                    // depending on the input options) even if all directory globs only produces a single
+                    // file path. This will ensure that deserializing the files that resulted from
+                    // directory globs always produces a consistent structure of the data.
+                    force_collection = true;
+
+                    for path in glob_dir(path, pattern).context("invalid glob pattern")? {
+                        sources.push(path.as_path().into());
+                    }
+                }
+            }
+            None => sources.push(source.clone()),
         }
     }
 
-    let value = match paths.len() {
+    let value = match sources.len() {
         0 => return Err(anyhow!("input file or data on stdin expected")),
-        1 if !force_collection => deserialize(&paths[0], &opts.input)?,
-        _ => deserialize_many(&paths, &opts.input)?,
+        1 if !force_collection => deserialize(&sources[0], &opts.input)?,
+        _ => deserialize_many(&sources, &opts.input)?,
     };
 
     let value = transform(&value, &opts.transform)?;

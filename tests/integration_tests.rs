@@ -86,3 +86,13 @@ fn json_to_gron() {
         .code(0)
         .stdout(read("tests/fixtures/example.js").unwrap());
 }
+
+#[test]
+fn glob_required_for_dirs() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .args(&["-i", "json", "tests/"])
+        .assert()
+        .failure()
+        .stderr("Error: --glob is required if sources contain directories\n");
+}
