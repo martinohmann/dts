@@ -18,7 +18,7 @@ use dts::{
     detect_encoding,
     io::{Reader, Writer},
     ser::Serializer,
-    transform, Encoding, Value,
+    transform, Encoding, Error, Value,
 };
 
 fn deserialize(path: &Path, opts: &InputOptions) -> Result<Value> {
@@ -128,8 +128,12 @@ fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {
         .with_context(|| format!("failed to open output file: {}", file.display()))?;
     let mut ser = Serializer::with_options(BufWriter::new(writer), opts.into());
 
-    ser.serialize(encoding, value)
-        .with_context(|| format!("failed to serialize {}", encoding))
+    match ser.serialize(encoding, value) {
+        Ok(()) => Ok(()),
+        Err(Error::Io(e)) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
+        Err(err) => Err(err),
+    }
+    .with_context(|| format!("failed to serialize {}", encoding))
 }
 
 fn glob_dir(path: &Path, opts: &InputOptions) -> Result<Vec<PathBuf>> {
