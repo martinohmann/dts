@@ -1,4 +1,5 @@
 use assert_cmd::Command;
+use predicates::prelude::*;
 use std::fs::read_to_string as read;
 
 #[test]
@@ -94,5 +95,7 @@ fn glob_required_for_dirs() {
         .args(&["-i", "json", "tests/"])
         .assert()
         .failure()
-        .stderr("Error: --glob is required if sources contain directories\n");
+        .stderr(predicate::str::contains(
+            "--glob is required if sources contain directories",
+        ));
 }
