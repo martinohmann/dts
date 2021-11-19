@@ -163,6 +163,20 @@ pub struct TransformOptions {
     /// Recursively removes nulls, empty arrays and empty objects from the data.
     ///
     /// Top level empty values are not removed.
+    ///
+    /// ## Deep merge
+    ///
+    /// Option: `m` or `deep-merge`.
+    ///
+    /// If the data is an array, all children are merged into one from left to right. Otherwise
+    /// this is a no-op.
+    ///
+    /// Arrays are merged by collecting the values of all children.
+    ///
+    /// Objects are merged by creating a new object with all keys from the left and right value.
+    /// Keys present on sides are merged recursively.
+    ///
+    /// In all other cases, the rightmost value is taken.
     #[clap(short = 't', long, parse(try_from_str = Transformation::from_str))]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
     pub transform: Vec<Transformation>,

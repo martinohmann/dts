@@ -21,6 +21,8 @@ pub enum Transformation {
     RemoveEmptyValues,
     /// A chain of multiple transformations.
     Chain(Vec<Transformation>),
+    /// Deep merge values if the top level value is an array.
+    DeepMerge,
 }
 
 impl Transformation {
@@ -37,9 +39,10 @@ impl Transformation {
                 value,
                 prefix.clone().unwrap_or_else(|| String::from("data")),
             ),
-            Self::RemoveEmptyValues => remove_empty_values(value),
             Self::JsonPath(query) => filter_jsonpath(value, query)?,
+            Self::RemoveEmptyValues => remove_empty_values(value),
             Self::Chain(chain) => apply_chain(chain, value)?,
+            Self::DeepMerge => deep_merge(value),
         };
 
         Ok(value)
@@ -66,11 +69,12 @@ impl FromStr for Transformation {
             match key {
                 "f" | "flatten-arrays" => Self::FlattenArrays,
                 "F" | "flatten-keys" => Self::FlattenKeys(value.map(|v| v.to_string())),
-                "r" | "remove-empty-values" => Self::RemoveEmptyValues,
                 "j" | "jsonpath" => match value {
                     Some(query) => Self::JsonPath(query.to_string()),
                     None => return Err(Error::new("jsonpath expects a filter query")),
                 },
+                "r" | "remove-empty-values" => Self::RemoveEmptyValues,
+                "m" | "deep-merge" => Self::DeepMerge,
                 key => return Err(Error::new(format!("unknown transformation: {}", key))),
             }
         };
@@ -420,6 +424,38 @@ impl<'a> ToString for FlattenKey<'a> {
     }
 }
 
+/// Recursively merges all maps in `value`. If `value` is not an array it is returned as is.
+pub fn deep_merge(value: &Value) -> Value {
+    match value.as_array() {
+        Some(array) => array.iter().fold(Value::Array(Vec::new()), |acc, value| {
+            deep_merge_values(&acc, value)
+        }),
+        None => value.clone(),
+    }
+}
+
+/// If `lhs` and `rhs` is recursively merges them. Otherwise, returns the value of `rhs`.
+fn deep_merge_values(lhs: &Value, rhs: &Value) -> Value {
+    match (lhs, rhs) {
+        (Value::Object(lhs), Value::Object(rhs)) => {
+            let mut merged = lhs.clone();
+            rhs.iter().for_each(|(key, right)| {
+                merged
+                    .entry(key)
+                    .and_modify(|left| *left = deep_merge_values(left, right))
+                    .or_insert_with(|| right.clone());
+            });
+            Value::Object(merged)
+        }
+        (Value::Array(lhs), Value::Array(rhs)) => {
+            let mut merged = lhs.clone();
+            merged.extend(rhs.clone());
+            Value::Array(merged)
+        }
+        (_, _) => rhs.clone(),
+    }
+}
+
 /// If value is of variant `Value::Object` or `Value::Array`, convert it to a `Value::String`
 /// containing the json encoded string representation of the value.
 pub(crate) fn collections_to_json(value: &Value) -> Value {
@@ -628,6 +664,23 @@ mod tests {
         assert_eq!(
             apply_chain(&transformations, &json!([null, "foo", {"bar": "baz"}])).unwrap(),
             json!("baz")
+        );
+    }
+
+    #[test]
+    fn test_deep_merge() {
+        assert_eq!(deep_merge(&Value::Null), Value::Null);
+        assert_eq!(deep_merge(&json!("a")), json!("a"));
+        assert_eq!(deep_merge(&json!([1, null, "three"])), json!("three"));
+        assert_eq!(
+            deep_merge(&json!([[1, "two"], ["three", 4]])),
+            json!([1, "two", "three", 4])
+        );
+        assert_eq!(
+            deep_merge(&json!([{"foo": "bar"},
+                       {"foo": {"bar": "baz"}, "bar": [1], "qux": null},
+                       {"foo": {"bar": "qux"}, "bar": [2], "baz": 1}])),
+            json!({"foo": {"bar": "qux"}, "bar": [1, 2], "baz": 1, "qux": null})
         );
     }
 }

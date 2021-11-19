@@ -99,3 +99,16 @@ fn glob_required_for_dirs() {
             "--glob is required if sources contain directories",
         ));
 }
+
+#[test]
+fn deep_merge_json() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .args(&["-i", "json", "-p", "-t", "j=.users,f,m", "-n"])
+        .pipe_stdin("tests/fixtures/example.json")
+        .unwrap()
+        .assert()
+        .success()
+        .code(0)
+        .stdout(read("tests/fixtures/example.merged.json").unwrap());
+}
