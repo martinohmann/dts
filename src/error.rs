@@ -82,6 +82,10 @@ pub enum Error {
     #[error(transparent)]
     Ureq(#[from] ureq::Error),
 
+    /// Error emitted by glob.
+    #[error(transparent)]
+    GlobPattern(#[from] glob::PatternError),
+
     /// JsonPath query parse error.
     #[error("failed to parse jsonpath query:\n{0}")]
     JsonPath(String),

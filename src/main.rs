@@ -8,7 +8,6 @@ use crossbeam_channel::bounded;
 use crossbeam_utils::thread;
 use serde_json::Map;
 use std::io::{BufReader, BufWriter};
-use std::path::{Path, PathBuf};
 
 use dts::{
     args::{InputOptions, Options, OutputOptions, TransformOptions},
@@ -127,20 +126,6 @@ fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {
     .with_context(|| format!("failed to serialize {}", encoding))
 }
 
-fn glob_dir(path: &Path, pattern: &str) -> Result<Vec<PathBuf>> {
-    let matches = glob::glob(&path.join(pattern).to_string_lossy())?
-        .filter_map(|entry| match entry {
-            Ok(path) => match path.is_file() {
-                true => Some(Ok(path)),
-                false => None,
-            },
-            Err(err) => Some(Err(err)),
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    Ok(matches)
-}
-
 fn main() -> Result<()> {
     let opts = Options::parse();
 
@@ -151,41 +136,44 @@ fn main() -> Result<()> {
         sources.push(Source::Stdin);
     }
 
-    let mut force_collection = false;
+    let mut is_dir_source = false;
 
-    for source in &opts.sources {
+    for source in opts.sources {
         match source.as_path() {
             Some(path) => {
                 if !path.exists() {
                     return Err(anyhow!("file or directory does not exist: {}", source));
-                } else if path.is_file() {
-                    sources.push(path.into());
-                } else {
+                } else if path.is_dir() {
                     let pattern = opts
                         .input
                         .glob
                         .as_ref()
                         .context("--glob is required if sources contain directories")?;
 
-                    // Force deserialization into a collection (array or object with file paths as keys
-                    // depending on the input options) even if all directory globs only produces a single
-                    // file path. This will ensure that deserializing the files that resulted from
-                    // directory globs always produces a consistent structure of the data.
-                    force_collection = true;
+                    // Force deserialization into a collection (array or object with sources as
+                    // keys depending on the input options) even if all directory globs only
+                    // produced a single source. This will ensure that deserializing the files
+                    // that resulted from directory globs always produces a consistent structure
+                    // of the data.
+                    is_dir_source = true;
 
-                    for path in glob_dir(path, pattern).context("invalid glob pattern")? {
-                        sources.push(path.as_path().into());
-                    }
+                    let mut matches = source
+                        .glob_files(pattern)
+                        .with_context(|| format!("glob error for source: {}", source))?;
+
+                    sources.append(&mut matches);
+                } else {
+                    sources.push(path.into());
                 }
             }
-            None => sources.push(source.clone()),
+            None => sources.push(source),
         }
     }
 
-    let value = match sources.len() {
-        0 => return Err(anyhow!("input file or data on stdin expected")),
-        1 if !force_collection => deserialize(&sources[0], &opts.input)?,
-        _ => deserialize_many(&sources, &opts.input)?,
+    let value = match (sources.len(), is_dir_source) {
+        (0, false) => return Err(anyhow!("input file or data on stdin expected")),
+        (1, false) => deserialize(&sources[0], &opts.input)?,
+        (_, _) => deserialize_many(&sources, &opts.input)?,
     };
 
     let value = transform(&value, &opts.transform)?;

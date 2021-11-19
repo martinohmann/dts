@@ -50,6 +50,8 @@ trait PathExt {
             .ok()
             .and_then(|base| self.relative_to(base))
     }
+
+    fn glob_files(&self, pattern: &str) -> Result<Vec<PathBuf>>;
 }
 
 impl<T> PathExt for T
@@ -62,5 +64,20 @@ where
     {
         let (path, base) = (canonicalize(self).ok()?, canonicalize(base).ok()?);
         pathdiff::diff_paths(path, base)
+    }
+
+    fn glob_files(&self, pattern: &str) -> Result<Vec<PathBuf>> {
+        glob::glob(&self.as_ref().join(pattern).to_string_lossy())?
+            .filter_map(|result| match result {
+                Ok(path) => {
+                    if path.is_file() {
+                        Some(Ok(path))
+                    } else {
+                        None
+                    }
+                }
+                Err(err) => Some(Err(err.into_error().into())),
+            })
+            .collect::<Result<_>>()
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Encoding, PathExt, Result};
+use crate::{Encoding, Error, PathExt, Result};
 use std::fmt;
 use std::fs;
 use std::io;
@@ -33,6 +33,23 @@ impl Source {
             Self::Stdin => None,
             Self::Path(path) => Encoding::from_path(path),
             Self::Url(url) => Encoding::from_path(url.as_str()),
+        }
+    }
+
+    /// If source is a local path, this returns sources for all files matching the glob pattern.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if the sink is not of variant `Sink::Path`, the pattern is invalid or if
+    /// there is a `io::Error` while reading the file system.
+    pub fn glob_files(&self, pattern: &str) -> Result<Vec<Source>> {
+        match self.as_path() {
+            Some(path) => Ok(path
+                .glob_files(pattern)?
+                .iter()
+                .map(|path| Self::from(path.as_path()))
+                .collect()),
+            None => Err(Error::new("not a path source")),
         }
     }
 
