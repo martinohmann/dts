@@ -185,12 +185,13 @@ where
 
     fn serialize_toml(&mut self, value: &Value) -> Result<()> {
         let mut value = value.clone();
-        let value = transform::collections_to_end(&mut value);
+
+        value.primitives_first();
 
         let s = if self.opts.pretty {
-            toml::ser::to_string_pretty(value)?
+            toml::ser::to_string_pretty(&value)?
         } else {
-            toml::ser::to_string(value)?
+            toml::ser::to_string(&value)?
         };
 
         Ok(self.writer.write_all(s.as_bytes())?)

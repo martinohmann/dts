@@ -3,7 +3,6 @@
 use crate::{Error, Result, Value};
 use jsonpath_rust::JsonPathQuery;
 use serde_json::Map;
-use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
@@ -456,114 +455,11 @@ fn deep_merge_values(lhs: &Value, rhs: &Value) -> Value {
     }
 }
 
-#[derive(PartialEq, Eq)]
-struct SortableValue<'a>(&'a Value);
-
-impl<'a> PartialOrd for SortableValue<'a> {
-    fn partial_cmp(&self, other: &SortableValue) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<'a> Ord for SortableValue<'a> {
-    fn cmp(&self, other: &SortableValue) -> Ordering {
-        // Sort order: primitives, arrays, objects. Original order is preserved as much as possible
-        // by avoiding to compare the values wrapped by each variant directly.
-        match (self.0, other.0) {
-            (Value::Array(_), Value::Array(_)) => Ordering::Equal,
-            (Value::Array(_), Value::Object(_)) => Ordering::Less,
-            (Value::Array(_), _) => Ordering::Greater,
-            (Value::Object(_), Value::Object(_)) => Ordering::Equal,
-            (Value::Object(_), Value::Array(_)) => Ordering::Greater,
-            (Value::Object(_), _) => Ordering::Greater,
-            (_, Value::Array(_)) => Ordering::Less,
-            (_, Value::Object(_)) => Ordering::Less,
-            (_, _) => Ordering::Equal,
-        }
-    }
-}
-
-// Recursively walks `Value::Array` and `Value::Object` values and pushes all arrays and objects to
-// the end of the containing `Value::Array` or `Value::Object`. This is necessary for certain
-// output encodings like TOML where tables and arrays need to come after primitve values to
-// disambiguate.
-//
-// The value is updated in place.
-//
-// Returns a reference to the modified value to simplify usage in iterators.
-pub(crate) fn collections_to_end(value: &mut Value) -> &Value {
-    if let Some(array) = value.as_array_mut() {
-        let mut sortable: Vec<SortableValue> = array
-            .iter_mut()
-            .map(collections_to_end)
-            .map(SortableValue)
-            .collect();
-
-        sortable.sort();
-
-        *array = sortable.into_iter().map(|v| v.0.clone()).collect();
-    } else if let Some(object) = value.as_object_mut() {
-        let mut sortable: Vec<(&String, SortableValue)> = object
-            .iter_mut()
-            .map(|(k, v)| (k, collections_to_end(v)))
-            .map(|(k, v)| (k, SortableValue(v)))
-            .collect();
-
-        sortable.sort_by(|a, b| a.1.cmp(&b.1));
-
-        *object = sortable
-            .into_iter()
-            .map(|(k, v)| (k.clone(), v.0.clone()))
-            .collect()
-    }
-
-    value
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
     use serde_json::json;
-
-    #[test]
-    fn test_collections_to_end() {
-        assert_eq!(
-            collections_to_end(
-                &mut json!(["one", {"two": "three"}, [{"four": [{"five": "six"}, "seven"]}, "eight"], "nine"])
-            ),
-            &json!(["one", "nine", ["eight", {"four": ["seven", {"five": "six"}]}], {"two": "three"}])
-        );
-    }
-
-    #[test]
-    fn test_collections_to_end_object() {
-        // We are comparing the JSON string representation here to assert that objects have been
-        // moved to the end. Comparing the maps directly will not work as they are assumed to be
-        // the same with the order ignored.
-        let expected_value =
-            json!({"seven": "eight", "one": {"five": "six", "two": {"three": "four"}}});
-        let expected = expected_value.to_string();
-
-        let mut value = json!({"one": {"two": {"three": "four"}, "five": "six"}, "seven": "eight"});
-        collections_to_end(&mut value);
-        let result = value.to_string();
-
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn test_collections_to_end_no_change() {
-        assert_eq!(
-            collections_to_end(&mut json!({"foo": "bar"})),
-            &json!({"foo": "bar"})
-        );
-        assert_eq!(
-            collections_to_end(&mut json!(["foo", "bar"])),
-            &json!(["foo", "bar"])
-        );
-        assert_eq!(collections_to_end(&mut json!("foo")), &json!("foo"));
-    }
 
     #[test]
     fn test_transformation_from_str() {
