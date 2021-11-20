@@ -26,6 +26,12 @@ impl Source {
         }
     }
 
+    /// Returns `true` if the `Source` is a local path and the path exists on disk and is pointing
+    /// at a directory.
+    pub fn is_dir(&self) -> bool {
+        self.as_path().map(|path| path.is_dir()).unwrap_or(false)
+    }
+
     /// Tries to detect the encoding of the source. Returns `None` if the encoding cannot be
     /// detected.
     pub fn encoding(&self) -> Option<Encoding> {

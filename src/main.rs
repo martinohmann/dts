@@ -161,12 +161,11 @@ fn main() -> Result<()> {
 
     let mut sources = Vec::with_capacity(opts.sources.len());
 
-    if !atty::is(atty::Stream::Stdin) {
-        // Input is piped on stdin.
-        sources.push(Source::Stdin);
-    }
-
-    let mut is_dir_source = false;
+    // If sources contains directories, force deserialization into a collection (array or object
+    // with sources as keys depending on the input options) even if all directory globs only
+    // produce a zero or one sources. This will ensure that deserializing the files that resulted
+    // from directory globs always produces a consistent structure of the data.
+    let dir_sources = opts.sources.iter().any(|s| s.is_dir());
 
     for source in opts.sources {
         match source.as_path() {
@@ -179,13 +178,6 @@ fn main() -> Result<()> {
                         .glob
                         .as_ref()
                         .context("--glob is required if sources contain directories")?;
-
-                    // Force deserialization into a collection (array or object with sources as
-                    // keys depending on the input options) even if all directory globs only
-                    // produced a single source. This will ensure that deserializing the files
-                    // that resulted from directory globs always produces a consistent structure
-                    // of the data.
-                    is_dir_source = true;
 
                     let mut matches = source
                         .glob_files(pattern)
@@ -200,7 +192,12 @@ fn main() -> Result<()> {
         }
     }
 
-    let value = match (sources.len(), is_dir_source) {
+    if sources.is_empty() && !atty::is(atty::Stream::Stdin) {
+        // Input is piped on stdin.
+        sources.push(Source::Stdin);
+    }
+
+    let value = match (sources.len(), dir_sources) {
         (0, false) => return Err(anyhow!("input file or data on stdin expected")),
         (1, false) => deserialize(&sources[0], &opts.input)?,
         (_, _) => deserialize_many(&sources, &opts.input)?,
