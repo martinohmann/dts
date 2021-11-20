@@ -13,7 +13,7 @@ use dts::{
     args::{InputOptions, Options, OutputOptions, TransformOptions},
     de::Deserializer,
     ser::Serializer,
-    transform, Encoding, Error, Source, Value,
+    transform, Encoding, Error, Sink, Source, Value,
 };
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
@@ -104,9 +104,7 @@ fn transform(value: &Value, opts: &TransformOptions) -> Result<Value> {
     transform::apply_chain(&opts.transform, value).context("failed to transform value")
 }
 
-fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {
-    let sink = &opts.output_file;
-
+fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
     let encoding = opts
         .output_encoding
         .or_else(|| sink.encoding())
@@ -124,6 +122,38 @@ fn serialize(value: &Value, opts: &OutputOptions) -> Result<()> {
         Err(err) => Err(err),
     }
     .with_context(|| format!("failed to serialize {}", encoding))
+}
+
+fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Result<()> {
+    let values = match value.as_array_mut() {
+        Some(values) => {
+            if sinks.len() < values.len() {
+                // There are more values than files. The last file takes an array of the left
+                // over values.
+                let rest = values.split_off(sinks.len() - 1);
+                values.push(Value::Array(rest));
+            }
+
+            values
+        }
+        None => {
+            return Err(anyhow!(
+                "when using multiple output files, the data must be an array"
+            ))
+        }
+    };
+
+    if sinks.len() > values.len() {
+        eprintln!(
+            "Warning: skipping {} output files due to lack of data",
+            sinks.len() - values.len()
+        );
+    }
+
+    sinks
+        .iter()
+        .zip(values.iter())
+        .try_for_each(|(file, value)| serialize(file, value, &opts))
 }
 
 fn main() -> Result<()> {
@@ -176,7 +206,13 @@ fn main() -> Result<()> {
         (_, _) => deserialize_many(&sources, &opts.input)?,
     };
 
-    let value = transform(&value, &opts.transform)?;
+    let mut value = transform(&value, &opts.transform)?;
 
-    serialize(&value, &opts.output)
+    let sinks = opts.sinks;
+
+    if sinks.len() <= 1 {
+        serialize(sinks.get(0).unwrap_or(&Sink::Stdout), &value, &opts.output)
+    } else {
+        serialize_many(&sinks, &mut value, &opts.output)
+    }
 }

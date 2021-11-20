@@ -26,6 +26,17 @@ pub struct Options {
     #[clap(name = "SOURCE")]
     pub sources: Vec<Source>,
 
+    /// Output sink. Can be specified multiple times. Defaults to stdout if omitted.
+    ///
+    /// It is possible to provide multiple output files if the data resembles an array. Each output
+    /// file will receive an array element. The last output file collects the remaining elements if
+    /// there are more elements than files.
+    ///
+    /// Passing '-' as filename or providing no output files will write the data to stdout instead.
+    #[clap(short = 'O', long = "sink", name = "SINK", value_hint = ValueHint::FilePath)]
+    #[clap(multiple_occurrences = true)]
+    pub sinks: Vec<Sink>,
+
     /// Options for deserializing the input.
     #[clap(flatten)]
     pub input: InputOptions,
@@ -192,11 +203,6 @@ pub struct OutputOptions {
     /// extension (or the output is stdout), the fallback is to encode output as JSON.
     #[clap(arg_enum, short = 'o', long, setting = ArgSettings::HidePossibleValues)]
     pub output_encoding: Option<Encoding>,
-
-    /// Output file. If absent, the encoded data is written to stdout.
-    #[clap(short = 'O', long, value_hint = ValueHint::FilePath)]
-    #[clap(default_value = "-", setting = ArgSettings::HideDefaultValue)]
-    pub output_file: Sink,
 
     /// Produce pretty output if supported by the encoder.
     #[clap(short = 'p', long)]
