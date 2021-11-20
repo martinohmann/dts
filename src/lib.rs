@@ -9,6 +9,7 @@ pub use encoding::*;
 pub use error::*;
 pub use sink::Sink;
 pub use source::Source;
+pub use value::*;
 
 pub mod args;
 pub mod de;
@@ -18,12 +19,7 @@ pub mod ser;
 mod sink;
 mod source;
 pub mod transform;
-
-/// The type deserializer in this crate deserializes into.
-///
-/// We use serde_json::Value as our internal deserialization format for now as it should have all
-/// the necessary features we need for internal data transformation.
-pub type Value = serde_json::Value;
+mod value;
 
 trait PathExt {
     fn relative_to<P>(&self, path: P) -> Option<PathBuf>
@@ -69,43 +65,4 @@ trait ValueExt {
     /// Converts the value to its string representation but ensures that the resulting string is
     /// not quoted.
     fn to_string_unquoted(&self) -> String;
-}
-
-impl ValueExt for Value {
-    fn to_array(&self) -> Vec<Value> {
-        match self {
-            Value::Array(array) => array.clone(),
-            _ => vec![self.clone()],
-        }
-    }
-
-    fn to_string_unquoted(&self) -> String {
-        match self {
-            Value::String(s) => s.clone(),
-            value => value.to_string(),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use pretty_assertions::assert_eq;
-    use serde_json::json;
-
-    #[test]
-    fn test_to_string_unquoted() {
-        assert_eq!(
-            json!({"foo": "bar"}).to_string_unquoted(),
-            String::from(r#"{"foo":"bar"}"#)
-        );
-        assert_eq!(
-            json!(["foo", "bar"]).to_string_unquoted(),
-            String::from(r#"["foo","bar"]"#)
-        );
-        assert_eq!(json!("foo").to_string_unquoted(), String::from("foo"));
-        assert_eq!(json!(true).to_string_unquoted(), String::from("true"));
-        assert_eq!(json!(1).to_string_unquoted(), String::from("1"));
-        assert_eq!(Value::Null.to_string_unquoted(), String::from("null"));
-    }
 }
