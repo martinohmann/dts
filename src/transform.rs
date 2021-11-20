@@ -8,6 +8,7 @@ use std::str::FromStr;
 
 /// A type that can apply transformations to a `Value`.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Transformation {
     /// Remove one level of nesting if the data is shaped like an array.
     FlattenArrays,
