@@ -69,15 +69,9 @@ where
     fn glob_files(&self, pattern: &str) -> Result<Vec<PathBuf>> {
         glob::glob(&self.as_ref().join(pattern).to_string_lossy())?
             .filter_map(|result| match result {
-                Ok(path) => {
-                    if path.is_file() {
-                        Some(Ok(path))
-                    } else {
-                        None
-                    }
-                }
+                Ok(path) => path.is_file().then(|| Ok(path)),
                 Err(err) => Some(Err(err.into_error().into())),
             })
-            .collect::<Result<_>>()
+            .collect()
     }
 }
