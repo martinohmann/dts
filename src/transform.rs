@@ -1,6 +1,6 @@
 //! Data transformation utilities.
 
-use crate::{value_to_string, Error, Result, Value};
+use crate::{Error, Result, Value};
 use jsonpath_rust::JsonPathQuery;
 use serde_json::Map;
 use std::cmp::Ordering;
@@ -460,7 +460,7 @@ fn deep_merge_values(lhs: &Value, rhs: &Value) -> Value {
 /// containing the json encoded string representation of the value.
 pub(crate) fn collections_to_json(value: &Value) -> Value {
     if value.is_array() || value.is_object() {
-        Value::String(value_to_string(value))
+        Value::String(value.to_string())
     } else {
         value.clone()
     }
@@ -569,11 +569,11 @@ mod tests {
         // the same with the order ignored.
         let expected_value =
             json!({"seven": "eight", "one": {"five": "six", "two": {"three": "four"}}});
-        let expected = value_to_string(&expected_value);
+        let expected = expected_value.to_string();
 
         let mut value = json!({"one": {"two": {"three": "four"}, "five": "six"}, "seven": "eight"});
         collections_to_end(&mut value);
-        let result = value_to_string(&value);
+        let result = value.to_string();
 
         assert_eq!(result, expected);
     }

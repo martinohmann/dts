@@ -1,7 +1,7 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{transform, value_to_array, value_to_string, Encoding, Error, Result, Value};
+use crate::{transform, value_to_array, Encoding, Error, Result, Value};
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
@@ -270,7 +270,7 @@ where
             .iter()
             .map(|value| match value {
                 Value::String(s) => s.clone(),
-                other => value_to_string(other),
+                other => other.to_string(),
             })
             .collect::<Vec<String>>()
             .join(&sep);
@@ -283,7 +283,7 @@ where
             .as_object()
             .unwrap()
             .iter()
-            .map(|(k, v)| format!("{} = {};\n", k, value_to_string(v)))
+            .map(|(k, v)| format!("{} = {};\n", k, v))
             .collect::<String>();
 
         Ok(self.writer.write_all(output.as_bytes())?)

@@ -25,12 +25,6 @@ pub mod transform;
 /// the necessary features we need for internal data transformation.
 pub type Value = serde_json::Value;
 
-/// Serializing a `Value` as `String` can never fail so this function removes the need to wrap the
-/// string with `Result` which simplifies error handling at the call sites.
-pub(crate) fn value_to_string(value: &Value) -> String {
-    serde_json::to_string(value).unwrap()
-}
-
 /// Converts value into an array. If the value is of varian `Value::Array`, the wrapped value will
 /// be returned. Otherwise the result is a `Vec` which contains one `Value`.
 pub(crate) fn value_to_array(value: &Value) -> Vec<Value> {
