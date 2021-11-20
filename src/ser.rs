@@ -207,13 +207,14 @@ where
                 .from_writer(&mut buf);
 
             let mut headers: Option<Vec<&String>> = None;
+            let empty_value = Value::String("".into());
 
             for (i, row) in value.to_array().iter().enumerate() {
                 let row_data = if !self.opts.keys_as_csv_headers {
                     row.as_array()
                         .ok_or_else(|| Error::at_row_index(i, "array expected"))?
                         .iter()
-                        .map(ValueExt::stringify_collections)
+                        .map(ValueExt::to_string_unquoted)
                         .collect::<Vec<_>>()
                 } else {
                     let row = row
@@ -231,8 +232,8 @@ where
                         .as_ref()
                         .unwrap()
                         .iter()
-                        .map(|&header| row.get(header).unwrap_or(&Value::Null))
-                        .map(ValueExt::stringify_collections)
+                        .map(|&header| row.get(header).unwrap_or(&empty_value))
+                        .map(ValueExt::to_string_unquoted)
                         .collect::<Vec<_>>()
                 };
 
@@ -269,10 +270,7 @@ where
         let text = value
             .to_array()
             .iter()
-            .map(|value| match value {
-                Value::String(s) => s.clone(),
-                other => other.to_string(),
-            })
+            .map(ValueExt::to_string_unquoted)
             .collect::<Vec<String>>()
             .join(&sep);
 

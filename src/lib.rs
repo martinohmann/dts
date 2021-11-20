@@ -66,9 +66,9 @@ trait ValueExt {
     /// will be returned. Otherwise the result is a `Vec` which contains the `Value`.
     fn to_array(&self) -> Vec<Value>;
 
-    /// If value is of variant `Value::Object` or `Value::Array`, convert it to a `Value::String`
-    /// containing the json encoded string representation of the value.
-    fn stringify_collections(&self) -> Value;
+    /// Converts the value to its string representation but ensures that the resulting string is
+    /// not quoted.
+    fn to_string_unquoted(&self) -> String;
 }
 
 impl ValueExt for Value {
@@ -79,11 +79,10 @@ impl ValueExt for Value {
         }
     }
 
-    fn stringify_collections(&self) -> Value {
-        if self.is_array() || self.is_object() {
-            Value::String(self.to_string())
-        } else {
-            self.clone()
+    fn to_string_unquoted(&self) -> String {
+        match self {
+            Value::String(s) => s.clone(),
+            value => value.to_string(),
         }
     }
 }
@@ -95,18 +94,18 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn stringify_collections() {
+    fn test_to_string_unquoted() {
         assert_eq!(
-            json!({"foo": "bar"}).stringify_collections(),
-            json!(r#"{"foo":"bar"}"#)
+            json!({"foo": "bar"}).to_string_unquoted(),
+            String::from(r#"{"foo":"bar"}"#)
         );
         assert_eq!(
-            json!(["foo", "bar"]).stringify_collections(),
-            json!(r#"["foo","bar"]"#)
+            json!(["foo", "bar"]).to_string_unquoted(),
+            String::from(r#"["foo","bar"]"#)
         );
-        assert_eq!(json!("foo").stringify_collections(), json!("foo"));
-        assert_eq!(json!(true).stringify_collections(), json!(true));
-        assert_eq!(json!(1).stringify_collections(), json!(1));
-        assert_eq!(Value::Null.stringify_collections(), Value::Null);
+        assert_eq!(json!("foo").to_string_unquoted(), String::from("foo"));
+        assert_eq!(json!(true).to_string_unquoted(), String::from("true"));
+        assert_eq!(json!(1).to_string_unquoted(), String::from("1"));
+        assert_eq!(Value::Null.to_string_unquoted(), String::from("null"));
     }
 }

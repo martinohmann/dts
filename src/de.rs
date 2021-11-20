@@ -1,7 +1,7 @@
 //! This module provides a `Deserializer` which supports deserializing input data with various
 //! encodings into a `Value`.
 
-use crate::{Encoding, Error, Result, Value};
+use crate::{Encoding, Error, Result, Value, ValueExt};
 use regex::Regex;
 use serde::Deserialize;
 
@@ -207,10 +207,7 @@ where
                             Ok(headers
                                 .iter()
                                 .zip(record?.iter())
-                                .map(|(k, v)| match k {
-                                    Value::String(k) => (k.clone(), v.clone()),
-                                    other => (other.to_string(), v.clone()),
-                                })
+                                .map(|(k, v)| (k.to_string_unquoted(), v.clone()))
                                 .collect())
                         })
                         .collect::<Result<_>>()?,
