@@ -162,4 +162,20 @@ mod test {
             "http://localhost/bar.yaml",
         );
     }
+
+    #[test]
+    fn test_glob_files() {
+        assert!(Source::from("src/")
+            .glob_files("*.rs")
+            .unwrap()
+            .contains(&Source::from("src/lib.rs")));
+        assert!(Source::from("-").glob_files("*.json").is_err());
+        assert!(Source::from("http://localhost/")
+            .glob_files("*.json")
+            .is_err(),);
+        assert!(matches!(
+            Source::from("src/").glob_files("***"),
+            Err(Error::GlobPattern(_))
+        ));
+    }
 }
