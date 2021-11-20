@@ -91,17 +91,6 @@ impl fmt::Display for Encoding {
     }
 }
 
-/// Chooses a suitable `Encoding` from the provided `Option` values.
-///
-/// If encoding is `Some` it is returned. Otherwise it attempts to create the `Encoding` from the
-/// provided path.
-pub fn detect_encoding<P>(encoding: Option<Encoding>, path: P) -> Option<Encoding>
-where
-    P: AsRef<Path>,
-{
-    encoding.or_else(|| Encoding::from_path(path))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -118,20 +107,5 @@ mod tests {
         assert_eq!(Encoding::from_path("foo.hjson"), Some(Encoding::Hjson));
         assert_eq!(Encoding::from_path("foo.bak"), None);
         assert_eq!(Encoding::from_path("foo"), None);
-    }
-
-    #[test]
-    fn test_detect_encoding() {
-        assert_eq!(detect_encoding(None, "-"), None);
-        assert_eq!(
-            detect_encoding(Some(Encoding::Yaml), "-"),
-            Some(Encoding::Yaml)
-        );
-        assert_eq!(
-            detect_encoding(Some(Encoding::Yaml), "foo.json"),
-            Some(Encoding::Yaml)
-        );
-        assert_eq!(detect_encoding(None, "foo.json"), Some(Encoding::Json));
-        assert_eq!(detect_encoding(None, "foo.bak"), None);
     }
 }
