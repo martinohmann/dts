@@ -25,15 +25,6 @@ pub mod transform;
 /// the necessary features we need for internal data transformation.
 pub type Value = serde_json::Value;
 
-/// Converts value into an array. If the value is of varian `Value::Array`, the wrapped value will
-/// be returned. Otherwise the result is a `Vec` which contains one `Value`.
-pub(crate) fn value_to_array(value: &Value) -> Vec<Value> {
-    match value {
-        Value::Array(array) => array.clone(),
-        _ => vec![value.clone()],
-    }
-}
-
 trait PathExt {
     fn relative_to<P>(&self, path: P) -> Option<PathBuf>
     where
@@ -67,5 +58,20 @@ where
                 Err(err) => Some(Err(err.into_error().into())),
             })
             .collect()
+    }
+}
+
+trait ValueExt {
+    /// Converts value into an array. If the value is of variant `Value::Array`, the wrapped value
+    /// will be returned. Otherwise the result is a `Vec` which contains the `Value`.
+    fn to_array(&self) -> Vec<Value>;
+}
+
+impl ValueExt for Value {
+    fn to_array(&self) -> Vec<Value> {
+        match self {
+            Value::Array(array) => array.clone(),
+            _ => vec![self.clone()],
+        }
     }
 }

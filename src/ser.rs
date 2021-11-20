@@ -1,7 +1,7 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{transform, value_to_array, Encoding, Error, Result, Value};
+use crate::{transform, Encoding, Error, Result, Value, ValueExt};
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
@@ -208,7 +208,7 @@ where
 
             let mut headers: Option<Vec<&String>> = None;
 
-            for (i, row) in value_to_array(value).iter().enumerate() {
+            for (i, row) in value.to_array().iter().enumerate() {
                 let row_data = if !self.opts.keys_as_csv_headers {
                     row.as_array()
                         .ok_or_else(|| Error::at_row_index(i, "array expected"))?
@@ -266,7 +266,8 @@ where
             .clone()
             .unwrap_or_else(|| String::from('\n'));
 
-        let text = value_to_array(value)
+        let text = value
+            .to_array()
             .iter()
             .map(|value| match value {
                 Value::String(s) => s.clone(),
