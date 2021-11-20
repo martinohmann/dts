@@ -456,16 +456,6 @@ fn deep_merge_values(lhs: &Value, rhs: &Value) -> Value {
     }
 }
 
-/// If value is of variant `Value::Object` or `Value::Array`, convert it to a `Value::String`
-/// containing the json encoded string representation of the value.
-pub(crate) fn collections_to_json(value: &Value) -> Value {
-    if value.is_array() || value.is_object() {
-        Value::String(value.to_string())
-    } else {
-        value.clone()
-    }
-}
-
 #[derive(PartialEq, Eq)]
 struct SortableValue<'a>(&'a Value);
 
@@ -535,22 +525,6 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
     use serde_json::json;
-
-    #[test]
-    fn test_collections_to_json() {
-        assert_eq!(
-            collections_to_json(&json!({"foo": "bar"})),
-            json!(r#"{"foo":"bar"}"#)
-        );
-        assert_eq!(
-            collections_to_json(&json!(["foo", "bar"])),
-            json!(r#"["foo","bar"]"#)
-        );
-        assert_eq!(collections_to_json(&json!("foo")), json!("foo"));
-        assert_eq!(collections_to_json(&json!(true)), json!(true));
-        assert_eq!(collections_to_json(&json!(1)), json!(1));
-        assert_eq!(collections_to_json(&Value::Null), Value::Null);
-    }
 
     #[test]
     fn test_collections_to_end() {

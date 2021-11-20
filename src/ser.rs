@@ -213,7 +213,7 @@ where
                     row.as_array()
                         .ok_or_else(|| Error::at_row_index(i, "array expected"))?
                         .iter()
-                        .map(transform::collections_to_json)
+                        .map(ValueExt::stringify_collections)
                         .collect::<Vec<_>>()
                 } else {
                     let row = row
@@ -232,7 +232,7 @@ where
                         .unwrap()
                         .iter()
                         .map(|&header| row.get(header).unwrap_or(&Value::Null))
-                        .map(transform::collections_to_json)
+                        .map(ValueExt::stringify_collections)
                         .collect::<Vec<_>>()
                 };
 

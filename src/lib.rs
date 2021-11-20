@@ -65,6 +65,10 @@ trait ValueExt {
     /// Converts value into an array. If the value is of variant `Value::Array`, the wrapped value
     /// will be returned. Otherwise the result is a `Vec` which contains the `Value`.
     fn to_array(&self) -> Vec<Value>;
+
+    /// If value is of variant `Value::Object` or `Value::Array`, convert it to a `Value::String`
+    /// containing the json encoded string representation of the value.
+    fn stringify_collections(&self) -> Value;
 }
 
 impl ValueExt for Value {
@@ -73,5 +77,36 @@ impl ValueExt for Value {
             Value::Array(array) => array.clone(),
             _ => vec![self.clone()],
         }
+    }
+
+    fn stringify_collections(&self) -> Value {
+        if self.is_array() || self.is_object() {
+            Value::String(self.to_string())
+        } else {
+            self.clone()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    #[test]
+    fn stringify_collections() {
+        assert_eq!(
+            json!({"foo": "bar"}).stringify_collections(),
+            json!(r#"{"foo":"bar"}"#)
+        );
+        assert_eq!(
+            json!(["foo", "bar"]).stringify_collections(),
+            json!(r#"["foo","bar"]"#)
+        );
+        assert_eq!(json!("foo").stringify_collections(), json!("foo"));
+        assert_eq!(json!(true).stringify_collections(), json!(true));
+        assert_eq!(json!(1).stringify_collections(), json!(1));
+        assert_eq!(Value::Null.stringify_collections(), Value::Null);
     }
 }
