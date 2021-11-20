@@ -6,12 +6,22 @@ use std::fs::read_to_string as read;
 fn json_to_yaml() {
     Command::cargo_bin("dts")
         .unwrap()
+        .arg("tests/fixtures/example.json")
+        .args(&["-o", "yaml"])
+        .assert()
+        .success()
+        .stdout(read("tests/fixtures/example.yaml").unwrap());
+}
+
+#[test]
+fn json_to_yaml_stdin() {
+    Command::cargo_bin("dts")
+        .unwrap()
         .args(&["-i", "json", "-o", "yaml"])
         .pipe_stdin("tests/fixtures/example.json")
         .unwrap()
         .assert()
         .success()
-        .code(0)
         .stdout(read("tests/fixtures/example.yaml").unwrap());
 }
 
@@ -19,12 +29,10 @@ fn json_to_yaml() {
 fn yaml_to_pretty_json() {
     Command::cargo_bin("dts")
         .unwrap()
-        .args(&["-i", "yaml", "-o", "json", "-p", "-n"])
-        .pipe_stdin("tests/fixtures/example.yaml")
-        .unwrap()
+        .arg("tests/fixtures/example.yaml")
+        .args(&["-o", "json", "-p", "-n"])
         .assert()
         .success()
-        .code(0)
         .stdout(read("tests/fixtures/example.json").unwrap());
 }
 
@@ -32,12 +40,10 @@ fn yaml_to_pretty_json() {
 fn json_to_toml() {
     Command::cargo_bin("dts")
         .unwrap()
-        .args(&["-i", "json", "-o", "toml"])
-        .pipe_stdin("tests/fixtures/example.json")
-        .unwrap()
+        .arg("tests/fixtures/example.json")
+        .args(&["-o", "toml"])
         .assert()
         .success()
-        .code(0)
         .stdout(read("tests/fixtures/example.toml").unwrap());
 }
 
@@ -45,20 +51,10 @@ fn json_to_toml() {
 fn json_to_csv_filtered_flattened_with_keys() {
     Command::cargo_bin("dts")
         .unwrap()
-        .args(&[
-            "-i",
-            "json",
-            "-o",
-            "csv",
-            "--transform",
-            "j=..friends,f",
-            "--keys-as-csv-headers",
-        ])
-        .pipe_stdin("tests/fixtures/example.json")
-        .unwrap()
+        .arg("tests/fixtures/example.json")
+        .args(&["-o", "csv", "-t", "j=..friends,f", "-K"])
         .assert()
         .success()
-        .code(0)
         .stdout(read("tests/fixtures/friends.csv").unwrap());
 }
 
@@ -66,12 +62,10 @@ fn json_to_csv_filtered_flattened_with_keys() {
 fn json_to_csv_collections_as_json() {
     Command::cargo_bin("dts")
         .unwrap()
-        .args(&["-i", "json", "-o", "csv", "-t", "jsonpath=.users[*]", "-K"])
-        .pipe_stdin("tests/fixtures/example.json")
-        .unwrap()
+        .arg("tests/fixtures/example.json")
+        .args(&["-o", "csv", "-t", "jsonpath=.users[*]", "-K"])
         .assert()
         .success()
-        .code(0)
         .stdout(read("tests/fixtures/users.csv").unwrap());
 }
 
@@ -79,20 +73,44 @@ fn json_to_csv_collections_as_json() {
 fn json_to_gron() {
     Command::cargo_bin("dts")
         .unwrap()
-        .args(&["-i", "json", "-o", "gron"])
+        .arg("tests/fixtures/example.json")
+        .args(&["-o", "gron"])
+        .assert()
+        .success()
+        .stdout(read("tests/fixtures/example.js").unwrap());
+}
+
+#[test]
+fn encoding_required_for_stdin() {
+    Command::cargo_bin("dts")
+        .unwrap()
         .pipe_stdin("tests/fixtures/example.json")
         .unwrap()
         .assert()
-        .success()
-        .code(0)
-        .stdout(read("tests/fixtures/example.js").unwrap());
+        .failure()
+        .stderr(predicate::str::contains(
+            "unable to detect input encoding, please provide it explicitly via -i",
+        ));
+}
+
+#[test]
+fn multiple_sinks_require_array() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .args(&["-i", "json", "-O", "-", "-"])
+        .write_stdin("{}")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "when using multiple output files, the data must be an array",
+        ));
 }
 
 #[test]
 fn glob_required_for_dirs() {
     Command::cargo_bin("dts")
         .unwrap()
-        .args(&["-i", "json", "tests/"])
+        .arg("tests/")
         .assert()
         .failure()
         .stderr(predicate::str::contains(
@@ -104,11 +122,9 @@ fn glob_required_for_dirs() {
 fn deep_merge_json() {
     Command::cargo_bin("dts")
         .unwrap()
-        .args(&["-i", "json", "-p", "-t", "j=.users,f,m", "-n"])
-        .pipe_stdin("tests/fixtures/example.json")
-        .unwrap()
+        .arg("tests/fixtures/example.json")
+        .args(&["-p", "-t", "j=.users,f,m", "-n"])
         .assert()
         .success()
-        .code(0)
         .stdout(read("tests/fixtures/example.merged.json").unwrap());
 }

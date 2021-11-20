@@ -153,7 +153,7 @@ fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Re
     sinks
         .iter()
         .zip(values.iter())
-        .try_for_each(|(file, value)| serialize(file, value, &opts))
+        .try_for_each(|(file, value)| serialize(file, value, opts))
 }
 
 fn main() -> Result<()> {
