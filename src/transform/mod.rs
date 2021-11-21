@@ -1,9 +1,11 @@
 //! Data transformation utilities.
 
+mod keys;
+
 use crate::{Error, Result, Value};
 use jsonpath_rust::JsonPathQuery;
+use keys::KeyFlattener;
 use serde_json::Map;
-use std::collections::BTreeMap;
 use std::str::FromStr;
 
 /// A type that can apply transformations to a `Value`.
@@ -340,88 +342,6 @@ where
 {
     let mut flattener = KeyFlattener::new(value, prefix.as_ref());
     Value::Object(Map::from_iter(flattener.flatten().into_iter()))
-}
-
-struct KeyFlattener<'a> {
-    value: &'a Value,
-    prefix: &'a str,
-    map: BTreeMap<String, Value>,
-    stack: Vec<String>,
-}
-
-impl<'a> KeyFlattener<'a> {
-    fn new(value: &'a Value, prefix: &'a str) -> Self {
-        Self {
-            value,
-            prefix,
-            map: BTreeMap::new(),
-            stack: Vec::new(),
-        }
-    }
-
-    fn flatten(&mut self) -> BTreeMap<String, Value> {
-        self.map_value(self.value);
-        self.map.clone()
-    }
-
-    fn map_value(&mut self, value: &Value) {
-        match value {
-            Value::Array(array) => {
-                self.map.insert(self.key(), Value::Array(Vec::new()));
-                for (index, value) in array.iter().enumerate() {
-                    self.stack.push(FlattenKey::Index(index).to_string());
-                    self.map_value(value);
-                    self.stack.pop();
-                }
-            }
-            Value::Object(object) => {
-                self.map.insert(self.key(), Value::Object(Map::new()));
-                for (key, value) in object.iter() {
-                    self.stack.push(FlattenKey::Key(key).to_string());
-                    self.map_value(value);
-                    self.stack.pop();
-                }
-            }
-            value => {
-                self.map.insert(self.key(), value.clone());
-            }
-        }
-    }
-
-    fn key(&self) -> String {
-        let acc = FlattenKey::Key(self.prefix).to_string();
-        self.stack.iter().fold(acc, |mut acc, key| {
-            if !acc.is_empty() && !key.starts_with('[') {
-                acc.push('.');
-            }
-            acc.push_str(key);
-            acc
-        })
-    }
-}
-
-enum FlattenKey<'a> {
-    Index(usize),
-    Key(&'a str),
-}
-
-impl<'a> ToString for FlattenKey<'a> {
-    fn to_string(&self) -> String {
-        match self {
-            FlattenKey::Index(index) => format!("[{}]", index),
-            FlattenKey::Key(key) => {
-                let no_escape = key
-                    .chars()
-                    .all(|c| c == '_' || c.is_numeric() || c.is_alphabetic());
-
-                if no_escape {
-                    key.to_string()
-                } else {
-                    format!("[\"{}\"]", key.escape_default().collect::<String>())
-                }
-            }
-        }
-    }
 }
 
 /// Recursively merges all maps in `value`. If `value` is not an array it is returned as is.
