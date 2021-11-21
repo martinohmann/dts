@@ -439,19 +439,28 @@ fn deep_merge_values(lhs: &Value, rhs: &Value) -> Value {
     match (lhs, rhs) {
         (Value::Object(lhs), Value::Object(rhs)) => {
             let mut merged = lhs.clone();
-            rhs.iter().for_each(|(key, right)| {
+
+            for (key, value) in rhs.iter() {
                 merged
                     .entry(key)
-                    .and_modify(|left| *left = deep_merge_values(left, right))
-                    .or_insert_with(|| right.clone());
-            });
+                    .and_modify(|merged| *merged = deep_merge_values(merged, value))
+                    .or_insert_with(|| value.clone());
+            }
+
             Value::Object(merged)
         }
         (Value::Array(lhs), Value::Array(rhs)) => {
             let mut merged = lhs.clone();
-            merged.extend(rhs.clone());
+
+            merged.resize(lhs.len().max(rhs.len()), Value::Null);
+
+            for (i, value) in rhs.iter().enumerate() {
+                merged[i] = deep_merge_values(&merged[i], value);
+            }
+
             Value::Array(merged)
         }
+        (_, Value::Null) => lhs.clone(),
         (_, _) => rhs.clone(),
     }
 }
@@ -545,13 +554,21 @@ mod tests {
         assert_eq!(deep_merge(&json!([1, null, "three"])), json!("three"));
         assert_eq!(
             deep_merge(&json!([[1, "two"], ["three", 4]])),
-            json!([1, "two", "three", 4])
+            json!(["three", 4])
+        );
+        assert_eq!(
+            deep_merge(&json!([[null, 1, "two"], ["three", 4]])),
+            json!(["three", 4, "two"])
+        );
+        assert_eq!(
+            deep_merge(&json!([[1, "two"], [null, null, 4]])),
+            json!([1, "two", 4])
         );
         assert_eq!(
             deep_merge(&json!([{"foo": "bar"},
                        {"foo": {"bar": "baz"}, "bar": [1], "qux": null},
                        {"foo": {"bar": "qux"}, "bar": [2], "baz": 1}])),
-            json!({"foo": {"bar": "qux"}, "bar": [1, 2], "baz": 1, "qux": null})
+            json!({"foo": {"bar": "qux"}, "bar": [2], "baz": 1, "qux": null})
         );
     }
 }

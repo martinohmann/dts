@@ -14,15 +14,6 @@
   "about": "Commodo tempor nostrud ex adipisicing adipisicing. Anim culpa consequat enim tempor deserunt esse nostrud dolore. Anim sunt incididunt ut occaecat consectetur deserunt laboris excepteur cillum dolor. Nulla in enim in tempor commodo nisi. Cillum nostrud eiusmod ullamco ea deserunt duis anim exercitation quis.\r\n",
   "registered": "2014-09-05T08:05:33 -02:00",
   "tags": [
-    "enim",
-    "officia",
-    "do",
-    "ullamco",
-    "voluptate",
-    "aute",
-    "elit",
-    "mollit",
-    "sit",
     "non",
     "deserunt",
     "eiusmod",
@@ -33,28 +24,16 @@
   ],
   "friends": [
     {
-      "id": "61896431a6546aad2d840a88",
-      "name": "Florine Acevedo"
-    },
-    {
-      "id": "618964dc6fabe8b6bc673abb",
-      "name": "Roxanne Woods"
-    },
-    {
-      "id": "618964dcee90f14682191e15",
-      "name": "Hines Jackson"
-    },
-    {
-      "id": "6189643146646d84cd519d62",
-      "name": "Dawn Joyce"
-    },
-    {
       "id": "618964317d23d69f9acebddf",
       "name": "Natalie Rosario"
     },
     {
       "id": "61896431c417b533ef7ba58c",
       "name": "Colon Kinney"
+    },
+    {
+      "id": "618964dcee90f14682191e15",
+      "name": "Hines Jackson"
     }
   ],
   "latitude": 89.138415,

@@ -182,7 +182,8 @@ pub struct TransformOptions {
     /// If the data is an array, all children are merged into one from left to right. Otherwise
     /// this is a no-op.
     ///
-    /// Arrays are merged by collecting the values of all children.
+    /// Arrays are merged by recurively merging values at the same index. Nulls on the righthand
+    /// side not merged.
     ///
     /// Objects are merged by creating a new object with all keys from the left and right value.
     /// Keys present on sides are merged recursively.
