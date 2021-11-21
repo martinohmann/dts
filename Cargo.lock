@@ -279,6 +279,8 @@ dependencies = [
  "json5",
  "jsonpath-rust",
  "pathdiff",
+ "pest",
+ "pest_derive",
  "predicates",
  "pretty_assertions",
  "regex",

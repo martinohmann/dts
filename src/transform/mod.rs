@@ -1,10 +1,11 @@
 //! Data transformation utilities.
 
-mod keys;
+mod flat_key;
+mod key;
 
 use crate::{Error, Result, Value};
 use jsonpath_rust::JsonPathQuery;
-use keys::KeyFlattener;
+use key::{Key, KeyFlattener};
 use serde_json::Map;
 use std::str::FromStr;
 
@@ -25,6 +26,8 @@ pub enum Transformation {
     Chain(Vec<Transformation>),
     /// Deep merge values if the top level value is an array.
     DeepMerge,
+    /// Expands flat keys to nested objects.
+    ExpandKeys,
 }
 
 impl Transformation {
@@ -45,6 +48,7 @@ impl Transformation {
             Self::RemoveEmptyValues => remove_empty_values(value),
             Self::Chain(chain) => apply_chain(chain, value)?,
             Self::DeepMerge => deep_merge(value),
+            Self::ExpandKeys => expand_keys(value)?,
         };
 
         Ok(value)
@@ -77,6 +81,7 @@ impl FromStr for Transformation {
                 },
                 "r" | "remove-empty-values" => Self::RemoveEmptyValues,
                 "m" | "deep-merge" => Self::DeepMerge,
+                "e" | "expand-keys" => Self::ExpandKeys,
                 key => return Err(Error::new(format!("unknown transformation: {}", key))),
             }
         };
@@ -344,6 +349,40 @@ where
     Value::Object(Map::from_iter(flattener.flatten().into_iter()))
 }
 
+/// Recursively expands flat keys to nested objects.
+pub fn expand_keys(value: &Value) -> Result<Value> {
+    match value {
+        Value::Object(object) => object.iter().try_fold(Value::Null, |acc, (key, value)| {
+            let mut parts = flat_key::parse(key)?;
+            parts.reverse();
+            let value = expand_key_parts(&mut parts, value);
+            Ok(deep_merge_values(&acc, &value))
+        }),
+        Value::Array(array) => Ok(Value::Array(
+            array.iter().map(expand_keys).collect::<Result<_>>()?,
+        )),
+        value => Ok(value.clone()),
+    }
+}
+
+fn expand_key_parts(parts: &mut Vec<Key>, value: &Value) -> Value {
+    match parts.pop() {
+        Some(key) => match key {
+            Key::Ident(ident) => {
+                let mut object = Map::new();
+                object.insert(ident.to_owned(), expand_key_parts(parts, value));
+                Value::Object(object)
+            }
+            Key::Index(index) => {
+                let mut array = vec![Value::Null; index + 1];
+                array[index] = expand_key_parts(parts, value);
+                Value::Array(array)
+            }
+        },
+        None => value.clone(),
+    }
+}
+
 /// Recursively merges all maps in `value`. If `value` is not an array it is returned as is.
 pub fn deep_merge(value: &Value) -> Value {
     match value.as_array() {
@@ -489,6 +528,22 @@ mod tests {
                        {"foo": {"bar": "baz"}, "bar": [1], "qux": null},
                        {"foo": {"bar": "qux"}, "bar": [2], "baz": 1}])),
             json!({"foo": {"bar": "qux"}, "bar": [2], "baz": 1, "qux": null})
+        );
+    }
+
+    #[test]
+    fn test_expand_keys() {
+        let value = json!({
+            "data": {},
+            "data.foo": {},
+            "data.foo.bar": [],
+            "data.foo.bar[0]": "baz",
+            "data.foo.bar[1]": "qux"
+        });
+
+        assert_eq!(
+            expand_keys(&value).unwrap(),
+            json!({"data": {"foo": {"bar": ["baz", "qux"]}}})
         );
     }
 }

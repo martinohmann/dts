@@ -2,7 +2,8 @@ use crate::Value;
 use serde_json::Map;
 use std::collections::BTreeMap;
 
-enum Key<'a> {
+#[derive(Debug, PartialEq)]
+pub enum Key<'a> {
     Index(usize),
     Ident(&'a str),
 }

@@ -189,6 +189,12 @@ pub struct TransformOptions {
     /// Keys present on sides are merged recursively.
     ///
     /// In all other cases, the rightmost value is taken.
+    ///
+    /// ## Expand keys
+    ///
+    /// Option: `e` or `expand-keys`.
+    ///
+    /// Recursively expands flat object keys to nested objects.
     #[clap(short = 't', long, parse(try_from_str = Transformation::from_str))]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
     pub transform: Vec<Transformation>,

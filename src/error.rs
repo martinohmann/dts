@@ -89,6 +89,10 @@ pub enum Error {
     /// JsonPath query parse error.
     #[error("failed to parse jsonpath query:\n{0}")]
     JsonPath(String),
+
+    /// Flat object key parse error.
+    #[error("failed to parse flat key:\n{0}")]
+    FlatKey(String),
 }
 
 impl Error {
