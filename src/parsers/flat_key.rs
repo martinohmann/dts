@@ -1,4 +1,5 @@
-use crate::{Error, Result};
+use super::{ParseError, ParseErrorKind};
+use crate::Result;
 use pest::Parser as ParseTrait;
 use pest_derive::Parser;
 
@@ -64,7 +65,7 @@ impl KeyParts {
 
     pub fn parse(key: &str) -> Result<Self> {
         let parts = Parser::parse(Rule::parts, key)
-            .map_err(|e| Error::FlatKey(e.to_string()))?
+            .map_err(|e| ParseError::new(ParseErrorKind::FlatKey, e))?
             .into_iter()
             .filter_map(|pair| match pair.as_rule() {
                 Rule::key => Some(KeyPart::Ident(pair.as_str().to_owned())),

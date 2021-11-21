@@ -1,6 +1,6 @@
 //! Defines the `Error` and `Result` types used by this crate.
 
-use crate::Encoding;
+use crate::{parsers::ParseError, Encoding};
 use thiserror::Error;
 
 /// A type alias for `Result<T, Error>`.
@@ -93,6 +93,14 @@ pub enum Error {
     /// Flat object key parse error.
     #[error("failed to parse flat key:\n{0}")]
     FlatKey(String),
+
+    /// Gron parse error.
+    #[error("failed to parse gron:\n{0}")]
+    Gron(String),
+
+    /// Error emitted by parsers from this crate.
+    #[error(transparent)]
+    ParseError(#[from] ParseError),
 }
 
 impl Error {

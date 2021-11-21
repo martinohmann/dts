@@ -1,9 +1,11 @@
 //! This module provides a `Deserializer` which supports deserializing input data with various
 //! encodings into a `Value`.
 
-use crate::{Encoding, Error, Result, Value, ValueExt};
+use crate::parsers::gron::Statements as GronStatements;
+use crate::{Encoding, Result, Value, ValueExt};
 use regex::Regex;
 use serde::Deserialize;
+use serde_json::Map;
 
 /// Options for the `Deserializer`. The options are context specific and may only be honored when
 /// deserializing from a certain `Encoding`.
@@ -142,7 +144,7 @@ where
             Encoding::QueryString => self.deserialize_query_string(),
             Encoding::Xml => self.deserialize_xml(),
             Encoding::Text => self.deserialize_text(),
-            encoding => Err(Error::DeserializeUnsupported(encoding)),
+            Encoding::Gron => self.deserialize_gron(),
         }
     }
 
@@ -258,6 +260,23 @@ where
                 .map(|m| Ok(serde_json::to_value(m)?))
                 .collect::<Result<_>>()?,
         ))
+    }
+
+    fn deserialize_gron(&mut self) -> Result<Value> {
+        let mut s = String::new();
+        self.reader.read_to_string(&mut s)?;
+
+        let map = GronStatements::parse(&s)?
+            .iter()
+            .map(|statement| {
+                Ok((
+                    statement.path().to_owned(),
+                    serde_json::from_str(statement.value())?,
+                ))
+            })
+            .collect::<Result<Map<_, _>>>()?;
+
+        Ok(Value::Object(map))
     }
 }
 

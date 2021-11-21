@@ -81,6 +81,17 @@ fn json_to_gron() {
 }
 
 #[test]
+fn gron_to_json() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .arg("tests/fixtures/example.js")
+        .args(&["-i", "gron", "-p"])
+        .assert()
+        .success()
+        .stdout(read("tests/fixtures/example.js.ungron.json").unwrap());
+}
+
+#[test]
 fn encoding_required_for_stdin() {
     Command::cargo_bin("dts")
         .unwrap()
