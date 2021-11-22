@@ -67,7 +67,7 @@ mod test {
         let value = json!({"foo": {"bar": ["baz", "qux"]}});
 
         let mut flattener = KeyFlattener::new(&value, "data");
-        let value = Value::Object(Map::from_iter(flattener.flatten().into_iter()));
+        let value = Value::Object(Map::from_iter(flattener.flatten()));
 
         assert_eq!(
             value,

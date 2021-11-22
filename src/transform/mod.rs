@@ -346,7 +346,7 @@ where
     P: AsRef<str>,
 {
     let mut flattener = KeyFlattener::new(value, prefix.as_ref());
-    Value::Object(Map::from_iter(flattener.flatten().into_iter()))
+    Value::Object(Map::from_iter(flattener.flatten()))
 }
 
 /// Recursively expands flat keys to nested objects.
