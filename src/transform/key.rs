@@ -1,37 +1,13 @@
+use crate::parsers::flat_key::{KeyPart, KeyParts};
 use crate::Value;
 use serde_json::Map;
 use std::collections::BTreeMap;
-
-#[derive(Debug, PartialEq)]
-pub enum Key<'a> {
-    Index(usize),
-    Ident(&'a str),
-}
-
-impl<'a> ToString for Key<'a> {
-    fn to_string(&self) -> String {
-        match self {
-            Key::Index(index) => format!("[{}]", index),
-            Key::Ident(key) => {
-                let no_escape = key
-                    .chars()
-                    .all(|c| c == '_' || c.is_numeric() || c.is_alphabetic());
-
-                if no_escape {
-                    key.to_string()
-                } else {
-                    format!("[\"{}\"]", key.escape_default().collect::<String>())
-                }
-            }
-        }
-    }
-}
 
 pub struct KeyFlattener<'a> {
     value: &'a Value,
     prefix: &'a str,
     map: BTreeMap<String, Value>,
-    stack: Vec<String>,
+    stack: KeyParts<'a>,
 }
 
 impl<'a> KeyFlattener<'a> {
@@ -40,21 +16,23 @@ impl<'a> KeyFlattener<'a> {
             value,
             prefix,
             map: BTreeMap::new(),
-            stack: Vec::new(),
+            stack: KeyParts::new(),
         }
     }
 
     pub fn flatten(&mut self) -> BTreeMap<String, Value> {
+        self.stack.push(KeyPart::Ident(self.prefix));
         self.map_value(self.value);
+        self.stack.pop();
         self.map.clone()
     }
 
-    fn map_value(&mut self, value: &Value) {
+    fn map_value(&mut self, value: &'a Value) {
         match value {
             Value::Array(array) => {
                 self.map.insert(self.key(), Value::Array(Vec::new()));
                 for (index, value) in array.iter().enumerate() {
-                    self.stack.push(Key::Index(index).to_string());
+                    self.stack.push(KeyPart::Index(index));
                     self.map_value(value);
                     self.stack.pop();
                 }
@@ -62,7 +40,7 @@ impl<'a> KeyFlattener<'a> {
             Value::Object(object) => {
                 self.map.insert(self.key(), Value::Object(Map::new()));
                 for (key, value) in object.iter() {
-                    self.stack.push(Key::Ident(key).to_string());
+                    self.stack.push(KeyPart::Ident(key));
                     self.map_value(value);
                     self.stack.pop();
                 }
@@ -74,14 +52,7 @@ impl<'a> KeyFlattener<'a> {
     }
 
     fn key(&self) -> String {
-        let acc = Key::Ident(self.prefix).to_string();
-        self.stack.iter().fold(acc, |mut acc, key| {
-            if !acc.is_empty() && !key.starts_with('[') {
-                acc.push('.');
-            }
-            acc.push_str(key);
-            acc
-        })
+        self.stack.to_string()
     }
 }
 

@@ -1,11 +1,11 @@
 //! Data transformation utilities.
 
-mod flat_key;
-mod key;
+pub(crate) mod key;
 
+use crate::parsers::flat_key::{self, KeyPart, KeyParts};
 use crate::{Error, Result, Value};
 use jsonpath_rust::JsonPathQuery;
-use key::{Key, KeyFlattener};
+use key::KeyFlattener;
 use serde_json::Map;
 use std::str::FromStr;
 
@@ -365,15 +365,15 @@ pub fn expand_keys(value: &Value) -> Result<Value> {
     }
 }
 
-fn expand_key_parts(parts: &mut Vec<Key>, value: &Value) -> Value {
+fn expand_key_parts(parts: &mut KeyParts, value: &Value) -> Value {
     match parts.pop() {
         Some(key) => match key {
-            Key::Ident(ident) => {
+            KeyPart::Ident(ident) => {
                 let mut object = Map::new();
                 object.insert(ident.to_owned(), expand_key_parts(parts, value));
                 Value::Object(object)
             }
-            Key::Index(index) => {
+            KeyPart::Index(index) => {
                 let mut array = vec![Value::Null; index + 1];
                 array[index] = expand_key_parts(parts, value);
                 Value::Array(array)
@@ -383,7 +383,8 @@ fn expand_key_parts(parts: &mut Vec<Key>, value: &Value) -> Value {
     }
 }
 
-/// Recursively merges all maps in `value`. If `value` is not an array it is returned as is.
+/// Recursively merges all arrays and maps in `value`. If `value` is not an array it is returned
+/// as is.
 pub fn deep_merge(value: &Value) -> Value {
     match value.as_array() {
         Some(array) => array.iter().fold(Value::Array(Vec::new()), |acc, value| {
@@ -393,7 +394,6 @@ pub fn deep_merge(value: &Value) -> Value {
     }
 }
 
-/// If `lhs` and `rhs` is recursively merges them. Otherwise, returns the value of `rhs`.
 fn deep_merge_values(lhs: &Value, rhs: &Value) -> Value {
     match (lhs, rhs) {
         (Value::Object(lhs), Value::Object(rhs)) => {

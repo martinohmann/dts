@@ -15,6 +15,7 @@ pub mod args;
 pub mod de;
 mod encoding;
 mod error;
+mod parsers;
 pub mod ser;
 mod sink;
 mod source;
