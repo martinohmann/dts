@@ -1,4 +1,4 @@
-use crate::parsers::flat_key::{KeyPart, KeyParts};
+use crate::parsers::flat_key::KeyParts;
 use crate::Value;
 use serde_json::Map;
 use std::collections::BTreeMap;
@@ -7,7 +7,7 @@ pub struct KeyFlattener<'a> {
     value: &'a Value,
     prefix: &'a str,
     map: BTreeMap<String, Value>,
-    stack: KeyParts<'a>,
+    stack: KeyParts,
 }
 
 impl<'a> KeyFlattener<'a> {
@@ -21,7 +21,7 @@ impl<'a> KeyFlattener<'a> {
     }
 
     pub fn flatten(&mut self) -> BTreeMap<String, Value> {
-        self.stack.push(KeyPart::Ident(self.prefix));
+        self.stack.push_ident(self.prefix);
         self.map_value(self.value);
         self.stack.pop();
         self.map.clone()
@@ -32,7 +32,7 @@ impl<'a> KeyFlattener<'a> {
             Value::Array(array) => {
                 self.map.insert(self.key(), Value::Array(Vec::new()));
                 for (index, value) in array.iter().enumerate() {
-                    self.stack.push(KeyPart::Index(index));
+                    self.stack.push_index(index);
                     self.map_value(value);
                     self.stack.pop();
                 }
@@ -40,7 +40,7 @@ impl<'a> KeyFlattener<'a> {
             Value::Object(object) => {
                 self.map.insert(self.key(), Value::Object(Map::new()));
                 for (key, value) in object.iter() {
-                    self.stack.push(KeyPart::Ident(key));
+                    self.stack.push_ident(key);
                     self.map_value(value);
                     self.stack.pop();
                 }

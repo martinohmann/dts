@@ -370,7 +370,7 @@ fn expand_key_parts(parts: &mut KeyParts, value: &Value) -> Value {
         Some(key) => match key {
             KeyPart::Ident(ident) => {
                 let mut object = Map::new();
-                object.insert(ident.to_owned(), expand_key_parts(parts, value));
+                object.insert(ident, expand_key_parts(parts, value));
                 Value::Object(object)
             }
             KeyPart::Index(index) => {

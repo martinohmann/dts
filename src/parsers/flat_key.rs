@@ -7,24 +7,22 @@ use pest_derive::Parser;
 struct Parser;
 
 #[derive(Debug, PartialEq)]
-pub enum KeyPart<'a> {
+pub enum KeyPart {
     Index(usize),
-    Ident(&'a str),
+    Ident(String),
 }
 
-impl<'a> ToString for KeyPart<'a> {
+impl ToString for KeyPart {
     fn to_string(&self) -> String {
         match self {
             KeyPart::Index(index) => format!("[{}]", index),
             KeyPart::Ident(key) => {
-                let no_escape = key
-                    .chars()
-                    .all(|c| c == '_' || c.is_numeric() || c.is_alphabetic());
+                let no_escape = key.chars().all(|c| c == '_' || c.is_ascii_alphanumeric());
 
                 if no_escape {
                     key.to_string()
                 } else {
-                    format!("[\"{}\"]", key.escape_default().collect::<String>())
+                    format!("[\"{}\"]", key.replace("\"", "\\\""))
                 }
             }
         }
@@ -32,33 +30,45 @@ impl<'a> ToString for KeyPart<'a> {
 }
 
 #[derive(Debug, Default, PartialEq)]
-pub struct KeyParts<'a> {
-    inner: Vec<KeyPart<'a>>,
+pub struct KeyParts {
+    inner: Vec<KeyPart>,
 }
 
-impl<'a> KeyParts<'a> {
+impl KeyParts {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn pop(&mut self) -> Option<KeyPart<'a>> {
+    pub fn pop(&mut self) -> Option<KeyPart> {
         self.inner.pop()
     }
 
-    pub fn push(&mut self, part: KeyPart<'a>) {
+    pub fn push(&mut self, part: KeyPart) {
         self.inner.push(part)
+    }
+
+    pub fn push_index(&mut self, index: usize) {
+        self.push(KeyPart::Index(index))
+    }
+
+    pub fn push_ident<S>(&mut self, ident: S)
+    where
+        S: ToString,
+    {
+        self.push(KeyPart::Ident(ident.to_string()))
     }
 
     pub fn reverse(&mut self) {
         self.inner.reverse()
     }
 
-    pub fn parse(key: &'a str) -> Result<Self> {
+    pub fn parse(key: &str) -> Result<Self> {
         let parts = Parser::parse(Rule::parts, key)
             .map_err(|e| Error::FlatKey(e.to_string()))?
             .into_iter()
             .filter_map(|pair| match pair.as_rule() {
-                Rule::key | Rule::key_escaped => Some(KeyPart::Ident(pair.as_str())),
+                Rule::key => Some(KeyPart::Ident(pair.as_str().to_owned())),
+                Rule::key_escaped => Some(KeyPart::Ident(pair.as_str().replace("\\\"", "\""))),
                 Rule::index => Some(KeyPart::Index(pair.as_str().parse::<usize>().unwrap())),
                 Rule::EOI => None,
                 _ => unreachable!(),
@@ -69,7 +79,7 @@ impl<'a> KeyParts<'a> {
     }
 }
 
-impl<'a> ToString for KeyParts<'a> {
+impl ToString for KeyParts {
     fn to_string(&self) -> String {
         self.inner.iter().fold(String::new(), |mut acc, key| {
             let key = key.to_string();
@@ -82,10 +92,10 @@ impl<'a> ToString for KeyParts<'a> {
     }
 }
 
-impl<'a> FromIterator<KeyPart<'a>> for KeyParts<'a> {
+impl FromIterator<KeyPart> for KeyParts {
     fn from_iter<T>(iter: T) -> Self
     where
-        T: IntoIterator<Item = KeyPart<'a>>,
+        T: IntoIterator<Item = KeyPart>,
     {
         Self {
             inner: iter.into_iter().collect(),
@@ -93,8 +103,8 @@ impl<'a> FromIterator<KeyPart<'a>> for KeyParts<'a> {
     }
 }
 
-impl<'a> IntoIterator for KeyParts<'a> {
-    type Item = KeyPart<'a>;
+impl<'a> IntoIterator for KeyParts {
+    type Item = KeyPart;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -112,24 +122,40 @@ mod test {
         assert!(KeyParts::parse("foo.[").is_err());
         assert_eq!(
             KeyParts::parse("foo").unwrap(),
-            KeyParts::from_iter(vec![KeyPart::Ident("foo")])
+            KeyParts::from_iter(vec![KeyPart::Ident("foo".into())])
         );
         assert_eq!(
             KeyParts::parse("foo.bar[5].baz").unwrap(),
             KeyParts::from_iter(vec![
-                KeyPart::Ident("foo"),
-                KeyPart::Ident("bar"),
+                KeyPart::Ident("foo".into()),
+                KeyPart::Ident("bar".into()),
                 KeyPart::Index(5),
-                KeyPart::Ident("baz")
+                KeyPart::Ident("baz".into())
             ])
         );
         assert_eq!(
             KeyParts::parse("foo.bar_baz[0]").unwrap(),
             KeyParts::from_iter(vec![
-                KeyPart::Ident("foo"),
-                KeyPart::Ident("bar_baz"),
+                KeyPart::Ident("foo".into()),
+                KeyPart::Ident("bar_baz".into()),
                 KeyPart::Index(0),
             ])
         );
+    }
+
+    #[test]
+    fn test_roundtrip() {
+        let s = "foo[\"京\\\"\tasdf\"][0]";
+
+        let parsed = KeyParts::parse(s).unwrap();
+
+        let expected = KeyParts::from_iter(vec![
+            KeyPart::Ident("foo".into()),
+            KeyPart::Ident("京\"\tasdf".into()),
+            KeyPart::Index(0),
+        ]);
+
+        assert_eq!(parsed, expected);
+        assert_eq!(&parsed.to_string(), s);
     }
 }
