@@ -2,6 +2,7 @@ use super::{ParseError, ParseErrorKind};
 use crate::Result;
 use pest::Parser as ParseTrait;
 use pest_derive::Parser;
+use std::fmt;
 
 #[derive(Parser)]
 #[grammar = "parsers/grammars/flat_key.pest"]
@@ -13,17 +14,17 @@ pub enum KeyPart {
     Ident(String),
 }
 
-impl ToString for KeyPart {
-    fn to_string(&self) -> String {
+impl fmt::Display for KeyPart {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            KeyPart::Index(index) => format!("[{}]", index),
+            KeyPart::Index(index) => write!(f, "[{}]", index),
             KeyPart::Ident(key) => {
-                let no_escape = key.chars().all(|c| c == '_' || c.is_ascii_alphanumeric());
+                let no_quote = key.chars().all(|c| c == '_' || c.is_ascii_alphanumeric());
 
-                if no_escape {
-                    key.to_string()
+                if no_quote {
+                    write!(f, "{}", key)
                 } else {
-                    format!("[\"{}\"]", key.replace("\"", "\\\""))
+                    write!(f, "[\"{}\"]", key.replace("\"", "\\\""))
                 }
             }
         }
@@ -52,10 +53,7 @@ impl KeyParts {
         self.push(KeyPart::Index(index))
     }
 
-    pub fn push_ident<S>(&mut self, ident: S)
-    where
-        S: ToString,
-    {
+    pub fn push_ident(&mut self, ident: &str) {
         self.push(KeyPart::Ident(ident.to_string()))
     }
 
@@ -80,16 +78,19 @@ impl KeyParts {
     }
 }
 
-impl ToString for KeyParts {
-    fn to_string(&self) -> String {
-        self.inner.iter().fold(String::new(), |mut acc, key| {
+impl fmt::Display for KeyParts {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, key) in self.inner.iter().enumerate() {
             let key = key.to_string();
-            if !acc.is_empty() && !key.starts_with('[') {
-                acc.push('.');
+
+            if i > 0 && !key.starts_with('[') {
+                write!(f, ".{}", key)?;
+            } else {
+                write!(f, "{}", key)?;
             }
-            acc.push_str(&key);
-            acc
-        })
+        }
+
+        Ok(())
     }
 }
 
