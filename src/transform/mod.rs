@@ -3,7 +3,7 @@
 pub(crate) mod key;
 
 use crate::parsers::flat_key::{KeyPart, KeyParts};
-use crate::{Error, Result, Value};
+use crate::{Error, Result, Value, ValueExt};
 use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
 use serde_json::Map;
@@ -267,16 +267,7 @@ pub fn remove_empty_values(value: &Value) -> Value {
 pub fn flatten_arrays(value: &Value) -> Value {
     match value {
         Value::Array(array) if array.len() == 1 => array[0].clone(),
-        Value::Array(array) => Value::Array(
-            array
-                .iter()
-                .map(|v| match v {
-                    Value::Array(a) => a.clone(),
-                    _ => vec![v.clone()],
-                })
-                .flatten()
-                .collect(),
-        ),
+        Value::Array(array) => Value::Array(array.iter().flat_map(ValueExt::to_array).collect()),
         value => value.clone(),
     }
 }
