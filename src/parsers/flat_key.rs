@@ -1,26 +1,10 @@
 use crate::{Error, Result};
-use pest::Parser as P;
+use pest::Parser as ParseTrait;
 use pest_derive::Parser;
 
 #[derive(Parser)]
 #[grammar = "parsers/grammars/flat_key.pest"]
-struct FlatKeyParser;
-
-/// Parses a flat object key and returns a vector of key parts.
-pub fn parse(key: &str) -> Result<KeyParts> {
-    let parts = FlatKeyParser::parse(Rule::parts, key)
-        .map_err(|e| Error::FlatKey(e.to_string()))?
-        .into_iter()
-        .filter_map(|pair| match pair.as_rule() {
-            Rule::key | Rule::key_escaped => Some(KeyPart::Ident(pair.as_str())),
-            Rule::index => Some(KeyPart::Index(pair.as_str().parse::<usize>().unwrap())),
-            Rule::EOI => None,
-            _ => unreachable!(),
-        })
-        .collect();
-
-    Ok(parts)
-}
+struct Parser;
 
 #[derive(Debug, PartialEq)]
 pub enum KeyPart<'a> {
@@ -68,6 +52,21 @@ impl<'a> KeyParts<'a> {
     pub fn reverse(&mut self) {
         self.inner.reverse()
     }
+
+    pub fn parse(key: &'a str) -> Result<Self> {
+        let parts = Parser::parse(Rule::parts, key)
+            .map_err(|e| Error::FlatKey(e.to_string()))?
+            .into_iter()
+            .filter_map(|pair| match pair.as_rule() {
+                Rule::key | Rule::key_escaped => Some(KeyPart::Ident(pair.as_str())),
+                Rule::index => Some(KeyPart::Index(pair.as_str().parse::<usize>().unwrap())),
+                Rule::EOI => None,
+                _ => unreachable!(),
+            })
+            .collect();
+
+        Ok(parts)
+    }
 }
 
 impl<'a> ToString for KeyParts<'a> {
@@ -110,13 +109,13 @@ mod test {
 
     #[test]
     fn test_parse() {
-        assert!(parse("foo.[").is_err());
+        assert!(KeyParts::parse("foo.[").is_err());
         assert_eq!(
-            parse("foo").unwrap(),
+            KeyParts::parse("foo").unwrap(),
             KeyParts::from_iter(vec![KeyPart::Ident("foo")])
         );
         assert_eq!(
-            parse("foo.bar[5].baz").unwrap(),
+            KeyParts::parse("foo.bar[5].baz").unwrap(),
             KeyParts::from_iter(vec![
                 KeyPart::Ident("foo"),
                 KeyPart::Ident("bar"),
@@ -125,7 +124,7 @@ mod test {
             ])
         );
         assert_eq!(
-            parse("foo.bar_baz[0]").unwrap(),
+            KeyParts::parse("foo.bar_baz[0]").unwrap(),
             KeyParts::from_iter(vec![
                 KeyPart::Ident("foo"),
                 KeyPart::Ident("bar_baz"),

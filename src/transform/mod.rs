@@ -2,7 +2,7 @@
 
 pub(crate) mod key;
 
-use crate::parsers::flat_key::{self, KeyPart, KeyParts};
+use crate::parsers::flat_key::{KeyPart, KeyParts};
 use crate::{Error, Result, Value};
 use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
@@ -353,7 +353,7 @@ where
 pub fn expand_keys(value: &Value) -> Result<Value> {
     match value {
         Value::Object(object) => object.iter().try_fold(Value::Null, |acc, (key, value)| {
-            let mut parts = flat_key::parse(key)?;
+            let mut parts = KeyParts::parse(key)?;
             parts.reverse();
             let value = expand_key_parts(&mut parts, value);
             Ok(deep_merge_values(&acc, &value))
