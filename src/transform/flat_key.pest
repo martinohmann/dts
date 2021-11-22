@@ -11,7 +11,7 @@ string_sq = _{ "'" ~ key_escaped ~ "'" }
 string_quoted = _{ string_dq | string_sq }
 
 index = ${ ASCII_DIGIT+ }
-key = ${ ASCII_ALPHANUMERIC* }
+key = ${ (ASCII_ALPHANUMERIC | "_")* }
 key_escaped = ${ char* }
 key_brackets = _{ "[" ~ (string_quoted | index) ~ "]" }
 

@@ -42,5 +42,9 @@ mod test {
                 Key::Ident("baz")
             ]
         );
+        assert_eq!(
+            parse("foo.bar_baz[0]").unwrap(),
+            vec![Key::Ident("foo"), Key::Ident("bar_baz"), Key::Index(0),]
+        );
     }
 }
