@@ -18,14 +18,6 @@ pub enum Error {
     #[error("error at row index {0}: {1}")]
     AtRowIndex(usize, String),
 
-    /// Indicates that deserialization is not supported for the given Encoding.
-    #[error("deserializing {0} is not supported")]
-    DeserializeUnsupported(Encoding),
-
-    /// Indicates that serialization is not supported for the given Encoding.
-    #[error("serializing to {0} is not supported")]
-    SerializeUnsupported(Encoding),
-
     /// IO errors.
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -81,6 +73,10 @@ pub enum Error {
     /// Error emitted by glob.
     #[error(transparent)]
     GlobPattern(#[from] glob::PatternError),
+
+    /// Represents errors of operations that are not supported by a certain encoding.
+    #[error("operation is not supported for encoding '{0}'")]
+    UnsupportedEncoding(Encoding),
 
     /// Error emitted by parsers from this crate.
     #[error(transparent)]

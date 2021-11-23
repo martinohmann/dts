@@ -149,7 +149,7 @@ where
             Encoding::Xml => self.serialize_xml(value)?,
             Encoding::Text => self.serialize_text(value)?,
             Encoding::Gron => self.serialize_gron(value)?,
-            encoding => return Err(Error::SerializeUnsupported(encoding)),
+            encoding => return Err(Error::UnsupportedEncoding(encoding)),
         };
 
         if self.opts.newline {
