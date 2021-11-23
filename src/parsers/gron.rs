@@ -34,7 +34,7 @@ pub struct Statements<'a> {
 }
 
 impl<'a> Statements<'a> {
-    pub fn parse(s: &'a str) -> Result<Self> {
+    pub fn parse(s: &'a str) -> Result<Self, ParseError> {
         let statements = Parser::parse(Rule::statements, s)
             .map_err(|e| ParseError::new(ParseErrorKind::Gron, e))?
             .into_iter()

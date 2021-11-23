@@ -1,9 +1,12 @@
 //! Data transformation utilities.
 
+mod error;
 pub(crate) mod key;
 
+pub use error::*;
+
 use crate::parsers::flat_key::{KeyPart, KeyParts};
-use crate::{Error, Result, Value, ValueExt};
+use crate::{Result, Value, ValueExt};
 use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
 use serde_json::Map;
@@ -36,8 +39,8 @@ impl Transformation {
     /// ## Errors
     ///
     /// If the `Transformation::JsonPath` variant is applied with a malformed query `apply_chain`
-    /// returns an `Error`.
-    pub fn apply(&self, value: &Value) -> Result<Value> {
+    /// returns a `TransformError`.
+    pub fn apply(&self, value: &Value) -> Result<Value, TransformError> {
         let value = match self {
             Self::FlattenArrays => flatten_arrays(value),
             Self::FlattenKeys(prefix) => flatten_keys(
@@ -56,14 +59,14 @@ impl Transformation {
 }
 
 impl FromStr for Transformation {
-    type Err = Error;
+    type Err = TransformError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let transformation = if s.contains(',') {
             let chain = s
                 .split(',')
                 .map(Self::from_str)
-                .collect::<Result<Vec<_>>>()?;
+                .collect::<Result<Vec<_>, _>>()?;
 
             Self::Chain(chain)
         } else {
@@ -77,12 +80,12 @@ impl FromStr for Transformation {
                 "F" | "flatten-keys" => Self::FlattenKeys(value.map(|v| v.to_string())),
                 "j" | "jsonpath" => match value {
                     Some(query) => Self::JsonPath(query.to_string()),
-                    None => return Err(Error::new("jsonpath expects a filter query")),
+                    None => return Err(TransformError::JSONPathQueryExpected),
                 },
                 "r" | "remove-empty-values" => Self::RemoveEmptyValues,
                 "m" | "deep-merge" => Self::DeepMerge,
                 "e" | "expand-keys" => Self::ExpandKeys,
-                key => return Err(Error::new(format!("unknown transformation: {}", key))),
+                key => return Err(TransformError::UnknownTransformation(key.into())),
             }
         };
 
@@ -96,7 +99,7 @@ impl FromStr for Transformation {
 ///
 /// If the `Transformation::JsonPath` variant is applied with a malformed query `apply_chain`
 /// returns an `Error`.
-pub fn apply_chain<'a, I>(chain: I, value: &Value) -> Result<Value>
+pub fn apply_chain<'a, I>(chain: I, value: &Value) -> Result<Value, TransformError>
 where
     I: IntoIterator<Item = &'a Transformation>,
 {
@@ -143,11 +146,14 @@ where
 /// let value = json!([]);
 /// assert!(filter_jsonpath(&value, "$[").is_err());
 /// ```
-pub fn filter_jsonpath<Q>(value: &Value, query: Q) -> Result<Value>
+pub fn filter_jsonpath<Q>(value: &Value, query: Q) -> Result<Value, TransformError>
 where
     Q: AsRef<str>,
 {
-    value.clone().path(query.as_ref()).map_err(Error::JsonPath)
+    value
+        .clone()
+        .path(query.as_ref())
+        .map_err(TransformError::JSONPathParseError)
 }
 
 /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
@@ -341,7 +347,7 @@ where
 }
 
 /// Recursively expands flat keys to nested objects.
-pub fn expand_keys(value: &Value) -> Result<Value> {
+pub fn expand_keys(value: &Value) -> Result<Value, TransformError> {
     match value {
         Value::Object(object) => object.iter().try_fold(Value::Null, |acc, (key, value)| {
             let mut parts = KeyParts::parse(key)?;
@@ -350,7 +356,7 @@ pub fn expand_keys(value: &Value) -> Result<Value> {
             Ok(deep_merge_values(&acc, &value))
         }),
         Value::Array(array) => Ok(Value::Array(
-            array.iter().map(expand_keys).collect::<Result<_>>()?,
+            array.iter().map(expand_keys).collect::<Result<_, _>>()?,
         )),
         value => Ok(value.clone()),
     }

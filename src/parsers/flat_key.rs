@@ -61,7 +61,7 @@ impl KeyParts {
         self.inner.reverse()
     }
 
-    pub fn parse(key: &str) -> Result<Self> {
+    pub fn parse(key: &str) -> Result<Self, ParseError> {
         let parts = Parser::parse(Rule::parts, key)
             .map_err(|e| ParseError::new(ParseErrorKind::FlatKey, e))?
             .into_iter()

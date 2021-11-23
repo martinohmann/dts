@@ -1,6 +1,6 @@
 //! Defines the `Error` and `Result` types used by this crate.
 
-use crate::{parsers::ParseError, Encoding};
+use crate::{parsers::ParseError, transform::TransformError, Encoding};
 use thiserror::Error;
 
 /// A type alias for `Result<T, Error>`.
@@ -101,6 +101,10 @@ pub enum Error {
     /// Error emitted by parsers from this crate.
     #[error(transparent)]
     ParseError(#[from] ParseError),
+
+    /// Error emitted by the transform module of this crate.
+    #[error(transparent)]
+    TransformError(#[from] TransformError),
 }
 
 impl Error {
