@@ -250,7 +250,7 @@ where
 
         let pattern = match &self.opts.text_split_pattern {
             Some(pattern) => pattern.clone(),
-            None => Regex::new("\n")?,
+            None => Regex::new("\n").unwrap(),
         };
 
         Ok(Value::Array(

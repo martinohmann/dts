@@ -74,10 +74,6 @@ pub enum Error {
     #[error(transparent)]
     Xml(#[from] serde_xml_rs::Error),
 
-    /// Error emitted by regex.
-    #[error(transparent)]
-    Regex(#[from] regex::Error),
-
     /// Error emitted by ureq.
     #[error(transparent)]
     Ureq(#[from] ureq::Error),
@@ -85,18 +81,6 @@ pub enum Error {
     /// Error emitted by glob.
     #[error(transparent)]
     GlobPattern(#[from] glob::PatternError),
-
-    /// JsonPath query parse error.
-    #[error("failed to parse jsonpath query:\n{0}")]
-    JsonPath(String),
-
-    /// Flat object key parse error.
-    #[error("failed to parse flat key:\n{0}")]
-    FlatKey(String),
-
-    /// Gron parse error.
-    #[error("failed to parse gron:\n{0}")]
-    Gron(String),
 
     /// Error emitted by parsers from this crate.
     #[error(transparent)]
