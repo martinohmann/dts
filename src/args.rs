@@ -256,11 +256,11 @@ fn parse_csv_delimiter(s: &str) -> Result<u8> {
     if bytes.len() == 1 {
         Ok(bytes[0])
     } else {
-        Err(Error::new("expected single byte delimiter"))
+        Err(Error::new("Expected single byte delimiter"))
     }
 }
 
 fn parse_unescaped(s: &str) -> Result<String> {
     unescape(s)
-        .ok_or_else(|| Error::new(format!("string contains invalid escape sequences: '{}'", s)))
+        .ok_or_else(|| Error::new(format!("String contains invalid escape sequences: `{}`", s)))
 }

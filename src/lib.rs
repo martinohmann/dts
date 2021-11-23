@@ -49,7 +49,13 @@ where
     }
 
     fn glob_files(&self, pattern: &str) -> Result<Vec<PathBuf>> {
-        glob::glob(&self.as_ref().join(pattern).to_string_lossy())?
+        let full_pattern = self.as_ref().join(pattern);
+
+        glob::glob(&full_pattern.to_string_lossy())
+            .map_err(|e| Error::GlobPatternError {
+                pattern: full_pattern.to_string_lossy().into(),
+                source: e,
+            })?
             .filter_map(|result| match result {
                 Ok(path) => path.is_file().then(|| Ok(path)),
                 Err(err) => Some(Err(err.into_error().into())),

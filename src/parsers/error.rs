@@ -3,17 +3,14 @@ use thiserror::Error;
 
 /// Error emitted by all parsers in this module.
 #[derive(Error, Debug)]
-#[error("failed to parse {kind}:\n{msg}")]
+#[error("Failed to parse {kind}:\n{msg}")]
 pub struct ParseError {
     kind: ParseErrorKind,
     msg: String,
 }
 
 impl ParseError {
-    pub(crate) fn new<S>(kind: ParseErrorKind, msg: S) -> Self
-    where
-        S: ToString,
-    {
+    pub(crate) fn new<S: ToString>(kind: ParseErrorKind, msg: S) -> Self {
         Self {
             kind,
             msg: msg.to_string(),

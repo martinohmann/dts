@@ -10,72 +10,12 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum Error {
-    /// A generic error message.
+    /// Represents a generic error message.
     #[error("{0}")]
-    Message(String),
-
-    /// Indicates an error at a specific row of input or output data.
-    #[error("error at row index {0}: {1}")]
-    AtRowIndex(usize, String),
-
-    /// IO errors.
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-
-    /// Error emitted by serde_yaml.
-    #[error(transparent)]
-    Yaml(#[from] serde_yaml::Error),
-
-    /// Error emitted by serde_json.
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
-
-    /// Error emitted by json5.
-    #[error(transparent)]
-    Json5(#[from] json5::Error),
-
-    /// Error emitted by deser_hjson.
-    #[error(transparent)]
-    Hjson(#[from] deser_hjson::Error),
-
-    /// Error emitted by ron.
-    #[error(transparent)]
-    Ron(#[from] ron::Error),
-
-    /// Serialization error emitted by toml.
-    #[error(transparent)]
-    TomlSerialize(#[from] toml::ser::Error),
-
-    /// Deserialization error emitted by toml.
-    #[error(transparent)]
-    TomlDeserialize(#[from] toml::de::Error),
-
-    /// Error emitted by csv.
-    #[error(transparent)]
-    Csv(#[from] csv::Error),
-
-    /// Error emitted by serde_pickle.
-    #[error(transparent)]
-    Pickle(#[from] serde_pickle::Error),
-
-    /// Error emitted by serde_qs.
-    #[error(transparent)]
-    QueryString(#[from] serde_qs::Error),
-
-    /// Error emitted by serde_xml.
-    #[error(transparent)]
-    Xml(#[from] serde_xml_rs::Error),
-
-    /// Error emitted by ureq.
-    #[error(transparent)]
-    Ureq(#[from] ureq::Error),
-
-    /// Error emitted by glob.
-    #[error(transparent)]
-    GlobPattern(#[from] glob::PatternError),
+    GenericError(String),
 
     /// Represents errors of operations that are not supported by a certain encoding.
-    #[error("operation is not supported for encoding '{0}'")]
+    #[error("Operation is not supported for encoding `{0}`")]
     UnsupportedEncoding(Encoding),
 
     /// Error emitted by parsers from this crate.
@@ -85,20 +25,75 @@ pub enum Error {
     /// Error emitted by the transform module of this crate.
     #[error(transparent)]
     TransformError(#[from] TransformError),
+
+    /// Represents generic IO errors.
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
+
+    /// Represents an invalid glob pattern.
+    #[error("Invalid glob pattern `{pattern}`")]
+    GlobPatternError {
+        /// The pattern that caused the error.
+        pattern: String,
+        /// The underlying error.
+        source: glob::PatternError,
+    },
+
+    /// Represents an error fetching a remote data source.
+    #[error("Unable to fetch remote data source")]
+    RequestError(#[from] ureq::Error),
+
+    /// Error emitted by serde_yaml.
+    #[error(transparent)]
+    YAMLError(#[from] serde_yaml::Error),
+
+    /// Error emitted by serde_json.
+    #[error(transparent)]
+    JSONError(#[from] serde_json::Error),
+
+    /// Error emitted by json5.
+    #[error(transparent)]
+    JSON5Error(#[from] json5::Error),
+
+    /// Error emitted by deser_hjson.
+    #[error(transparent)]
+    HJSONError(#[from] deser_hjson::Error),
+
+    /// Error emitted by ron.
+    #[error(transparent)]
+    RonError(#[from] ron::Error),
+
+    /// Serialization error emitted by toml.
+    #[error(transparent)]
+    TOMLSerializeError(#[from] toml::ser::Error),
+
+    /// Deserialization error emitted by toml.
+    #[error(transparent)]
+    TOMLDeserializeError(#[from] toml::de::Error),
+
+    /// Error emitted by csv.
+    #[error(transparent)]
+    CSVError(#[from] csv::Error),
+
+    /// Indicates an error at a specific row of input or output data.
+    #[error("Error at row index {0}: {1}")]
+    CSVRowError(usize, String),
+
+    /// Error emitted by serde_pickle.
+    #[error(transparent)]
+    PickleError(#[from] serde_pickle::Error),
+
+    /// Error emitted by serde_qs.
+    #[error(transparent)]
+    QueryStringError(#[from] serde_qs::Error),
+
+    /// Error emitted by serde_xml.
+    #[error(transparent)]
+    XMLError(#[from] serde_xml_rs::Error),
 }
 
 impl Error {
-    pub(crate) fn new<T>(message: T) -> Self
-    where
-        T: AsRef<str>,
-    {
-        Self::Message(message.as_ref().to_string())
-    }
-
-    pub(crate) fn at_row_index<T>(pos: usize, message: T) -> Self
-    where
-        T: AsRef<str>,
-    {
-        Self::AtRowIndex(pos, message.as_ref().to_string())
+    pub(crate) fn new<S: ToString>(message: S) -> Self {
+        Self::GenericError(message.to_string())
     }
 }

@@ -100,7 +100,7 @@ fn encoding_required_for_stdin() {
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "unable to detect input encoding, please provide it explicitly via -i",
+            "Unable to detect input encoding, please provide it explicitly via -i",
         ));
 }
 
@@ -113,7 +113,7 @@ fn multiple_sinks_require_array() {
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "when using multiple output files, the data must be an array",
+            "When using multiple output files, the data must be an array",
         ));
 }
 

@@ -213,14 +213,14 @@ where
             for (i, row) in value.to_array().iter().enumerate() {
                 let row_data = if !self.opts.keys_as_csv_headers {
                     row.as_array()
-                        .ok_or_else(|| Error::at_row_index(i, "array expected"))?
+                        .ok_or_else(|| Error::CSVRowError(i, "array expected".into()))?
                         .iter()
                         .map(ValueExt::to_string_unquoted)
                         .collect::<Vec<_>>()
                 } else {
                     let row = row
                         .as_object()
-                        .ok_or_else(|| Error::at_row_index(i, "object expected"))?;
+                        .ok_or_else(|| Error::CSVRowError(i, "object expected".into()))?;
 
                     // The first row dictates the header fields.
                     if headers.is_none() {

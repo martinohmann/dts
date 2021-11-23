@@ -20,17 +20,16 @@ fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let encoding = opts
         .input_encoding
         .or_else(|| source.encoding())
-        .context("unable to detect input encoding, please provide it explicitly via -i")?;
+        .context("Unable to detect input encoding, please provide it explicitly via -i")?;
 
     let reader = source
         .to_reader()
-        .with_context(|| format!("failed to create reader for source: {}", source))?;
+        .with_context(|| format!("Failed to create reader for source `{}`", source))?;
 
     let mut de = Deserializer::with_options(BufReader::new(reader), opts.into());
 
     de.deserialize(encoding)
-        .with_context(|| format!("error in source: {}", source))
-        .with_context(|| format!("failed to deserialize {}", encoding))
+        .with_context(|| format!("Failed to deserialize `{}`", encoding))
 }
 
 struct DeserializeResult<'a> {
@@ -101,7 +100,7 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
 }
 
 fn transform(value: &Value, opts: &TransformOptions) -> Result<Value> {
-    transform::apply_chain(&opts.transform, value).context("failed to transform value")
+    transform::apply_chain(&opts.transform, value).context("Failed to transform value")
 }
 
 fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
@@ -112,16 +111,16 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
 
     let writer = sink
         .to_writer()
-        .with_context(|| format!("failed to create writer for sink: {}", sink))?;
+        .with_context(|| format!("Failed to create writer for sink `{}`", sink))?;
 
     let mut ser = Serializer::with_options(BufWriter::new(writer), opts.into());
 
     match ser.serialize(encoding, value) {
         Ok(()) => Ok(()),
-        Err(Error::Io(e)) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
+        Err(Error::IOError(e)) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
         Err(err) => Err(err),
     }
-    .with_context(|| format!("failed to serialize {}", encoding))
+    .with_context(|| format!("Failed to serialize `{}`", encoding))
 }
 
 fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Result<()> {
@@ -138,14 +137,14 @@ fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Re
         }
         None => {
             return Err(anyhow!(
-                "when using multiple output files, the data must be an array"
+                "When using multiple output files, the data must be an array"
             ))
         }
     };
 
     if sinks.len() > values.len() {
         eprintln!(
-            "Warning: skipping {} output files due to lack of data",
+            "Warning: Skipping {} output files due to lack of data",
             sinks.len() - values.len()
         );
     }
@@ -170,18 +169,14 @@ fn main() -> Result<()> {
     for source in opts.sources {
         match source.as_path() {
             Some(path) => {
-                if !path.exists() {
-                    return Err(anyhow!("file or directory does not exist: {}", source));
-                } else if path.is_dir() {
+                if path.is_dir() {
                     let pattern = opts
                         .input
                         .glob
                         .as_ref()
                         .context("--glob is required if sources contain directories")?;
 
-                    let mut matches = source
-                        .glob_files(pattern)
-                        .with_context(|| format!("glob error for source: {}", source))?;
+                    let mut matches = source.glob_files(pattern)?;
 
                     sources.append(&mut matches);
                 } else {
@@ -198,7 +193,7 @@ fn main() -> Result<()> {
     }
 
     let value = match (sources.len(), dir_sources) {
-        (0, false) => return Err(anyhow!("input file or data on stdin expected")),
+        (0, false) => return Err(anyhow!("Input file or data on stdin expected")),
         (1, false) => deserialize(&sources[0], &opts.input)?,
         (_, _) => deserialize_many(&sources, &opts.input)?,
     };
