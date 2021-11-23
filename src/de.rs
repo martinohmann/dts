@@ -135,12 +135,9 @@ where
         match encoding {
             Encoding::Yaml => self.deserialize_yaml(),
             Encoding::Json => self.deserialize_json(),
-            Encoding::Ron => self.deserialize_ron(),
             Encoding::Toml => self.deserialize_toml(),
             Encoding::Json5 => self.deserialize_json5(),
-            Encoding::Hjson => self.deserialize_hjson(),
             Encoding::Csv => self.deserialize_csv(),
-            Encoding::Pickle => self.deserialize_pickle(),
             Encoding::QueryString => self.deserialize_query_string(),
             Encoding::Xml => self.deserialize_xml(),
             Encoding::Text => self.deserialize_text(),
@@ -166,10 +163,6 @@ where
         Ok(serde_json::from_reader(&mut self.reader)?)
     }
 
-    fn deserialize_ron(&mut self) -> Result<Value> {
-        Ok(ron::de::from_reader(&mut self.reader)?)
-    }
-
     fn deserialize_toml(&mut self) -> Result<Value> {
         let mut buf = Vec::new();
         self.reader.read_to_end(&mut buf)?;
@@ -180,12 +173,6 @@ where
         let mut s = String::new();
         self.reader.read_to_string(&mut s)?;
         Ok(json5::from_str(&s)?)
-    }
-
-    fn deserialize_hjson(&mut self) -> Result<Value> {
-        let mut s = String::new();
-        self.reader.read_to_string(&mut s)?;
-        Ok(deser_hjson::from_str(&s)?)
     }
 
     fn deserialize_csv(&mut self) -> Result<Value> {
@@ -225,13 +212,6 @@ where
         };
 
         Ok(value)
-    }
-
-    fn deserialize_pickle(&mut self) -> Result<Value> {
-        Ok(serde_pickle::from_reader(
-            &mut self.reader,
-            Default::default(),
-        )?)
     }
 
     fn deserialize_query_string(&mut self) -> Result<Value> {

@@ -17,18 +17,12 @@ pub enum Encoding {
     /// Yet Another Markup Language
     #[clap(alias = "yml")]
     Yaml,
-    /// Rusty Object Notation
-    Ron,
     /// TOML configuration format
     Toml,
     /// ES5 JSON
     Json5,
-    /// Human readable JSON
-    Hjson,
     /// Comma separated values
     Csv,
-    /// Python pickle
-    Pickle,
     /// URL query string
     #[clap(alias = "qs")]
     QueryString,
@@ -55,10 +49,8 @@ impl Encoding {
         match ext {
             "json" => Some(Encoding::Json),
             "yaml" | "yml" => Some(Encoding::Yaml),
-            "ron" => Some(Encoding::Ron),
             "toml" => Some(Encoding::Toml),
             "json5" => Some(Encoding::Json5),
-            "hjson" => Some(Encoding::Hjson),
             "csv" => Some(Encoding::Csv),
             "xml" => Some(Encoding::Xml),
             "txt" | "text" => Some(Encoding::Text),
@@ -71,12 +63,9 @@ impl Encoding {
         match self {
             Encoding::Json => "json",
             Encoding::Yaml => "yaml",
-            Encoding::Ron => "ron",
             Encoding::Toml => "toml",
             Encoding::Json5 => "json5",
-            Encoding::Hjson => "hjson",
             Encoding::Csv => "csv",
-            Encoding::Pickle => "pickle",
             Encoding::QueryString => "query-string",
             Encoding::Xml => "xml",
             Encoding::Text => "text",
@@ -102,9 +91,7 @@ mod tests {
         assert_eq!(Encoding::from_path("foo.yml"), Some(Encoding::Yaml));
         assert_eq!(Encoding::from_path("foo.json"), Some(Encoding::Json));
         assert_eq!(Encoding::from_path("foo.json5"), Some(Encoding::Json5));
-        assert_eq!(Encoding::from_path("foo.ron"), Some(Encoding::Ron));
         assert_eq!(Encoding::from_path("foo.toml"), Some(Encoding::Toml));
-        assert_eq!(Encoding::from_path("foo.hjson"), Some(Encoding::Hjson));
         assert_eq!(Encoding::from_path("foo.bak"), None);
         assert_eq!(Encoding::from_path("foo"), None);
     }

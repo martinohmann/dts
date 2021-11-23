@@ -140,11 +140,9 @@ where
     pub fn serialize(&mut self, encoding: Encoding, value: &Value) -> Result<()> {
         match encoding {
             Encoding::Yaml => self.serialize_yaml(value)?,
-            Encoding::Json | Encoding::Json5 => self.serialize_json(value)?,
-            Encoding::Ron => self.serialize_ron(value)?,
+            Encoding::Json => self.serialize_json(value)?,
             Encoding::Toml => self.serialize_toml(value)?,
             Encoding::Csv => self.serialize_csv(value)?,
-            Encoding::Pickle => self.serialize_pickle(value)?,
             Encoding::QueryString => self.serialize_query_string(value)?,
             Encoding::Xml => self.serialize_xml(value)?,
             Encoding::Text => self.serialize_text(value)?,
@@ -168,16 +166,6 @@ where
             serde_json::to_writer_pretty(&mut self.writer, value)?
         } else {
             serde_json::to_writer(&mut self.writer, value)?
-        }
-
-        Ok(())
-    }
-
-    fn serialize_ron(&mut self, value: &Value) -> Result<()> {
-        if self.opts.pretty {
-            ron::ser::to_writer_pretty(&mut self.writer, value, Default::default())?
-        } else {
-            ron::ser::to_writer(&mut self.writer, value)?
         }
 
         Ok(())
@@ -243,14 +231,6 @@ where
         }
 
         Ok(self.writer.write_all(&buf)?)
-    }
-
-    fn serialize_pickle(&mut self, value: &Value) -> Result<()> {
-        Ok(serde_pickle::to_writer(
-            &mut self.writer,
-            value,
-            Default::default(),
-        )?)
     }
 
     fn serialize_query_string(&mut self, value: &Value) -> Result<()> {

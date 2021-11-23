@@ -55,14 +55,6 @@ pub enum Error {
     #[error(transparent)]
     JSON5Error(#[from] json5::Error),
 
-    /// Error emitted by deser_hjson.
-    #[error(transparent)]
-    HJSONError(#[from] deser_hjson::Error),
-
-    /// Error emitted by ron.
-    #[error(transparent)]
-    RonError(#[from] ron::Error),
-
     /// Serialization error emitted by toml.
     #[error(transparent)]
     TOMLSerializeError(#[from] toml::ser::Error),
@@ -78,10 +70,6 @@ pub enum Error {
     /// Indicates an error at a specific row of input or output data.
     #[error("Error at row index {0}: {1}")]
     CSVRowError(usize, String),
-
-    /// Error emitted by serde_pickle.
-    #[error(transparent)]
-    PickleError(#[from] serde_pickle::Error),
 
     /// Error emitted by serde_qs.
     #[error(transparent)]
