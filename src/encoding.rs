@@ -13,21 +13,21 @@ use std::path::Path;
 #[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
 pub enum Encoding {
     /// JavaScript Object Notation
-    Json,
+    JSON,
     /// Yet Another Markup Language
     #[clap(alias = "yml")]
-    Yaml,
+    YAML,
     /// TOML configuration format
-    Toml,
+    TOML,
     /// ES5 JSON
-    Json5,
+    JSON5,
     /// Comma separated values
-    Csv,
+    CSV,
     /// URL query string
     #[clap(alias = "qs")]
     QueryString,
     /// Extensible Markup Language
-    Xml,
+    XML,
     /// Plaintext document
     #[clap(alias = "txt")]
     Text,
@@ -47,12 +47,12 @@ impl Encoding {
         let ext = path.as_ref().extension()?.to_str()?;
 
         match ext {
-            "json" => Some(Encoding::Json),
-            "yaml" | "yml" => Some(Encoding::Yaml),
-            "toml" => Some(Encoding::Toml),
-            "json5" => Some(Encoding::Json5),
-            "csv" => Some(Encoding::Csv),
-            "xml" => Some(Encoding::Xml),
+            "json" => Some(Encoding::JSON),
+            "yaml" | "yml" => Some(Encoding::YAML),
+            "toml" => Some(Encoding::TOML),
+            "json5" => Some(Encoding::JSON5),
+            "csv" => Some(Encoding::CSV),
+            "xml" => Some(Encoding::XML),
             "txt" | "text" => Some(Encoding::Text),
             _ => None,
         }
@@ -61,13 +61,13 @@ impl Encoding {
     /// Returns the name of the `Encoding`.
     pub fn as_str(&self) -> &'static str {
         match self {
-            Encoding::Json => "json",
-            Encoding::Yaml => "yaml",
-            Encoding::Toml => "toml",
-            Encoding::Json5 => "json5",
-            Encoding::Csv => "csv",
+            Encoding::JSON => "json",
+            Encoding::YAML => "yaml",
+            Encoding::TOML => "toml",
+            Encoding::JSON5 => "json5",
+            Encoding::CSV => "csv",
             Encoding::QueryString => "query-string",
-            Encoding::Xml => "xml",
+            Encoding::XML => "xml",
             Encoding::Text => "text",
             Encoding::Gron => "gron",
         }
@@ -87,11 +87,11 @@ mod tests {
 
     #[test]
     fn test_encoding_from_path() {
-        assert_eq!(Encoding::from_path("foo.yaml"), Some(Encoding::Yaml));
-        assert_eq!(Encoding::from_path("foo.yml"), Some(Encoding::Yaml));
-        assert_eq!(Encoding::from_path("foo.json"), Some(Encoding::Json));
-        assert_eq!(Encoding::from_path("foo.json5"), Some(Encoding::Json5));
-        assert_eq!(Encoding::from_path("foo.toml"), Some(Encoding::Toml));
+        assert_eq!(Encoding::from_path("foo.yaml"), Some(Encoding::YAML));
+        assert_eq!(Encoding::from_path("foo.yml"), Some(Encoding::YAML));
+        assert_eq!(Encoding::from_path("foo.json"), Some(Encoding::JSON));
+        assert_eq!(Encoding::from_path("foo.json5"), Some(Encoding::JSON5));
+        assert_eq!(Encoding::from_path("foo.toml"), Some(Encoding::TOML));
         assert_eq!(Encoding::from_path("foo.bak"), None);
         assert_eq!(Encoding::from_path("foo"), None);
     }

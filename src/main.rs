@@ -107,7 +107,7 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
     let encoding = opts
         .output_encoding
         .or_else(|| sink.encoding())
-        .unwrap_or(Encoding::Json);
+        .unwrap_or(Encoding::JSON);
 
     let writer = sink
         .to_writer()
