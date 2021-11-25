@@ -36,6 +36,11 @@ version = "1.0.68"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
+criterion = "0.3"
 pretty_assertions = "1.0.0"
 tempfile = "3.2.0"
 predicates = "2.0.3"
+
+[[bench]]
+name = "benchmark"
+harness = false

@@ -349,12 +349,15 @@ where
 /// Recursively expands flat keys to nested objects.
 pub fn expand_keys(value: &Value) -> Result<Value, TransformError> {
     match value {
-        Value::Object(object) => object.iter().try_fold(Value::Null, |acc, (key, value)| {
-            let mut parts = KeyParts::parse(key)?;
-            parts.reverse();
-            let value = expand_key_parts(&mut parts, value);
-            Ok(deep_merge_values(&acc, &value))
-        }),
+        Value::Object(object) => object
+            .iter()
+            .try_fold(Value::Null, |mut acc, (key, value)| {
+                let mut parts = KeyParts::parse(key)?;
+                parts.reverse();
+                let mut value = expand_key_parts(&mut parts, value);
+                deep_merge_values(&mut acc, &mut value);
+                Ok(acc)
+            }),
         Value::Array(array) => Ok(Value::Array(
             array.iter().map(expand_keys).collect::<Result<_, _>>()?,
         )),
@@ -366,7 +369,7 @@ fn expand_key_parts(parts: &mut KeyParts, value: &Value) -> Value {
     match parts.pop() {
         Some(key) => match key {
             KeyPart::Ident(ident) => {
-                let mut object = Map::new();
+                let mut object = Map::with_capacity(1);
                 object.insert(ident, expand_key_parts(parts, value));
                 Value::Object(object)
             }
@@ -383,41 +386,42 @@ fn expand_key_parts(parts: &mut KeyParts, value: &Value) -> Value {
 /// Recursively merges all arrays and maps in `value`. If `value` is not an array it is returned
 /// as is.
 pub fn deep_merge(value: &Value) -> Value {
-    match value.as_array() {
-        Some(array) => array.iter().fold(Value::Array(Vec::new()), |acc, value| {
-            deep_merge_values(&acc, value)
-        }),
-        None => value.clone(),
+    let mut value = value.clone();
+    deep_merge_mut(&mut value);
+    value
+}
+
+/// Recursively merges all arrays and maps in `value`. The value is modified in place. If `value`
+/// is not an array this is a no-op.
+fn deep_merge_mut(value: &mut Value) {
+    if let Some(array) = value.as_array_mut() {
+        *value = array
+            .iter_mut()
+            .fold(Value::Array(Vec::new()), |mut acc, value| {
+                deep_merge_values(&mut acc, value);
+                acc
+            })
     }
 }
 
-fn deep_merge_values(lhs: &Value, rhs: &Value) -> Value {
+fn deep_merge_values(lhs: &mut Value, rhs: &mut Value) {
     match (lhs, rhs) {
         (Value::Object(lhs), Value::Object(rhs)) => {
-            let mut merged = lhs.clone();
-
-            for (key, value) in rhs.iter() {
-                merged
-                    .entry(key)
-                    .and_modify(|merged| *merged = deep_merge_values(merged, value))
-                    .or_insert_with(|| value.clone());
+            for (key, value) in rhs.iter_mut() {
+                lhs.entry(key)
+                    .and_modify(|lhs| deep_merge_values(lhs, value))
+                    .or_insert_with(|| std::mem::replace(value, Value::Null));
             }
-
-            Value::Object(merged)
         }
         (Value::Array(lhs), Value::Array(rhs)) => {
-            let mut merged = lhs.clone();
+            lhs.resize(lhs.len().max(rhs.len()), Value::Null);
 
-            merged.resize(lhs.len().max(rhs.len()), Value::Null);
-
-            for (i, value) in rhs.iter().enumerate() {
-                merged[i] = deep_merge_values(&merged[i], value);
+            for (i, value) in rhs.iter_mut().enumerate() {
+                deep_merge_values(&mut lhs[i], value);
             }
-
-            Value::Array(merged)
         }
-        (_, Value::Null) => lhs.clone(),
-        (_, _) => rhs.clone(),
+        (_, Value::Null) => (),
+        (lhs, rhs) => *lhs = std::mem::replace(rhs, Value::Null),
     }
 }
 
