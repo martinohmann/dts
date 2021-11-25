@@ -4,9 +4,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use crossbeam_channel::bounded;
-use crossbeam_utils::thread;
-use serde_json::Map;
+use rayon::prelude::*;
 use std::io::{BufReader, BufWriter};
 
 use dts::{
@@ -32,70 +30,23 @@ fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
         .with_context(|| format!("Failed to deserialize `{}`", encoding))
 }
 
-struct DeserializeResult<'a> {
-    index: usize,
-    source: &'a Source,
-    value: Value,
-}
-
 fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
-    // We need minimum one worker and max sources.len().
-    let workers = sources.len().min(opts.threads).max(1);
-
-    let (tx_res, rx_res) = bounded(sources.len());
-
-    thread::scope(|scope| {
-        let (tx_sources, rx_sources) = bounded(sources.len());
-
-        scope.spawn(move |_| {
-            for (index, source) in sources.iter().enumerate() {
-                // Send the index down the channel along with the source so that we can order
-                // results later after collecting them.
-                if tx_sources.send((index, source)).is_err() {
-                    break;
-                }
-            }
-        });
-
-        for _ in 0..workers {
-            let (tx_res, rx_sources) = (tx_res.clone(), rx_sources.clone());
-
-            scope.spawn(move |_| {
-                for (index, source) in rx_sources.iter() {
-                    // Propagate the index and source down the result channel.
-                    let result = deserialize(source, opts).map(|value| DeserializeResult {
-                        index,
-                        source,
-                        value,
-                    });
-
-                    if tx_res.send(result).is_err() {
-                        break;
-                    }
-                }
-            });
-        }
-    })
-    .unwrap();
-
-    // Drop the sender so we can collect the results.
-    drop(tx_res);
-
-    let mut results = rx_res.iter().collect::<Result<Vec<_>>>()?;
-
-    // Sort by path index to restore the original order.
-    results.sort_by(|a, b| a.index.cmp(&b.index));
+    let results = sources
+        .par_iter()
+        .map(|src| deserialize(src, opts).map(|val| (src, val)))
+        .collect::<Result<Vec<_>>>()?;
 
     if opts.file_paths {
-        let iter = results
-            .iter()
-            .map(|res| (res.source.to_string(), res.value.clone()));
-
-        Ok(Value::Object(Map::from_iter(iter)))
+        Ok(Value::Object(
+            results
+                .iter()
+                .map(|res| (res.0.to_string(), res.1.clone()))
+                .collect(),
+        ))
     } else {
-        let iter = results.iter().map(|res| res.value.clone());
-
-        Ok(Value::Array(Vec::from_iter(iter)))
+        Ok(Value::Array(
+            results.iter().map(|res| res.1.clone()).collect(),
+        ))
     }
 }
 

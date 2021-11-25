@@ -9,6 +9,7 @@ use crate::parsers::flat_key::{KeyPart, KeyParts};
 use crate::{Result, Value, ValueExt};
 use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
+use rayon::prelude::*;
 use serde_json::Map;
 use std::str::FromStr;
 
@@ -363,7 +364,10 @@ pub fn expand_keys(value: &Value) -> Result<Value, TransformError> {
                 Ok(acc)
             }),
         Value::Array(array) => Ok(Value::Array(
-            array.iter().map(expand_keys).collect::<Result<_, _>>()?,
+            array
+                .par_iter()
+                .map(expand_keys)
+                .collect::<Result<_, _>>()?,
         )),
         value => Ok(value.clone()),
     }
