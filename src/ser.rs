@@ -172,9 +172,7 @@ where
     }
 
     fn serialize_toml(&mut self, value: &Value) -> Result<()> {
-        let mut value = value.clone();
-
-        value.primitives_first();
+        let value = toml::Value::try_from(value)?;
 
         let s = if self.opts.pretty {
             toml::ser::to_string_pretty(&value)?

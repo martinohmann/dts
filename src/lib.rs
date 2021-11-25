@@ -73,16 +73,6 @@ trait ValueExt {
     /// not quoted.
     fn to_string_unquoted(&self) -> String;
 
-    // Recursively walks `Value::Array` and `Value::Object` values and pushes all arrays and objects to
-    // the end of the containing `Value::Array` or `Value::Object`. This is necessary for certain
-    // output encodings like TOML where tables and arrays need to come after primitve values to
-    // disambiguate.
-    //
-    // The value is updated in place.
-    //
-    // Returns a reference to the modified value to simplify usage in iterators.
-    fn primitives_first(&mut self) -> &Value;
-
     /// Deep merges `other` into `self`, replacing all values in `other` that were merged into
     /// `self` with `Value::Null`.
     fn deep_merge(&mut self, other: &mut Value);
