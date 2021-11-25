@@ -355,7 +355,7 @@ pub fn expand_keys(value: &Value) -> Result<Value, TransformError> {
                 let mut parts = KeyParts::parse(key)?;
                 parts.reverse();
                 let mut value = expand_key_parts(&mut parts, value);
-                deep_merge_values(&mut acc, &mut value);
+                acc.deep_merge(&mut value);
                 Ok(acc)
             }),
         Value::Array(array) => Ok(Value::Array(
@@ -398,30 +398,9 @@ fn deep_merge_mut(value: &mut Value) {
         *value = array
             .iter_mut()
             .fold(Value::Array(Vec::new()), |mut acc, value| {
-                deep_merge_values(&mut acc, value);
+                acc.deep_merge(value);
                 acc
             })
-    }
-}
-
-fn deep_merge_values(lhs: &mut Value, rhs: &mut Value) {
-    match (lhs, rhs) {
-        (Value::Object(lhs), Value::Object(rhs)) => {
-            for (key, value) in rhs.iter_mut() {
-                lhs.entry(key)
-                    .and_modify(|lhs| deep_merge_values(lhs, value))
-                    .or_insert_with(|| std::mem::replace(value, Value::Null));
-            }
-        }
-        (Value::Array(lhs), Value::Array(rhs)) => {
-            lhs.resize(lhs.len().max(rhs.len()), Value::Null);
-
-            for (i, value) in rhs.iter_mut().enumerate() {
-                deep_merge_values(&mut lhs[i], value);
-            }
-        }
-        (_, Value::Null) => (),
-        (lhs, rhs) => *lhs = std::mem::replace(rhs, Value::Null),
     }
 }
 

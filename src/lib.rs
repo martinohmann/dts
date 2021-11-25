@@ -82,4 +82,8 @@ trait ValueExt {
     //
     // Returns a reference to the modified value to simplify usage in iterators.
     fn primitives_first(&mut self) -> &Value;
+
+    /// Deep merges `other` into `self`, replacing all values in `other` that were merged into
+    /// `self` with `Value::Null`.
+    fn deep_merge(&mut self, other: &mut Value);
 }

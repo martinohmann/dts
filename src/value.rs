@@ -52,6 +52,27 @@ impl ValueExt for Value {
 
         self
     }
+
+    fn deep_merge(&mut self, other: &mut Value) {
+        match (self, other) {
+            (Value::Object(lhs), Value::Object(rhs)) => {
+                for (key, value) in rhs.iter_mut() {
+                    lhs.entry(key)
+                        .and_modify(|lhs| lhs.deep_merge(value))
+                        .or_insert_with(|| std::mem::replace(value, Value::Null));
+                }
+            }
+            (Value::Array(lhs), Value::Array(rhs)) => {
+                lhs.resize(lhs.len().max(rhs.len()), Value::Null);
+
+                for (i, value) in rhs.iter_mut().enumerate() {
+                    lhs[i].deep_merge(value);
+                }
+            }
+            (_, Value::Null) => (),
+            (lhs, rhs) => *lhs = std::mem::replace(rhs, Value::Null),
+        }
+    }
 }
 
 #[derive(PartialEq, Eq)]
