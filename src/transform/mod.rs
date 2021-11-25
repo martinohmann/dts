@@ -31,6 +31,8 @@ pub enum Transformation {
     DeepMerge,
     /// Expands flat keys to nested objects.
     ExpandKeys,
+    /// Extracts object keys.
+    Keys,
 }
 
 impl Transformation {
@@ -52,6 +54,7 @@ impl Transformation {
             Self::Chain(chain) => apply_chain(chain, value)?,
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value)?,
+            Self::Keys => keys(value),
         };
 
         Ok(value)
@@ -85,6 +88,7 @@ impl FromStr for Transformation {
                 "r" | "remove-empty-values" => Self::RemoveEmptyValues,
                 "m" | "deep-merge" => Self::DeepMerge,
                 "e" | "expand-keys" => Self::ExpandKeys,
+                "k" | "keys" => Self::Keys,
                 key => return Err(TransformError::UnknownTransformation(key.into())),
             }
         };
@@ -402,6 +406,27 @@ fn deep_merge_mut(value: &mut Value) {
                 acc
             })
     }
+}
+
+/// Extracts object keys into a new `Value`. The returned `Value` is always of variant
+/// `Value::Array`. If the input is not a `Value::Object`, the returned array is empty.
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts::transform::keys;
+/// use serde_json::json;
+///
+/// let value = json!({"foo": "bar", "baz": "qux"});
+///
+/// assert_eq!(keys(&value), json!(["foo", "baz"]));
+/// ```
+pub fn keys(value: &Value) -> Value {
+    Value::Array(
+        value
+            .as_object()
+            .map(|obj| obj.keys().cloned().map(Value::String).collect())
+            .unwrap_or_default(),
+    )
 }
 
 #[cfg(test)]

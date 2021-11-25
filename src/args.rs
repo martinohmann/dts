@@ -195,6 +195,13 @@ pub struct TransformOptions {
     /// Option: `e` or `expand-keys`.
     ///
     /// Recursively expands flat object keys to nested objects.
+    ///
+    /// ## Keys
+    ///
+    /// Option: `k` or `keys`.
+    ///
+    /// Transforms the data into an array of object keys which is empty if the top level value is
+    /// not an object.
     #[clap(short = 't', long, parse(try_from_str = Transformation::from_str))]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
     pub transform: Vec<Transformation>,
