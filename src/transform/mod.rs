@@ -9,6 +9,8 @@ use crate::parsers::flat_key::{KeyPart, KeyParts};
 use crate::{Result, Value, ValueExt};
 use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
+use rayon::iter::ParallelBridge;
+use rayon::prelude::*;
 use serde_json::Map;
 use std::str::FromStr;
 
@@ -351,17 +353,40 @@ where
 }
 
 /// Recursively expands flat keys to nested objects.
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// # use std::error::Error;
+/// #
+/// # fn main() -> Result<(), Box<dyn Error>> {
+/// use dts::transform::expand_keys;
+/// use serde_json::json;
+///
+/// let value = json!([{"foo.bar": 1, "foo[\"bar-baz\"]": 2}]);
+/// let expected = json!([{"foo": {"bar": 1, "bar-baz": 2}}]);
+///
+/// assert_eq!(expand_keys(&value)?, expected);
+/// #   Ok(())
+/// # }
+/// ```
 pub fn expand_keys(value: &Value) -> Result<Value, TransformError> {
     match value {
         Value::Object(object) => object
             .iter()
-            .try_fold(Value::Null, |mut acc, (key, value)| {
+            .par_bridge()
+            .map(|(key, value)| {
                 let mut parts = KeyParts::parse(key)?;
                 parts.reverse();
-                let mut value = expand_key_parts(&mut parts, value);
-                acc.deep_merge(&mut value);
-                Ok(acc)
-            }),
+                Ok(expand_key_parts(&mut parts, value))
+            })
+            .reduce(
+                || Ok(Value::Null),
+                |a, b| {
+                    let (mut a, mut b) = (a?, b?);
+                    a.deep_merge(&mut b);
+                    Ok(a)
+                },
+            ),
         Value::Array(array) => Ok(Value::Array(
             array.iter().map(expand_keys).collect::<Result<_, _>>()?,
         )),
