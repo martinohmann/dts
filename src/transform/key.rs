@@ -1,4 +1,4 @@
-use crate::parsers::flat_key::KeyParts;
+use crate::parsers::flat_key::StringKeyParts;
 use crate::Value;
 use serde_json::Map;
 use std::collections::BTreeMap;
@@ -7,7 +7,7 @@ pub struct KeyFlattener<'a> {
     value: &'a Value,
     prefix: &'a str,
     map: BTreeMap<String, Value>,
-    stack: KeyParts,
+    stack: StringKeyParts,
 }
 
 impl<'a> KeyFlattener<'a> {
@@ -16,7 +16,7 @@ impl<'a> KeyFlattener<'a> {
             value,
             prefix,
             map: BTreeMap::new(),
-            stack: KeyParts::new(),
+            stack: StringKeyParts::new(),
         }
     }
 

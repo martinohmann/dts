@@ -37,24 +37,8 @@ pub struct KeyParts {
 }
 
 impl KeyParts {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn pop(&mut self) -> Option<KeyPart> {
         self.inner.pop()
-    }
-
-    pub fn push(&mut self, part: KeyPart) {
-        self.inner.push(part)
-    }
-
-    pub fn push_index(&mut self, index: usize) {
-        self.push(KeyPart::Index(index))
-    }
-
-    pub fn push_ident(&mut self, ident: &str) {
-        self.push(KeyPart::Ident(ident.to_string()))
     }
 
     pub fn reverse(&mut self) {
@@ -80,17 +64,8 @@ impl KeyParts {
 
 impl fmt::Display for KeyParts {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, key) in self.inner.iter().enumerate() {
-            let key = key.to_string();
-
-            if i > 0 && !key.starts_with('[') {
-                write!(f, ".{}", key)?;
-            } else {
-                write!(f, "{}", key)?;
-            }
-        }
-
-        Ok(())
+        let parts = StringKeyParts::from(self);
+        fmt::Display::fmt(&parts, f)
     }
 }
 
@@ -111,6 +86,55 @@ impl<'a> IntoIterator for KeyParts {
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.into_iter()
+    }
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub struct StringKeyParts {
+    inner: Vec<String>,
+}
+
+impl StringKeyParts {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn pop(&mut self) -> Option<String> {
+        self.inner.pop()
+    }
+
+    pub fn push(&mut self, part: KeyPart) {
+        self.inner.push(part.to_string())
+    }
+
+    pub fn push_index(&mut self, index: usize) {
+        self.push(KeyPart::Index(index))
+    }
+
+    pub fn push_ident(&mut self, ident: &str) {
+        self.push(KeyPart::Ident(ident.to_string()))
+    }
+}
+
+impl From<&KeyParts> for StringKeyParts {
+    fn from(parts: &KeyParts) -> Self {
+        Self {
+            inner: parts.inner.iter().map(ToString::to_string).collect(),
+        }
+    }
+}
+
+impl fmt::Display for StringKeyParts {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, key) in self.inner.iter().enumerate() {
+            if i > 0 && !key.starts_with('[') {
+                write!(f, ".{}", key)?;
+            } else {
+                write!(f, "{}", key)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
