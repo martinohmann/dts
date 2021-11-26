@@ -202,6 +202,12 @@ pub struct TransformOptions {
     ///
     /// Transforms the data into an array of object keys which is empty if the top level value is
     /// not an object.
+    ///
+    /// ## Delete keys
+    ///
+    /// Option: `d=<pattern>` or `delete-keys=<pattern>`.
+    ///
+    /// Recursively deletes all object keys matching a regex pattern.
     #[clap(short = 't', long, parse(try_from_str = Transformation::from_str))]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
     pub transform: Vec<Transformation>,

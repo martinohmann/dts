@@ -11,6 +11,7 @@ use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::*;
+use regex::Regex;
 use serde_json::Map;
 use std::str::FromStr;
 
@@ -35,6 +36,8 @@ pub enum Transformation {
     ExpandKeys,
     /// Extracts object keys.
     Keys,
+    /// Delete object keys matching a pattern.
+    DeleteKeys(String),
 }
 
 impl Transformation {
@@ -57,6 +60,10 @@ impl Transformation {
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value)?,
             Self::Keys => keys(value),
+            Self::DeleteKeys(pattern) => {
+                let pattern = Regex::new(pattern)?;
+                delete_keys(value, &pattern)
+            }
         };
 
         Ok(value)
@@ -83,14 +90,16 @@ impl FromStr for Transformation {
             match key {
                 "f" | "flatten-arrays" => Self::FlattenArrays,
                 "F" | "flatten-keys" => Self::FlattenKeys(value.map(|v| v.to_string())),
-                "j" | "jsonpath" => match value {
-                    Some(query) => Self::JsonPath(query.to_string()),
-                    None => return Err(TransformError::JSONPathQueryExpected),
-                },
+                "j" | "jsonpath" => value
+                    .map(|query| Self::JsonPath(query.to_string()))
+                    .ok_or_else(|| TransformError::ValueRequired(key.into()))?,
                 "r" | "remove-empty-values" => Self::RemoveEmptyValues,
                 "m" | "deep-merge" => Self::DeepMerge,
                 "e" | "expand-keys" => Self::ExpandKeys,
                 "k" | "keys" => Self::Keys,
+                "d" | "delete-keys" => value
+                    .map(|pattern| Self::DeleteKeys(pattern.to_string()))
+                    .ok_or_else(|| TransformError::ValueRequired(key.into()))?,
                 key => return Err(TransformError::UnknownTransformation(key.into())),
             }
         };
@@ -452,6 +461,45 @@ pub fn keys(value: &Value) -> Value {
             .map(|obj| obj.keys().cloned().map(Value::String).collect())
             .unwrap_or_default(),
     )
+}
+
+/// Recursively deletes all keys matching the regex pattern.
+///
+/// ```
+/// use dts::transform::delete_keys;
+/// use serde_json::json;
+/// use regex::Regex;
+/// # use pretty_assertions::assert_eq;
+/// # use std::error::Error;
+/// #
+/// # fn main() -> Result<(), Box<dyn Error>> {
+/// let value = json!({"foo": "bar", "baz": {"foobar": "qux", "one": "two"}});
+/// let pattern = Regex::new("^fo")?;
+///
+/// assert_eq!(delete_keys(&value, &pattern), json!({"baz": {"one": "two"}}));
+/// #   Ok(())
+/// # }
+/// ```
+pub fn delete_keys(value: &Value, regex: &Regex) -> Value {
+    let mut value = value.clone();
+    delete_keys_mut(&mut value, regex);
+    value
+}
+
+fn delete_keys_mut(value: &mut Value, regex: &Regex) {
+    match value {
+        Value::Object(object) => {
+            *object = object
+                .iter()
+                .filter(|(key, _)| !regex.is_match(key))
+                .map(|(key, value)| (key.clone(), delete_keys(value, regex)))
+                .collect()
+        }
+        Value::Array(array) => array
+            .iter_mut()
+            .for_each(|value| delete_keys_mut(value, regex)),
+        _ => (),
+    }
 }
 
 #[cfg(test)]
