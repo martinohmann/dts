@@ -50,10 +50,9 @@ impl Transformation {
     pub fn apply(&self, value: Value) -> Result<Value, TransformError> {
         let value = match self {
             Self::FlattenArrays => flatten_arrays(value),
-            Self::FlattenKeys(prefix) => flatten_keys(
-                &value,
-                prefix.clone().unwrap_or_else(|| String::from("data")),
-            ),
+            Self::FlattenKeys(prefix) => {
+                flatten_keys(value, prefix.as_ref().unwrap_or(&String::from("data")))
+            }
             Self::JsonPath(query) => filter_jsonpath(value, query)?,
             Self::RemoveEmptyValues => remove_empty_values(value),
             Self::Chain(chain) => apply_chain(chain, value)?,
@@ -300,7 +299,7 @@ pub fn flatten_arrays(value: Value) -> Value {
 ///
 /// let value = json!({"foo": {"bar": ["baz", "qux"]}});
 ///
-/// let value = flatten_keys(&value, "data");
+/// let value = flatten_keys(value, "data");
 ///
 /// assert_eq!(
 ///     value,
@@ -323,7 +322,7 @@ pub fn flatten_arrays(value: Value) -> Value {
 ///
 /// let value = json!(["foo", "bar", "baz"]);
 ///
-/// let value = flatten_keys(&value, "array");
+/// let value = flatten_keys(value, "array");
 ///
 /// assert_eq!(
 ///     value,
@@ -345,14 +344,14 @@ pub fn flatten_arrays(value: Value) -> Value {
 ///
 /// let value = json!("foo");
 ///
-/// assert_eq!(flatten_keys(&value, "data"), json!({"data": "foo"}));
+/// assert_eq!(flatten_keys(value, "data"), json!({"data": "foo"}));
 /// ```
-pub fn flatten_keys<P>(value: &Value, prefix: P) -> Value
+pub fn flatten_keys<P>(value: Value, prefix: P) -> Value
 where
     P: AsRef<str>,
 {
-    let mut flattener = KeyFlattener::new(value, prefix.as_ref());
-    Value::Object(Map::from_iter(flattener.flatten()))
+    let mut flattener = KeyFlattener::new(prefix.as_ref());
+    Value::Object(Map::from_iter(flattener.flatten(value)))
 }
 
 /// Recursively expands flat keys to nested objects.

@@ -4,48 +4,46 @@ use serde_json::Map;
 use std::collections::BTreeMap;
 
 pub struct KeyFlattener<'a> {
-    value: &'a Value,
     prefix: &'a str,
     stack: StringKeyParts,
 }
 
 impl<'a> KeyFlattener<'a> {
-    pub fn new(value: &'a Value, prefix: &'a str) -> Self {
+    pub fn new(prefix: &'a str) -> Self {
         Self {
-            value,
             prefix,
             stack: StringKeyParts::new(),
         }
     }
 
-    pub fn flatten(&mut self) -> BTreeMap<String, Value> {
+    pub fn flatten(&mut self, value: Value) -> BTreeMap<String, Value> {
         let mut map = BTreeMap::new();
         self.stack.push_ident(self.prefix);
-        self.map_value(&mut map, self.value);
+        self.flatten_value(&mut map, value);
         self.stack.pop();
         map
     }
 
-    fn map_value(&mut self, map: &mut BTreeMap<String, Value>, value: &'a Value) {
+    fn flatten_value(&mut self, map: &mut BTreeMap<String, Value>, value: Value) {
         match value {
             Value::Array(array) => {
                 map.insert(self.key(), Value::Array(Vec::new()));
-                for (index, value) in array.iter().enumerate() {
+                for (index, value) in array.into_iter().enumerate() {
                     self.stack.push_index(index);
-                    self.map_value(map, value);
+                    self.flatten_value(map, value);
                     self.stack.pop();
                 }
             }
             Value::Object(object) => {
                 map.insert(self.key(), Value::Object(Map::new()));
-                for (key, value) in object.iter() {
-                    self.stack.push_ident(key);
-                    self.map_value(map, value);
+                for (key, value) in object.into_iter() {
+                    self.stack.push_ident(&key);
+                    self.flatten_value(map, value);
                     self.stack.pop();
                 }
             }
             value => {
-                map.insert(self.key(), value.clone());
+                map.insert(self.key(), value);
             }
         }
     }
@@ -65,8 +63,8 @@ mod test {
     fn test_key_flattener() {
         let value = json!({"foo": {"bar": ["baz", "qux"]}});
 
-        let mut flattener = KeyFlattener::new(&value, "data");
-        let value = Value::Object(Map::from_iter(flattener.flatten()));
+        let mut flattener = KeyFlattener::new("data");
+        let value = Value::Object(Map::from_iter(flattener.flatten(value)));
 
         assert_eq!(
             value,

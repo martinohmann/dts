@@ -54,7 +54,7 @@ fn benchmark_transform(c: &mut Criterion) {
                 "bam": ["a", "b", ["c", "d", "e"]]
             });
 
-            flatten_keys(&value, "data")
+            flatten_keys(value, "data")
         })
     });
 

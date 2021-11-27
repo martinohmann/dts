@@ -257,7 +257,7 @@ where
     }
 
     fn serialize_gron(&mut self, value: &Value) -> Result<()> {
-        let output = transform::flatten_keys(value, "json")
+        let output = transform::flatten_keys(value.clone(), "json")
             .as_object()
             .unwrap()
             .iter()
