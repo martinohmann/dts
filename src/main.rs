@@ -39,18 +39,16 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
     if opts.file_paths {
         Ok(Value::Object(
             results
-                .iter()
-                .map(|res| (res.0.to_string(), res.1.clone()))
+                .into_iter()
+                .map(|res| (res.0.to_string(), res.1))
                 .collect(),
         ))
     } else {
-        Ok(Value::Array(
-            results.iter().map(|res| res.1.clone()).collect(),
-        ))
+        Ok(Value::Array(results.into_iter().map(|res| res.1).collect()))
     }
 }
 
-fn transform(value: &Value, opts: &TransformOptions) -> Result<Value> {
+fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
     transform::apply_chain(&opts.transform, value).context("Failed to transform value")
 }
 
@@ -149,7 +147,7 @@ fn main() -> Result<()> {
         (_, _) => deserialize_many(&sources, &opts.input)?,
     };
 
-    let mut value = transform(&value, &opts.transform)?;
+    let mut value = transform(value, &opts.transform)?;
 
     let sinks = opts.sinks;
 

@@ -32,7 +32,7 @@ fn benchmark_transform(c: &mut Criterion) {
                 "adsf[\"foo\\\"-bar\"].buz[\"adsf\"].foo": null,
             });
 
-            expand_keys(&value)
+            expand_keys(value)
         })
     });
 
@@ -60,7 +60,7 @@ fn benchmark_transform(c: &mut Criterion) {
 
     c.bench_function("deep_merge", |b| {
         b.iter(|| {
-            deep_merge(&json!([{"foo": "bar"},
+            deep_merge(json!([{"foo": "bar"},
                        {"foo": {"bar": "baz"}, "bar": [1], "qux": null},
                        {"foo": {"bar": "qux"}, "bar": [2], "baz": 1},
                        {"bar": {"bar": "baz", "bam": "boo"}, "bar": [null, 1], "qux": null},

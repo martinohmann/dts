@@ -6,7 +6,6 @@ use std::collections::BTreeMap;
 pub struct KeyFlattener<'a> {
     value: &'a Value,
     prefix: &'a str,
-    map: BTreeMap<String, Value>,
     stack: StringKeyParts,
 }
 
@@ -15,38 +14,38 @@ impl<'a> KeyFlattener<'a> {
         Self {
             value,
             prefix,
-            map: BTreeMap::new(),
             stack: StringKeyParts::new(),
         }
     }
 
     pub fn flatten(&mut self) -> BTreeMap<String, Value> {
+        let mut map = BTreeMap::new();
         self.stack.push_ident(self.prefix);
-        self.map_value(self.value);
+        self.map_value(&mut map, self.value);
         self.stack.pop();
-        self.map.clone()
+        map
     }
 
-    fn map_value(&mut self, value: &'a Value) {
+    fn map_value(&mut self, map: &mut BTreeMap<String, Value>, value: &'a Value) {
         match value {
             Value::Array(array) => {
-                self.map.insert(self.key(), Value::Array(Vec::new()));
+                map.insert(self.key(), Value::Array(Vec::new()));
                 for (index, value) in array.iter().enumerate() {
                     self.stack.push_index(index);
-                    self.map_value(value);
+                    self.map_value(map, value);
                     self.stack.pop();
                 }
             }
             Value::Object(object) => {
-                self.map.insert(self.key(), Value::Object(Map::new()));
+                map.insert(self.key(), Value::Object(Map::new()));
                 for (key, value) in object.iter() {
                     self.stack.push_ident(key);
-                    self.map_value(value);
+                    self.map_value(map, value);
                     self.stack.pop();
                 }
             }
             value => {
-                self.map.insert(self.key(), value.clone());
+                map.insert(self.key(), value.clone());
             }
         }
     }

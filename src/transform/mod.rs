@@ -47,11 +47,11 @@ impl Transformation {
     ///
     /// If the `Transformation::JsonPath` variant is applied with a malformed query `apply_chain`
     /// returns a `TransformError`.
-    pub fn apply(&self, value: &Value) -> Result<Value, TransformError> {
+    pub fn apply(&self, value: Value) -> Result<Value, TransformError> {
         let value = match self {
             Self::FlattenArrays => flatten_arrays(value),
             Self::FlattenKeys(prefix) => flatten_keys(
-                value,
+                &value,
                 prefix.clone().unwrap_or_else(|| String::from("data")),
             ),
             Self::JsonPath(query) => filter_jsonpath(value, query)?,
@@ -60,10 +60,7 @@ impl Transformation {
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value)?,
             Self::Keys => keys(value),
-            Self::DeleteKeys(pattern) => {
-                let pattern = Regex::new(pattern)?;
-                delete_keys(value, &pattern)
-            }
+            Self::DeleteKeys(pattern) => delete_keys(value, pattern)?,
         };
 
         Ok(value)
@@ -114,15 +111,13 @@ impl FromStr for Transformation {
 ///
 /// If the `Transformation::JsonPath` variant is applied with a malformed query `apply_chain`
 /// returns an `Error`.
-pub fn apply_chain<'a, I>(chain: I, value: &Value) -> Result<Value, TransformError>
+pub fn apply_chain<'a, I>(chain: I, value: Value) -> Result<Value, TransformError>
 where
     I: IntoIterator<Item = &'a Transformation>,
 {
     chain
         .into_iter()
-        .try_fold(value.clone(), |value, transformation| {
-            transformation.apply(&value)
-        })
+        .try_fold(value, |value, transformation| transformation.apply(value))
 }
 
 /// Filter value according to the jsonpath query.
@@ -136,7 +131,7 @@ where
 /// # use std::error::Error;
 /// #
 /// # fn main() -> Result<(), Box<dyn Error>> {
-/// let mut value = json!({
+/// let value = json!({
 ///   "orders": [
 ///     {"id": 1, "active": true},
 ///     {"id": 2},
@@ -145,7 +140,7 @@ where
 ///   ]
 /// });
 ///
-/// assert_eq!(filter_jsonpath(&mut value, "$.orders[?(@.active)].id")?, json!([1, 4]));
+/// assert_eq!(filter_jsonpath(value, "$.orders[?(@.active)].id")?, json!([1, 4]));
 /// #     Ok(())
 /// # }
 /// ```
@@ -159,14 +154,13 @@ where
 /// use serde_json::json;
 ///
 /// let value = json!([]);
-/// assert!(filter_jsonpath(&value, "$[").is_err());
+/// assert!(filter_jsonpath(value, "$[").is_err());
 /// ```
-pub fn filter_jsonpath<Q>(value: &Value, query: Q) -> Result<Value, TransformError>
+pub fn filter_jsonpath<Q>(value: Value, query: Q) -> Result<Value, TransformError>
 where
     Q: AsRef<str>,
 {
     value
-        .clone()
         .path(query.as_ref())
         .map_err(TransformError::JSONPathParseError)
 }
@@ -184,7 +178,7 @@ where
 ///
 /// let value = Value::Null;
 ///
-/// assert_eq!(remove_empty_values(&value), Value::Null);
+/// assert_eq!(remove_empty_values(value), Value::Null);
 /// ```
 ///
 /// ```
@@ -195,7 +189,7 @@ where
 ///
 /// let mut value = json!({});
 ///
-/// assert_eq!(remove_empty_values(&value), json!({}));
+/// assert_eq!(remove_empty_values(value), json!({}));
 /// ```
 ///
 /// ```
@@ -205,7 +199,7 @@ where
 ///
 /// let value = json!(["foo", null, "bar"]);
 ///
-/// assert_eq!(remove_empty_values(&value), json!(["foo", "bar"]));
+/// assert_eq!(remove_empty_values(value), json!(["foo", "bar"]));
 /// ```
 ///
 /// ```
@@ -215,13 +209,13 @@ where
 ///
 /// let value = json!({"foo": ["bar", null, {}, "baz"], "qux": {"adf": {}}});
 ///
-/// assert_eq!(remove_empty_values(&value), json!({"foo": ["bar", "baz"]}));
+/// assert_eq!(remove_empty_values(value), json!({"foo": ["bar", "baz"]}));
 /// ```
-pub fn remove_empty_values(value: &Value) -> Value {
+pub fn remove_empty_values(value: Value) -> Value {
     match value {
         Value::Array(array) => Value::Array(
             array
-                .iter()
+                .into_iter()
                 .map(remove_empty_values)
                 .filter_map(|value| match value {
                     Value::Null => None,
@@ -233,17 +227,17 @@ pub fn remove_empty_values(value: &Value) -> Value {
         ),
         Value::Object(object) => Value::Object(
             object
-                .iter()
+                .into_iter()
                 .map(|(key, value)| (key, remove_empty_values(value)))
                 .filter_map(|(key, value)| match value {
                     Value::Null => None,
                     Value::Array(array) if array.is_empty() => None,
                     Value::Object(object) if object.is_empty() => None,
-                    value => Some((key.clone(), value)),
+                    value => Some((key, value)),
                 })
                 .collect(),
         ),
-        value => value.clone(),
+        value => value,
     }
 }
 
@@ -258,7 +252,7 @@ pub fn remove_empty_values(value: &Value) -> Value {
 ///
 /// let value = json!([["foo"], ["bar"], [["baz"], "qux"]]);
 ///
-/// assert_eq!(flatten_arrays(&value), json!(["foo", "bar", ["baz"], "qux"]));
+/// assert_eq!(flatten_arrays(value), json!(["foo", "bar", ["baz"], "qux"]));
 /// ```
 ///
 /// If the has only one element the array will be removed entirely, leaving the single element as
@@ -271,7 +265,7 @@ pub fn remove_empty_values(value: &Value) -> Value {
 ///
 /// let value = json!(["foo"]);
 ///
-/// assert_eq!(flatten_arrays(&value), json!("foo"));
+/// assert_eq!(flatten_arrays(value), json!("foo"));
 /// ```
 ///
 /// Non-array values will be left untouched.
@@ -283,13 +277,13 @@ pub fn remove_empty_values(value: &Value) -> Value {
 ///
 /// let value = json!({"foo": "bar"});
 ///
-/// assert_eq!(flatten_arrays(&value), json!({"foo": "bar"}));
+/// assert_eq!(flatten_arrays(value), json!({"foo": "bar"}));
 /// ```
-pub fn flatten_arrays(value: &Value) -> Value {
+pub fn flatten_arrays(value: Value) -> Value {
     match value {
         Value::Array(array) if array.len() == 1 => array[0].clone(),
         Value::Array(array) => Value::Array(array.iter().flat_map(ValueExt::to_array).collect()),
-        value => value.clone(),
+        value => value,
     }
 }
 
@@ -374,17 +368,17 @@ where
 /// let value = json!([{"foo.bar": 1, "foo[\"bar-baz\"]": 2}]);
 /// let expected = json!([{"foo": {"bar": 1, "bar-baz": 2}}]);
 ///
-/// assert_eq!(expand_keys(&value)?, expected);
+/// assert_eq!(expand_keys(value)?, expected);
 /// #   Ok(())
 /// # }
 /// ```
-pub fn expand_keys(value: &Value) -> Result<Value, TransformError> {
+pub fn expand_keys(value: Value) -> Result<Value, TransformError> {
     match value {
         Value::Object(object) => object
-            .iter()
+            .into_iter()
             .par_bridge()
             .map(|(key, value)| {
-                let mut parts = KeyParts::parse(key)?;
+                let mut parts = KeyParts::parse(&key)?;
                 parts.reverse();
                 Ok(expand_key_parts(&mut parts, value))
             })
@@ -397,13 +391,16 @@ pub fn expand_keys(value: &Value) -> Result<Value, TransformError> {
                 },
             ),
         Value::Array(array) => Ok(Value::Array(
-            array.iter().map(expand_keys).collect::<Result<_, _>>()?,
+            array
+                .into_iter()
+                .map(expand_keys)
+                .collect::<Result<_, _>>()?,
         )),
-        value => Ok(value.clone()),
+        value => Ok(value),
     }
 }
 
-fn expand_key_parts(parts: &mut KeyParts, value: &Value) -> Value {
+fn expand_key_parts(parts: &mut KeyParts, value: Value) -> Value {
     match parts.pop() {
         Some(key) => match key {
             KeyPart::Ident(ident) => {
@@ -417,28 +414,23 @@ fn expand_key_parts(parts: &mut KeyParts, value: &Value) -> Value {
                 Value::Array(array)
             }
         },
-        None => value.clone(),
+        None => value,
     }
 }
 
 /// Recursively merges all arrays and maps in `value`. If `value` is not an array it is returned
 /// as is.
-pub fn deep_merge(value: &Value) -> Value {
-    let mut value = value.clone();
-    deep_merge_mut(&mut value);
-    value
-}
-
-/// Recursively merges all arrays and maps in `value`. The value is modified in place. If `value`
-/// is not an array this is a no-op.
-fn deep_merge_mut(value: &mut Value) {
-    if let Some(array) = value.as_array_mut() {
-        *value = array
-            .iter_mut()
-            .fold(Value::Array(Vec::new()), |mut acc, value| {
-                acc.deep_merge(value);
-                acc
-            })
+pub fn deep_merge(value: Value) -> Value {
+    match value {
+        Value::Array(mut array) => {
+            array
+                .iter_mut()
+                .fold(Value::Array(Vec::new()), |mut acc, value| {
+                    acc.deep_merge(value);
+                    acc
+                })
+        }
+        value => value,
     }
 }
 
@@ -452,9 +444,9 @@ fn deep_merge_mut(value: &mut Value) {
 ///
 /// let value = json!({"foo": "bar", "baz": "qux"});
 ///
-/// assert_eq!(keys(&value), json!(["foo", "baz"]));
+/// assert_eq!(keys(value), json!(["foo", "baz"]));
 /// ```
-pub fn keys(value: &Value) -> Value {
+pub fn keys(value: Value) -> Value {
     Value::Array(
         value
             .as_object()
@@ -474,31 +466,32 @@ pub fn keys(value: &Value) -> Value {
 /// #
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// let value = json!({"foo": "bar", "baz": {"foobar": "qux", "one": "two"}});
-/// let pattern = Regex::new("^fo")?;
 ///
-/// assert_eq!(delete_keys(&value, &pattern), json!({"baz": {"one": "two"}}));
+/// assert_eq!(delete_keys(value, "^fo")?, json!({"baz": {"one": "two"}}));
 /// #   Ok(())
 /// # }
 /// ```
-pub fn delete_keys(value: &Value, regex: &Regex) -> Value {
-    let mut value = value.clone();
-    delete_keys_mut(&mut value, regex);
-    value
+pub fn delete_keys(value: Value, pattern: &str) -> Result<Value, TransformError> {
+    let regex = Regex::new(pattern)?;
+    Ok(delete_keys_impl(value, &regex))
 }
 
-fn delete_keys_mut(value: &mut Value, regex: &Regex) {
+fn delete_keys_impl(value: Value, regex: &Regex) -> Value {
     match value {
-        Value::Object(object) => {
-            *object = object
-                .iter()
+        Value::Object(object) => Value::Object(
+            object
+                .into_iter()
                 .filter(|(key, _)| !regex.is_match(key))
-                .map(|(key, value)| (key.clone(), delete_keys(value, regex)))
-                .collect()
-        }
-        Value::Array(array) => array
-            .iter_mut()
-            .for_each(|value| delete_keys_mut(value, regex)),
-        _ => (),
+                .map(|(key, value)| (key, delete_keys_impl(value, regex)))
+                .collect(),
+        ),
+        Value::Array(array) => Value::Array(
+            array
+                .into_iter()
+                .map(|value| delete_keys_impl(value, regex))
+                .collect(),
+        ),
+        value => value,
     }
 }
 
@@ -579,30 +572,30 @@ mod tests {
         ];
 
         assert_eq!(
-            apply_chain(&transformations, &json!([null, "foo", {"bar": "baz"}])).unwrap(),
+            apply_chain(&transformations, json!([null, "foo", {"bar": "baz"}])).unwrap(),
             json!("baz")
         );
     }
 
     #[test]
     fn test_deep_merge() {
-        assert_eq!(deep_merge(&Value::Null), Value::Null);
-        assert_eq!(deep_merge(&json!("a")), json!("a"));
-        assert_eq!(deep_merge(&json!([1, null, "three"])), json!("three"));
+        assert_eq!(deep_merge(Value::Null), Value::Null);
+        assert_eq!(deep_merge(json!("a")), json!("a"));
+        assert_eq!(deep_merge(json!([1, null, "three"])), json!("three"));
         assert_eq!(
-            deep_merge(&json!([[1, "two"], ["three", 4]])),
+            deep_merge(json!([[1, "two"], ["three", 4]])),
             json!(["three", 4])
         );
         assert_eq!(
-            deep_merge(&json!([[null, 1, "two"], ["three", 4]])),
+            deep_merge(json!([[null, 1, "two"], ["three", 4]])),
             json!(["three", 4, "two"])
         );
         assert_eq!(
-            deep_merge(&json!([[1, "two"], [null, null, 4]])),
+            deep_merge(json!([[1, "two"], [null, null, 4]])),
             json!([1, "two", 4])
         );
         assert_eq!(
-            deep_merge(&json!([{"foo": "bar"},
+            deep_merge(json!([{"foo": "bar"},
                        {"foo": {"bar": "baz"}, "bar": [1], "qux": null},
                        {"foo": {"bar": "qux"}, "bar": [2], "baz": 1}])),
             json!({"foo": {"bar": "qux"}, "bar": [2], "baz": 1, "qux": null})
@@ -620,7 +613,7 @@ mod tests {
         });
 
         assert_eq!(
-            expand_keys(&value).unwrap(),
+            expand_keys(value).unwrap(),
             json!({"data": {"foo": {"bar": ["baz", "qux"]}}})
         );
     }

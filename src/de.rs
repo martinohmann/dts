@@ -195,8 +195,8 @@ where
                         iter.map(|record| {
                             Ok(headers
                                 .iter()
-                                .zip(record?.iter())
-                                .map(|(k, v)| (k.to_string_unquoted(), v.clone()))
+                                .zip(record?.into_iter())
+                                .map(|(k, v)| (k.to_string_unquoted(), v))
                                 .collect())
                         })
                         .collect::<Result<_>>()?,
