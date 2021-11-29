@@ -15,8 +15,11 @@ pub enum Structure<'a> {
 
 #[derive(Debug, PartialEq)]
 pub enum Expression<'a> {
-    /// An expression term like literal value or template expression.
-    ExprTerm(ExprTerm<'a>),
+    LiteralValue(LiteralValue<'a>),
+    CollectionValue(CollectionValue<'a>),
+    TemplateExpr(&'a str),
+    /// Any other expression.
+    RawExpr(&'a str),
     /// Raw operation expression.
     Operation(&'a str),
     /// Raw conditional expression.
@@ -26,7 +29,10 @@ pub enum Expression<'a> {
 impl fmt::Display for Expression<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expression::ExprTerm(term) => write!(f, "{}", term),
+            Expression::LiteralValue(val) => write!(f, "{}", val),
+            Expression::CollectionValue(val) => write!(f, "{}", val),
+            Expression::TemplateExpr(tpl) => write!(f, "{}", tpl),
+            Expression::RawExpr(raw) => write!(f, "{}", raw),
             Expression::Operation(op) => write!(f, "{}", op),
             Expression::Conditional(cond) => write!(f, "{}", cond),
         }
@@ -38,34 +44,13 @@ impl<'a> Expression<'a> {
     /// literal nor a collection value.
     pub fn interpolate(&self) -> String {
         let raw = match self {
-            Expression::ExprTerm(ExprTerm::RawExpr(raw)) => raw,
+            Expression::RawExpr(raw) => raw,
             Expression::Operation(op) => op,
             Expression::Conditional(cond) => cond,
             _ => return self.to_string(),
         };
 
         format!("${{{}}}", raw)
-    }
-}
-
-/// Represents a HCL expression.
-#[derive(Debug, PartialEq)]
-pub enum ExprTerm<'a> {
-    LiteralValue(LiteralValue<'a>),
-    CollectionValue(CollectionValue<'a>),
-    TemplateExpr(&'a str),
-    /// Any other expression.
-    RawExpr(&'a str),
-}
-
-impl fmt::Display for ExprTerm<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ExprTerm::LiteralValue(val) => write!(f, "{}", val),
-            ExprTerm::CollectionValue(val) => write!(f, "{}", val),
-            ExprTerm::TemplateExpr(tpl) => write!(f, "{}", tpl),
-            ExprTerm::RawExpr(raw) => write!(f, "{}", raw),
-        }
     }
 }
 
@@ -181,13 +166,13 @@ mod test {
         let op = Expression::Operation("!var.enabled");
         assert_eq!(&op.interpolate(), "${!var.enabled}");
 
-        let raw = Expression::ExprTerm(ExprTerm::RawExpr("toset(var.foo)"));
+        let raw = Expression::RawExpr("toset(var.foo)");
         assert_eq!(&raw.interpolate(), "${toset(var.foo)}");
 
-        let boolean = Expression::ExprTerm(ExprTerm::LiteralValue(LiteralValue::Bool(true)));
+        let boolean = Expression::LiteralValue(LiteralValue::Bool(true));
         assert_eq!(&boolean.interpolate(), "true");
 
-        let string = Expression::ExprTerm(ExprTerm::LiteralValue(LiteralValue::String("foobar")));
+        let string = Expression::LiteralValue(LiteralValue::String("foobar"));
         assert_eq!(&string.interpolate(), "foobar");
     }
 }

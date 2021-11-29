@@ -54,21 +54,14 @@ fn parse_identifier(ident: Pair<Rule>) -> &str {
 
 fn parse_expression(pair: Pair<Rule>) -> Expression {
     match pair.as_rule() {
-        Rule::expr_term => Expression::ExprTerm(parse_expr_term(inner(pair))),
+        Rule::literal_value => Expression::LiteralValue(parse_literal_value(inner(pair))),
+        Rule::collection_value => Expression::CollectionValue(parse_collection_value(inner(pair))),
+        Rule::template_expr => Expression::TemplateExpr(parse_template_expr(inner(pair))),
         Rule::conditional => Expression::Conditional(pair.as_str()),
         Rule::operation => Expression::Operation(pair.as_str()),
-        _ => unreachable!(),
-    }
-}
-
-fn parse_expr_term(pair: Pair<Rule>) -> ExprTerm {
-    match pair.as_rule() {
-        Rule::literal_value => ExprTerm::LiteralValue(parse_literal_value(inner(pair))),
-        Rule::collection_value => ExprTerm::CollectionValue(parse_collection_value(inner(pair))),
-        Rule::template_expr => ExprTerm::TemplateExpr(parse_template_expr(inner(pair))),
         // For now, do not distinguish between any other expressions just map the as expose them
         // as RawExpr.
-        _ => ExprTerm::RawExpr(pair.as_str()),
+        _ => Expression::RawExpr(pair.as_str()),
     }
 }
 

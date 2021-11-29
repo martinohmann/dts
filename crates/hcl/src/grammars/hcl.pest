@@ -13,7 +13,7 @@ block_identifier = { identifier ~ (string_lit | identifier)* }
 
 // Expressions
 expression = { operation | conditional | expr_term }
-expr_term = {
+expr_term = _{
     literal_value | collection_value | function_call |
     for_expr | index_expr | get_attr_expr | splat_expr |
     variable_expr | template_expr | ("(" ~ expression ~ ")")

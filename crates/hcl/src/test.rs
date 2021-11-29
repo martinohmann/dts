@@ -1,5 +1,5 @@
 use crate::ast::Body;
-use crate::ast::{CollectionValue::*, ExprTerm::*, Expression::*, Structure::*};
+use crate::ast::{CollectionValue::*, Expression::*, Structure::*};
 use crate::parser::{parse, HclParser, Rule};
 use pest::*;
 use pretty_assertions::assert_eq;
@@ -31,34 +31,26 @@ fn test_parse() {
                 ),
                 Attribute(
                     "name",
-                    ExprTerm(
-                        RawExpr(
-                            "var.cluster_name",
-                        ),
+                    RawExpr(
+                        "var.cluster_name",
                     ),
                 ),
                 Attribute(
                     "enabled_cluster_log_types",
-                    ExprTerm(
-                        RawExpr(
-                            "var.cluster_enabled_log_types",
-                        ),
+                    RawExpr(
+                        "var.cluster_enabled_log_types",
                     ),
                 ),
                 Attribute(
                     "role_arn",
-                    ExprTerm(
-                        RawExpr(
-                            "local.cluster_iam_role_arn",
-                        ),
+                    RawExpr(
+                        "local.cluster_iam_role_arn",
                     ),
                 ),
                 Attribute(
                     "version",
-                    ExprTerm(
-                        RawExpr(
-                            "var.cluster_version",
-                        ),
+                    RawExpr(
+                        "var.cluster_version",
                     ),
                 ),
                 Block(
@@ -68,42 +60,32 @@ fn test_parse() {
                     Box::new(vec![
                         Attribute(
                             "security_group_ids",
-                            ExprTerm(
-                                RawExpr(
-                                    "compact([local.cluster_security_group_id])",
-                                ),
+                            RawExpr(
+                                "compact([local.cluster_security_group_id])",
                             ),
                         ),
                         Attribute(
                             "subnet_ids",
-                            ExprTerm(
-                                RawExpr(
-                                    "var.subnets",
-                                ),
+                            RawExpr(
+                                "var.subnets",
                             ),
                         ),
                         Attribute(
                             "endpoint_private_access",
-                            ExprTerm(
-                                RawExpr(
-                                    "var.cluster_endpoint_private_access",
-                                ),
+                            RawExpr(
+                                "var.cluster_endpoint_private_access",
                             ),
                         ),
                         Attribute(
                             "endpoint_public_access",
-                            ExprTerm(
-                                RawExpr(
-                                    "var.cluster_endpoint_public_access",
-                                ),
+                            RawExpr(
+                                "var.cluster_endpoint_public_access",
                             ),
                         ),
                         Attribute(
                             "public_access_cidrs",
-                            ExprTerm(
-                                RawExpr(
-                                    "var.cluster_endpoint_public_access_cidrs",
-                                ),
+                            RawExpr(
+                                "var.cluster_endpoint_public_access_cidrs",
                             ),
                         ),
                     ]),
@@ -115,10 +97,8 @@ fn test_parse() {
                     Box::new(vec![
                         Attribute(
                             "service_ipv4_cidr",
-                            ExprTerm(
-                                RawExpr(
-                                    "var.cluster_service_ipv4_cidr",
-                                ),
+                            RawExpr(
+                                "var.cluster_service_ipv4_cidr",
                             ),
                         ),
                     ]),
@@ -131,10 +111,8 @@ fn test_parse() {
                     Box::new(vec![
                         Attribute(
                             "for_each",
-                            ExprTerm(
-                                RawExpr(
-                                    "toset(var.cluster_encryption_config)",
-                                ),
+                            RawExpr(
+                                "toset(var.cluster_encryption_config)",
                             ),
                         ),
                         Block(
@@ -149,20 +127,16 @@ fn test_parse() {
                                     Box::new(vec![
                                         Attribute(
                                             "key_arn",
-                                            ExprTerm(
-                                                RawExpr(
-                                                    "encryption_config.value[\"provider_key_arn\"]",
-                                                ),
+                                            RawExpr(
+                                                "encryption_config.value[\"provider_key_arn\"]",
                                             ),
                                         ),
                                     ]),
                                 ),
                                 Attribute(
                                     "resources",
-                                    ExprTerm(
-                                        RawExpr(
-                                            "encryption_config.value[\"resources\"]",
-                                        ),
+                                    RawExpr(
+                                        "encryption_config.value[\"resources\"]",
                                     ),
                                 ),
                             ]),
@@ -171,10 +145,8 @@ fn test_parse() {
                 ),
                 Attribute(
                     "tags",
-                    ExprTerm(
-                        RawExpr(
-                            "merge(\n    var.tags,\n    var.cluster_tags,\n  )",
-                        ),
+                    RawExpr(
+                        "merge(\n    var.tags,\n    var.cluster_tags,\n  )",
                     ),
                 ),
                 Block(
@@ -184,68 +156,48 @@ fn test_parse() {
                     Box::new(vec![
                         Attribute(
                             "create",
-                            ExprTerm(
-                                RawExpr(
-                                    "var.cluster_create_timeout",
-                                ),
+                            RawExpr(
+                                "var.cluster_create_timeout",
                             ),
                         ),
                         Attribute(
                             "delete",
-                            ExprTerm(
-                                RawExpr(
-                                    "var.cluster_delete_timeout",
-                                ),
+                            RawExpr(
+                                "var.cluster_delete_timeout",
                             ),
                         ),
                         Attribute(
                             "update",
-                            ExprTerm(
-                                RawExpr(
-                                    "var.cluster_update_timeout",
-                                ),
+                            RawExpr(
+                                "var.cluster_update_timeout",
                             ),
                         ),
                     ]),
                 ),
                 Attribute(
                     "depends_on",
-                    ExprTerm(
-                        CollectionValue(
-                            Tuple(
-                                vec![
-                                    ExprTerm(
-                                        RawExpr(
-                                            "aws_security_group_rule.cluster_egress_internet",
-                                        ),
-                                    ),
-                                    ExprTerm(
-                                        RawExpr(
-                                            "aws_security_group_rule.cluster_https_worker_ingress",
-                                        ),
-                                    ),
-                                    ExprTerm(
-                                        RawExpr(
-                                            "aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy",
-                                        ),
-                                    ),
-                                    ExprTerm(
-                                        RawExpr(
-                                            "aws_iam_role_policy_attachment.cluster_AmazonEKSServicePolicy",
-                                        ),
-                                    ),
-                                    ExprTerm(
-                                        RawExpr(
-                                            "aws_iam_role_policy_attachment.cluster_AmazonEKSVPCResourceControllerPolicy",
-                                        ),
-                                    ),
-                                    ExprTerm(
-                                        RawExpr(
-                                            "aws_cloudwatch_log_group.this",
-                                        ),
-                                    ),
-                                ],
-                            ),
+                    CollectionValue(
+                        Tuple(
+                            vec![
+                                RawExpr(
+                                    "aws_security_group_rule.cluster_egress_internet",
+                                ),
+                                RawExpr(
+                                    "aws_security_group_rule.cluster_https_worker_ingress",
+                                ),
+                                RawExpr(
+                                    "aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy",
+                                ),
+                                RawExpr(
+                                    "aws_iam_role_policy_attachment.cluster_AmazonEKSServicePolicy",
+                                ),
+                                RawExpr(
+                                    "aws_iam_role_policy_attachment.cluster_AmazonEKSVPCResourceControllerPolicy",
+                                ),
+                                RawExpr(
+                                    "aws_cloudwatch_log_group.this",
+                                ),
+                            ],
                         ),
                     ),
                 ),
@@ -315,10 +267,8 @@ fn attr() {
             attribute(0, 11, [
                 identifier(0, 3),
                 expression(6, 11, [
-                    expr_term(6, 11, [
-                        literal_value(6, 11, [
-                            string(7, 10)
-                        ])
+                    literal_value(6, 11, [
+                        string(7, 10)
                     ])
                 ])
             ])
@@ -335,25 +285,19 @@ fn conditional() {
         tokens: [
             conditional(0, 19, [
                 cond_expr(0, 11, [
-                    expr_term(0, 11, [
-                        variable_expr(0, 11)
-                    ])
+                    variable_expr(0, 11)
                 ]),
                 expression(14, 15, [
-                    expr_term(14, 15, [
-                        literal_value(14, 15, [
-                            numeric_lit(14, 15, [
-                                int(14, 15)
-                            ])
+                    literal_value(14, 15, [
+                        numeric_lit(14, 15, [
+                            int(14, 15)
                         ])
                     ])
                 ]),
                 expression(18, 19, [
-                    expr_term(18, 19, [
-                        literal_value(18, 19, [
-                            numeric_lit(18, 19, [
-                                int(18, 19)
-                            ])
+                    literal_value(18, 19, [
+                        numeric_lit(18, 19, [
+                            int(18, 19)
                         ])
                     ])
                 ])
@@ -393,20 +337,16 @@ resource "aws_s3_bucket" "mybucket" {
                     attribute(41, 67, [
                         identifier(41, 47),
                         expression(57, 67, [
-                            expr_term(57, 67, [
-                                literal_value(57, 67, [
-                                    string(58, 66)
-                                ])
+                            literal_value(57, 67, [
+                                string(58, 66)
                             ])
                         ])
                     ]),
                     attribute(70, 90, [
                         identifier(70, 83),
                         expression(86, 90, [
-                            expr_term(86, 90, [
-                                literal_value(86, 90, [
-                                    boolean_lit(86, 90)
-                                ])
+                            literal_value(86, 90, [
+                                boolean_lit(86, 90)
                             ])
                         ])
                     ]),
@@ -428,18 +368,14 @@ resource "aws_s3_bucket" "mybucket" {
                                             attribute(200, 241, [
                                                 identifier(200, 217),
                                                 expression(220, 241, [
-                                                    expr_term(220, 241, [
-                                                        variable_expr(220, 241)
-                                                    ])
+                                                    variable_expr(220, 241)
                                                 ]),
                                             ]),
                                             attribute(250, 279, [
                                                 identifier(250, 263),
                                                 expression(270, 279, [
-                                                    expr_term(270, 279, [
-                                                        literal_value(270, 279, [
-                                                            string(271, 278)
-                                                        ])
+                                                    literal_value(270, 279, [
+                                                        string(271, 278)
                                                     ])
                                                 ])
                                             ])
@@ -465,27 +401,19 @@ fn collections() {
             attribute(0, 22, [
                 identifier(0, 3),
                 expression(6, 22, [
-                    expr_term(6, 22, [
-                        collection_value(6, 22, [
-                            tuple(6, 22, [
-                                expression(7, 12, [
-                                    expr_term(7, 12, [
-                                        literal_value(7, 12, [
-                                            string(8, 11)
-                                        ])
-                                    ])
-                                ]),
-                                expression(14, 21, [
-                                    expr_term(14, 21, [
-                                        collection_value(14, 21, [
-                                            tuple(14, 21, [
-                                                expression(15, 20, [
-                                                    expr_term(15, 20, [
-                                                        literal_value(15, 20, [
-                                                            string(16, 19)
-                                                        ])
-                                                    ])
-                                                ])
+                    collection_value(6, 22, [
+                        tuple(6, 22, [
+                            expression(7, 12, [
+                                literal_value(7, 12, [
+                                    string(8, 11)
+                                ])
+                            ]),
+                            expression(14, 21, [
+                                collection_value(14, 21, [
+                                    tuple(14, 21, [
+                                        expression(15, 20, [
+                                            literal_value(15, 20, [
+                                                string(16, 19)
                                             ])
                                         ])
                                     ])
@@ -506,39 +434,29 @@ fn collections() {
             attribute(0, 36, [
                 identifier(0, 3),
                 expression(6, 36, [
-                    expr_term(6, 36, [
-                        collection_value(6, 36, [
-                            object(6, 36, [
-                                object_item(7, 20, [
-                                    expression(7, 12, [
-                                        expr_term(7, 12, [
-                                            literal_value(7, 12, [
-                                                string(8, 11)
-                                            ])
-                                        ])
-                                    ]),
-                                    expression(15, 20, [
-                                        expr_term(15, 20, [
-                                            literal_value(15, 20, [
-                                                string(16, 19)
-                                            ])
-                                        ])
-                                    ]),
+                    collection_value(6, 36, [
+                        object(6, 36, [
+                            object_item(7, 20, [
+                                expression(7, 12, [
+                                    literal_value(7, 12, [
+                                        string(8, 11)
+                                    ])
                                 ]),
-                                object_item(21, 34, [
-                                    expression(21, 26, [
-                                        expr_term(21, 26, [
-                                            literal_value(21, 26, [
-                                                string(22, 25)
-                                            ])
-                                        ])
-                                    ]),
-                                    expression(29, 34, [
-                                        expr_term(29, 34, [
-                                            variable_expr(29, 34)
-                                        ])
-                                    ]),
-                                ])
+                                expression(15, 20, [
+                                    literal_value(15, 20, [
+                                        string(16, 19)
+                                    ])
+                                ]),
+                            ]),
+                            object_item(21, 34, [
+                                expression(21, 26, [
+                                    literal_value(21, 26, [
+                                        string(22, 25)
+                                    ])
+                                ]),
+                                expression(29, 34, [
+                                    variable_expr(29, 34)
+                                ]),
                             ])
                         ])
                     ])
