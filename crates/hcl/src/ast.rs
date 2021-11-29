@@ -15,8 +15,7 @@ pub enum Structure<'a> {
 
 #[derive(Debug, PartialEq)]
 pub enum Expression<'a> {
-    LiteralValue(LiteralValue<'a>),
-    CollectionValue(CollectionValue<'a>),
+    Value(Value<'a>),
     TemplateExpr(&'a str),
     /// Any other expression.
     RawExpr(&'a str),
@@ -29,8 +28,7 @@ pub enum Expression<'a> {
 impl fmt::Display for Expression<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expression::LiteralValue(val) => write!(f, "{}", val),
-            Expression::CollectionValue(val) => write!(f, "{}", val),
+            Expression::Value(val) => write!(f, "{}", val),
             Expression::TemplateExpr(tpl) => write!(f, "{}", tpl),
             Expression::RawExpr(raw) => write!(f, "{}", raw),
             Expression::Operation(op) => write!(f, "{}", op),
@@ -56,7 +54,7 @@ impl<'a> Expression<'a> {
 
 /// Represents any valid HCL value.
 #[derive(Debug, PartialEq)]
-pub enum LiteralValue<'a> {
+pub enum Value<'a> {
     /// Represents a HCL null value.
     Null,
     /// Represents a HCL boolean.
@@ -65,32 +63,20 @@ pub enum LiteralValue<'a> {
     Number(Number),
     /// Represents a HCL string.
     String(&'a str),
-}
-
-impl fmt::Display for LiteralValue<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LiteralValue::Null => write!(f, "null"),
-            LiteralValue::Bool(b) => write!(f, "{}", b),
-            LiteralValue::Number(num) => write!(f, "{}", num),
-            LiteralValue::String(s) => write!(f, "{}", s),
-        }
-    }
-}
-
-/// Represents any valid HCL value.
-#[derive(Debug, PartialEq)]
-pub enum CollectionValue<'a> {
     /// Represents a HCL tuple.
     Tuple(Vec<Expression<'a>>),
     /// Represents a HCL object.
     Object(Vec<ObjectItem<'a>>),
 }
 
-impl fmt::Display for CollectionValue<'_> {
+impl fmt::Display for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CollectionValue::Tuple(tuple) => {
+            Value::Null => write!(f, "null"),
+            Value::Bool(b) => write!(f, "{}", b),
+            Value::Number(num) => write!(f, "{}", num),
+            Value::String(s) => write!(f, "{}", s),
+            Value::Tuple(tuple) => {
                 let items = tuple
                     .iter()
                     .map(ToString::to_string)
@@ -99,7 +85,7 @@ impl fmt::Display for CollectionValue<'_> {
 
                 write!(f, "[{}]", items)
             }
-            CollectionValue::Object(object) => {
+            Value::Object(object) => {
                 let items = object
                     .iter()
                     .map(ToString::to_string)
@@ -169,10 +155,10 @@ mod test {
         let raw = Expression::RawExpr("toset(var.foo)");
         assert_eq!(&raw.interpolate(), "${toset(var.foo)}");
 
-        let boolean = Expression::LiteralValue(LiteralValue::Bool(true));
+        let boolean = Expression::Value(Value::Bool(true));
         assert_eq!(&boolean.interpolate(), "true");
 
-        let string = Expression::LiteralValue(LiteralValue::String("foobar"));
+        let string = Expression::Value(Value::String("foobar"));
         assert_eq!(&string.interpolate(), "foobar");
     }
 }

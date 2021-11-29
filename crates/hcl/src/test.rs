@@ -1,5 +1,5 @@
 use crate::ast::Body;
-use crate::ast::{CollectionValue::*, Expression::*, Structure::*};
+use crate::ast::{Expression::*, Structure::*, Value::*};
 use crate::parser::{parse, HclParser, Rule};
 use pest::*;
 use pretty_assertions::assert_eq;
@@ -176,7 +176,7 @@ fn test_parse() {
                 ),
                 Attribute(
                     "depends_on",
-                    CollectionValue(
+                    Value(
                         Tuple(
                             vec![
                                 RawExpr(
@@ -267,7 +267,7 @@ fn attr() {
             attribute(0, 11, [
                 identifier(0, 3),
                 expression(6, 11, [
-                    literal_value(6, 11, [
+                    value(6, 11, [
                         string(7, 10)
                     ])
                 ])
@@ -288,14 +288,14 @@ fn conditional() {
                     variable_expr(0, 11)
                 ]),
                 expression(14, 15, [
-                    literal_value(14, 15, [
+                    value(14, 15, [
                         numeric_lit(14, 15, [
                             int(14, 15)
                         ])
                     ])
                 ]),
                 expression(18, 19, [
-                    literal_value(18, 19, [
+                    value(18, 19, [
                         numeric_lit(18, 19, [
                             int(18, 19)
                         ])
@@ -337,7 +337,7 @@ resource "aws_s3_bucket" "mybucket" {
                     attribute(41, 67, [
                         identifier(41, 47),
                         expression(57, 67, [
-                            literal_value(57, 67, [
+                            value(57, 67, [
                                 string(58, 66)
                             ])
                         ])
@@ -345,7 +345,7 @@ resource "aws_s3_bucket" "mybucket" {
                     attribute(70, 90, [
                         identifier(70, 83),
                         expression(86, 90, [
-                            literal_value(86, 90, [
+                            value(86, 90, [
                                 boolean_lit(86, 90)
                             ])
                         ])
@@ -374,7 +374,7 @@ resource "aws_s3_bucket" "mybucket" {
                                             attribute(250, 279, [
                                                 identifier(250, 263),
                                                 expression(270, 279, [
-                                                    literal_value(270, 279, [
+                                                    value(270, 279, [
                                                         string(271, 278)
                                                     ])
                                                 ])
@@ -401,18 +401,18 @@ fn collections() {
             attribute(0, 22, [
                 identifier(0, 3),
                 expression(6, 22, [
-                    collection_value(6, 22, [
+                    value(6, 22, [
                         tuple(6, 22, [
                             expression(7, 12, [
-                                literal_value(7, 12, [
+                                value(7, 12, [
                                     string(8, 11)
                                 ])
                             ]),
                             expression(14, 21, [
-                                collection_value(14, 21, [
+                                value(14, 21, [
                                     tuple(14, 21, [
                                         expression(15, 20, [
-                                            literal_value(15, 20, [
+                                            value(15, 20, [
                                                 string(16, 19)
                                             ])
                                         ])
@@ -434,23 +434,23 @@ fn collections() {
             attribute(0, 36, [
                 identifier(0, 3),
                 expression(6, 36, [
-                    collection_value(6, 36, [
+                    value(6, 36, [
                         object(6, 36, [
                             object_item(7, 20, [
                                 expression(7, 12, [
-                                    literal_value(7, 12, [
+                                    value(7, 12, [
                                         string(8, 11)
                                     ])
                                 ]),
                                 expression(15, 20, [
-                                    literal_value(15, 20, [
+                                    value(15, 20, [
                                         string(16, 19)
                                     ])
                                 ]),
                             ]),
                             object_item(21, 34, [
                                 expression(21, 26, [
-                                    literal_value(21, 26, [
+                                    value(21, 26, [
                                         string(22, 25)
                                     ])
                                 ]),

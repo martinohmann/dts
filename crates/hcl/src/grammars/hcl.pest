@@ -14,7 +14,7 @@ block_identifier = { identifier ~ (string_lit | identifier)* }
 // Expressions
 expression = { operation | conditional | expr_term }
 expr_term = _{
-    literal_value | collection_value | function_call |
+    value | function_call |
     for_expr | index_expr | get_attr_expr | splat_expr |
     variable_expr | template_expr | ("(" ~ expression ~ ")")
 }
@@ -22,8 +22,11 @@ splat_expr = { variable_expr ~ splat }
 index_expr = { variable_expr ~ index }
 get_attr_expr = { variable_expr ~ get_attr }
 
+// Values
+value = { literal_value | collection_value }
+
 // Literal values
-literal_value = { string_lit | numeric_lit | boolean_lit | null_lit }
+literal_value = _{ string_lit | numeric_lit | boolean_lit | null_lit }
 
 // Identifiers
 identifier = @{ ident_first_char ~ ident_char* }
@@ -45,7 +48,7 @@ expmark = { ("e" | "E") ~ ("+" | "-")? }
 decimal = { '0'..'9' }
 
 // Collection values
-collection_value = { tuple | object }
+collection_value = _{ tuple | object }
 tuple = { "[" ~ (expression ~ ("," ~ expression)* ~ ","?)? ~ "]" }
 object = { "{" ~ (object_item ~ ("," ~ object_item)* ~ ","?)? ~ "}" }
 object_item = { (identifier | expression) ~ ("=" | ":") ~ expression }

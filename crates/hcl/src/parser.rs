@@ -54,8 +54,7 @@ fn parse_identifier(ident: Pair<Rule>) -> &str {
 
 fn parse_expression(pair: Pair<Rule>) -> Expression {
     match pair.as_rule() {
-        Rule::literal_value => Expression::LiteralValue(parse_literal_value(inner(pair))),
-        Rule::collection_value => Expression::CollectionValue(parse_collection_value(inner(pair))),
+        Rule::value => Expression::Value(parse_value(inner(pair))),
         Rule::template_expr => Expression::TemplateExpr(parse_template_expr(inner(pair))),
         Rule::conditional => Expression::Conditional(pair.as_str()),
         Rule::operation => Expression::Operation(pair.as_str()),
@@ -73,20 +72,14 @@ fn parse_template_expr(pair: Pair<Rule>) -> &str {
     }
 }
 
-fn parse_literal_value(pair: Pair<Rule>) -> LiteralValue {
+fn parse_value(pair: Pair<Rule>) -> Value {
     match pair.as_rule() {
-        Rule::null_lit => LiteralValue::Null,
-        Rule::boolean_lit => LiteralValue::Bool(pair.as_str().parse().unwrap()),
-        Rule::numeric_lit => LiteralValue::Number(parse_number(inner(pair))),
-        Rule::string => LiteralValue::String(pair.as_str()),
-        _ => unreachable!(),
-    }
-}
-
-fn parse_collection_value(pair: Pair<Rule>) -> CollectionValue {
-    match pair.as_rule() {
-        Rule::object => CollectionValue::Object(parse_object(pair.into_inner())),
-        Rule::tuple => CollectionValue::Tuple(parse_tuple(pair.into_inner())),
+        Rule::null_lit => Value::Null,
+        Rule::boolean_lit => Value::Bool(pair.as_str().parse().unwrap()),
+        Rule::numeric_lit => Value::Number(parse_number(inner(pair))),
+        Rule::string => Value::String(pair.as_str()),
+        Rule::object => Value::Object(parse_object(pair.into_inner())),
+        Rule::tuple => Value::Tuple(parse_tuple(pair.into_inner())),
         _ => unreachable!(),
     }
 }
