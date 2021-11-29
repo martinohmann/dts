@@ -15,40 +15,45 @@ pub enum Structure<'a> {
 
 #[derive(Debug, PartialEq)]
 pub enum Expression<'a> {
+    /// A HCL value, either literal, collection or heredoc template string.
     Value(Value<'a>),
-    TemplateExpr(&'a str),
     /// Any other expression.
     RawExpr(&'a str),
-    /// Raw operation expression.
-    Operation(&'a str),
-    /// Raw conditional expression.
-    Conditional(&'a str),
 }
 
 impl fmt::Display for Expression<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Expression::Value(val) => write!(f, "{}", val),
-            Expression::TemplateExpr(tpl) => write!(f, "{}", tpl),
             Expression::RawExpr(raw) => write!(f, "{}", raw),
-            Expression::Operation(op) => write!(f, "{}", op),
-            Expression::Conditional(cond) => write!(f, "{}", cond),
         }
     }
 }
 
 impl<'a> Expression<'a> {
-    /// Interpolate the expression as a string by wrapping it into `${` and `}` if it is neither a
-    /// literal nor a collection value.
-    pub fn interpolate(&self) -> String {
-        let raw = match self {
-            Expression::RawExpr(raw) => raw,
-            Expression::Operation(op) => op,
-            Expression::Conditional(cond) => cond,
-            _ => return self.to_string(),
-        };
+    /// Returns the raw expression if this is an `Expression::RawExpr`.
+    pub fn as_raw_expr(&self) -> Option<&'a str> {
+        match self {
+            Expression::RawExpr(raw) => Some(raw),
+            Expression::Value(_) => None,
+        }
+    }
 
-        format!("${{{}}}", raw)
+    /// Returns the raw expression if this is an `Expression::RawExpr`.
+    pub fn as_value(&self) -> Option<&Value> {
+        match self {
+            Expression::Value(value) => Some(value),
+            Expression::RawExpr(_) => None,
+        }
+    }
+
+    /// Interpolate the expression as a string by wrapping it into `${` and `}` if it is a
+    /// `Expression::RawExpr`.
+    pub fn interpolate(&self) -> String {
+        match self.as_raw_expr() {
+            Some(raw) => format!("${{{}}}", raw),
+            None => self.to_string(),
+        }
     }
 }
 
@@ -146,14 +151,8 @@ mod test {
 
     #[test]
     fn interpolate() {
-        let cond = Expression::Conditional("var.enabled ? 1 : 0");
+        let cond = Expression::RawExpr("var.enabled ? 1 : 0");
         assert_eq!(&cond.interpolate(), "${var.enabled ? 1 : 0}");
-
-        let op = Expression::Operation("!var.enabled");
-        assert_eq!(&op.interpolate(), "${!var.enabled}");
-
-        let raw = Expression::RawExpr("toset(var.foo)");
-        assert_eq!(&raw.interpolate(), "${toset(var.foo)}");
 
         let boolean = Expression::Value(Value::Bool(true));
         assert_eq!(&boolean.interpolate(), "true");

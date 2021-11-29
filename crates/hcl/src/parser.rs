@@ -7,7 +7,7 @@ use pest_derive::Parser;
 #[grammar = "grammars/hcl.pest"]
 pub(crate) struct HclParser;
 
-pub fn parse<'a>(s: &'a str) -> Result<Body<'a>, Error> {
+pub fn parse(s: &str) -> Result<Body<'_>, Error> {
     let body = HclParser::parse(Rule::hcl, s)
         .map_err(|e| Error::ParseError(e.to_string()))?
         .filter_map(parse_structure)
@@ -55,20 +55,9 @@ fn parse_identifier(ident: Pair<Rule>) -> &str {
 fn parse_expression(pair: Pair<Rule>) -> Expression {
     match pair.as_rule() {
         Rule::value => Expression::Value(parse_value(inner(pair))),
-        Rule::template_expr => Expression::TemplateExpr(parse_template_expr(inner(pair))),
-        Rule::conditional => Expression::Conditional(pair.as_str()),
-        Rule::operation => Expression::Operation(pair.as_str()),
         // For now, do not distinguish between any other expressions just map the as expose them
         // as RawExpr.
         _ => Expression::RawExpr(pair.as_str()),
-    }
-}
-
-fn parse_template_expr(pair: Pair<Rule>) -> &str {
-    match pair.as_rule() {
-        Rule::string => pair.as_str(),
-        Rule::template => pair.as_str(),
-        _ => unreachable!(),
     }
 }
 
@@ -78,6 +67,8 @@ fn parse_value(pair: Pair<Rule>) -> Value {
         Rule::boolean_lit => Value::Bool(pair.as_str().parse().unwrap()),
         Rule::numeric_lit => Value::Number(parse_number(inner(pair))),
         Rule::string => Value::String(pair.as_str()),
+        // @TODO: we actually need the inner template here but this requires more work.
+        Rule::heredoc_template => Value::String(pair.as_str()),
         Rule::object => Value::Object(parse_object(pair.into_inner())),
         Rule::tuple => Value::Tuple(parse_tuple(pair.into_inner())),
         _ => unreachable!(),

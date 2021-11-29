@@ -25,7 +25,7 @@ fn test_parse() {
             Box::new(vec![
                 Attribute(
                     "count",
-                    Conditional(
+                    RawExpr(
                         "var.create_eks ? 1 : 0",
                     ),
                 ),
@@ -460,6 +460,30 @@ fn collections() {
                             ])
                         ])
                     ])
+                ])
+            ])
+        ]
+    };
+}
+
+#[test]
+fn template() {
+    parses_to! {
+        parser: HclParser,
+        input: "<<HEREDOC\n${foo}\nHEREDOC",
+        rule: Rule::expr_term,
+        tokens: [
+            value(0, 24, [
+                heredoc_template(0, 24, [
+                    identifier(2, 9),
+                    template(10, 16, [
+                         template_interpolation(10, 16, [
+                             expression(12, 15, [
+                                 variable_expr(12, 15)
+                             ])
+                         ])
+                    ]),
+                    identifier(17, 24)
                 ])
             ])
         ]

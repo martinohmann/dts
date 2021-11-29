@@ -16,14 +16,14 @@ expression = { operation | conditional | expr_term }
 expr_term = _{
     value | function_call |
     for_expr | index_expr | get_attr_expr | splat_expr |
-    variable_expr | template_expr | ("(" ~ expression ~ ")")
+    variable_expr | ("(" ~ expression ~ ")")
 }
 splat_expr = { variable_expr ~ splat }
 index_expr = { variable_expr ~ index }
 get_attr_expr = { variable_expr ~ get_attr }
 
 // Values
-value = { literal_value | collection_value }
+value = { literal_value | collection_value | heredoc_template }
 
 // Literal values
 literal_value = _{ string_lit | numeric_lit | boolean_lit | null_lit }
@@ -53,20 +53,11 @@ tuple = { "[" ~ (expression ~ ("," ~ expression)* ~ ","?)? ~ "]" }
 object = { "{" ~ (object_item ~ ("," ~ object_item)* ~ ","?)? ~ "}" }
 object_item = { (identifier | expression) ~ ("=" | ":") ~ expression }
 
-// Template expressions
-template_expr = { string_lit | heredoc_template }
-heredoc_template = _{
-    ("<<" | "<<-") ~ identifier ~ NEWLINE+ ~
+// Heredoc template
+heredoc_template = {
+    ("<<" | "<<-") ~ identifier ~
     template ~
-    NEWLINE+ ~
     identifier
-}
-
-// Chars
-char = _{
-    !("\"" | "\\" | "\'") ~ ANY
-    | "\\" ~ ("\"" | "\'" |  "\\" | "/" | "b" | "f" | "n" | "r" | "t")
-    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
 // String literals
@@ -113,8 +104,8 @@ cond_expr = { expr_term | operation }
 conditional = { cond_expr ~ "?" ~ expression ~ ":" ~ expression }
 
 // Templates
-template_literal = { char+ }
-template = { (template_literal | template_interpolation | template_directive)* }
+template_literal = { (!("%{" | "${") ~ ANY)+ }
+template = { template_literal | template_interpolation | template_directive }
 template_directive = { template_if | template_for }
 template_interpolation = { ("${" | "${~") ~ expression ~ ("}" | "~}") }
 template_if = {
