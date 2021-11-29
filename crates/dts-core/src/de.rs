@@ -37,7 +37,7 @@ impl DeserializeOptions {
 /// ## Example
 ///
 /// ```
-/// use dts::{de::DeserializerBuilder, Encoding};
+/// use dts_core::{de::DeserializerBuilder, Encoding};
 ///
 /// let buf = r#"["foo"]"#.as_bytes();
 ///
@@ -117,7 +117,7 @@ where
     /// ## Example
     ///
     /// ```
-    /// use dts::{de::DeserializerBuilder, Encoding};
+    /// use dts_core::{de::DeserializerBuilder, Encoding};
     /// use serde_json::json;
     /// # use std::error::Error;
     /// #

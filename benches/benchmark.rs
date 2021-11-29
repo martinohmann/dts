@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use dts::transform::*;
+use dts_core::transform::*;
 use serde_json::json;
 
 fn benchmark_transform(c: &mut Criterion) {

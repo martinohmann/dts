@@ -11,7 +11,6 @@ pub use sink::Sink;
 pub use source::Source;
 pub use value::*;
 
-pub mod args;
 pub mod de;
 mod encoding;
 mod error;

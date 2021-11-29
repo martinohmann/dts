@@ -1,8 +1,9 @@
 //! Command line arguments for dts.
 
-use crate::{de::DeserializeOptions, ser::SerializeOptions};
-use crate::{transform::Transformation, Encoding, Error, Result, Sink, Source};
+use anyhow::{anyhow, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};
+use dts_core::{de::DeserializeOptions, ser::SerializeOptions};
+use dts_core::{transform::Transformation, Encoding, Sink, Source};
 use regex::Regex;
 use std::str::FromStr;
 use unescape::unescape;
@@ -269,11 +270,10 @@ fn parse_csv_delimiter(s: &str) -> Result<u8> {
     if bytes.len() == 1 {
         Ok(bytes[0])
     } else {
-        Err(Error::new("Expected single byte delimiter"))
+        Err(anyhow!("Expected single byte delimiter"))
     }
 }
 
 fn parse_unescaped(s: &str) -> Result<String> {
-    unescape(s)
-        .ok_or_else(|| Error::new(format!("String contains invalid escape sequences: `{}`", s)))
+    unescape(s).ok_or_else(|| anyhow!("String contains invalid escape sequences: `{}`", s))
 }

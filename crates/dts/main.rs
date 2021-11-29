@@ -2,17 +2,15 @@
 
 #![deny(missing_docs)]
 
+mod args;
+
 use anyhow::{anyhow, Context, Result};
+use args::{InputOptions, Options, OutputOptions, TransformOptions};
 use clap::Parser;
+use dts_core::{de::Deserializer, ser::Serializer};
+use dts_core::{transform, Encoding, Error, Sink, Source, Value};
 use rayon::prelude::*;
 use std::io::{BufReader, BufWriter};
-
-use dts::{
-    args::{InputOptions, Options, OutputOptions, TransformOptions},
-    de::Deserializer,
-    ser::Serializer,
-    transform, Encoding, Error, Sink, Source, Value,
-};
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let encoding = opts

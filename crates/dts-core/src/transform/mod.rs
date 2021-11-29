@@ -124,7 +124,7 @@ where
 /// ## Example
 ///
 /// ```
-/// use dts::transform::filter_jsonpath;
+/// use dts_core::transform::filter_jsonpath;
 /// use serde_json::json;
 /// # use pretty_assertions::assert_eq;
 /// # use std::error::Error;
@@ -149,7 +149,7 @@ where
 /// This function can fail if parsing the query fails.
 ///
 /// ```
-/// use dts::transform::filter_jsonpath;
+/// use dts_core::transform::filter_jsonpath;
 /// use serde_json::json;
 ///
 /// let value = json!([]);
@@ -171,8 +171,8 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::remove_empty_values;
-/// use dts::Value;
+/// use dts_core::transform::remove_empty_values;
+/// use dts_core::Value;
 /// use serde_json::json;
 ///
 /// let value = Value::Null;
@@ -182,8 +182,8 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::remove_empty_values;
-/// use dts::Value;
+/// use dts_core::transform::remove_empty_values;
+/// use dts_core::Value;
 /// use serde_json::json;
 ///
 /// let mut value = json!({});
@@ -193,7 +193,7 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::remove_empty_values;
+/// use dts_core::transform::remove_empty_values;
 /// use serde_json::json;
 ///
 /// let value = json!(["foo", null, "bar"]);
@@ -203,7 +203,7 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::remove_empty_values;
+/// use dts_core::transform::remove_empty_values;
 /// use serde_json::json;
 ///
 /// let value = json!({"foo": ["bar", null, {}, "baz"], "qux": {"adf": {}}});
@@ -246,7 +246,7 @@ pub fn remove_empty_values(value: Value) -> Value {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_arrays;
+/// use dts_core::transform::flatten_arrays;
 /// use serde_json::json;
 ///
 /// let value = json!([["foo"], ["bar"], [["baz"], "qux"]]);
@@ -259,7 +259,7 @@ pub fn remove_empty_values(value: Value) -> Value {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_arrays;
+/// use dts_core::transform::flatten_arrays;
 /// use serde_json::json;
 ///
 /// let value = json!(["foo"]);
@@ -271,7 +271,7 @@ pub fn remove_empty_values(value: Value) -> Value {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_arrays;
+/// use dts_core::transform::flatten_arrays;
 /// use serde_json::json;
 ///
 /// let value = json!({"foo": "bar"});
@@ -294,7 +294,7 @@ pub fn flatten_arrays(value: Value) -> Value {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_keys;
+/// use dts_core::transform::flatten_keys;
 /// use serde_json::json;
 ///
 /// let value = json!({"foo": {"bar": ["baz", "qux"]}});
@@ -317,7 +317,7 @@ pub fn flatten_arrays(value: Value) -> Value {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_keys;
+/// use dts_core::transform::flatten_keys;
 /// use serde_json::json;
 ///
 /// let value = json!(["foo", "bar", "baz"]);
@@ -339,7 +339,7 @@ pub fn flatten_arrays(value: Value) -> Value {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::flatten_keys;
+/// use dts_core::transform::flatten_keys;
 /// use serde_json::json;
 ///
 /// let value = json!("foo");
@@ -361,7 +361,7 @@ where
 /// # use std::error::Error;
 /// #
 /// # fn main() -> Result<(), Box<dyn Error>> {
-/// use dts::transform::expand_keys;
+/// use dts_core::transform::expand_keys;
 /// use serde_json::json;
 ///
 /// let value = json!([{"foo.bar": 1, "foo[\"bar-baz\"]": 2}]);
@@ -438,7 +438,7 @@ pub fn deep_merge(value: Value) -> Value {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts::transform::keys;
+/// use dts_core::transform::keys;
 /// use serde_json::json;
 ///
 /// let value = json!({"foo": "bar", "baz": "qux"});
@@ -457,7 +457,7 @@ pub fn keys(value: Value) -> Value {
 /// Recursively deletes all keys matching the regex pattern.
 ///
 /// ```
-/// use dts::transform::delete_keys;
+/// use dts_core::transform::delete_keys;
 /// use serde_json::json;
 /// use regex::Regex;
 /// # use pretty_assertions::assert_eq;
