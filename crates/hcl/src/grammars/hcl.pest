@@ -30,7 +30,7 @@ literal_value = _{ string_lit | numeric_lit | boolean_lit | null_lit }
 
 // Identifiers
 identifier = @{ ident_first_char ~ ident_char* }
-ident_char = _{ letter | decimal | "-" | "." | "_" }
+ident_char = _{ letter | decimal | "-" | "_" }
 ident_first_char = _{ letter | "_" }
 letter = _{ 'a'..'z' | 'A'..'Z' }
 
