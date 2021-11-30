@@ -1,9 +1,8 @@
-pub mod ast;
-pub mod error;
-pub mod parser;
+#![allow(clippy::should_implement_trait)]
 
-#[cfg(test)]
-mod test;
+pub mod ast;
+pub mod de;
+pub mod error;
+mod parser;
 
 pub use error::*;
-pub use parser::parse;

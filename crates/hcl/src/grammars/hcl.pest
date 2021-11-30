@@ -1,18 +1,18 @@
 // HCL spec (https://github.com/hashicorp/hcl/blob/main/hclsyntax/spec.md)
 
 // The top-level scope of an HCL file
-hcl = _{ SOI ~ body ~ EOI }
+hcl = _{ SOI ~ config_file ~ EOI }
 
 // Structural elements
-config_file = _{ NEWLINE* ~ body }
-body = _{ (attribute | block)* }
+config_file = { body }
+body = _{ NEWLINE* ~ (attribute | block)* }
 block_body = { body }
 attribute = { identifier ~ "=" ~ expression }
 block = { block_identifier ~ "{" ~ block_body ~ "}" }
 block_identifier = { identifier ~ (string_lit | identifier)* }
 
 // Expressions
-expression = { operation | conditional | expr_term }
+expression = _{ operation | conditional | expr_term }
 expr_term = _{
     value | function_call |
     for_expr | index_expr | get_attr_expr | splat_expr |
@@ -23,7 +23,7 @@ index_expr = { variable_expr ~ index }
 get_attr_expr = { variable_expr ~ get_attr }
 
 // Values
-value = { literal_value | collection_value | heredoc }
+value = _{ literal_value | collection_value | heredoc }
 
 // Literal values
 literal_value = _{ string_lit | numeric_lit | boolean_lit | null_lit }
@@ -35,13 +35,15 @@ ident_first_char = _{ letter | "_" }
 letter = _{ 'a'..'z' | 'A'..'Z' }
 
 // Booleans
-boolean_lit = @{ "true" | "false" }
+boolean_lit = _{ boolean }
+boolean = { "true" | "false" }
 
 // Null
-null_lit = { "null" }
+null_lit = _{ null }
+null = { "null" }
 
 // Numeric literals
-numeric_lit = { float | int }
+numeric_lit = _{ float | int }
 float = @{ "-"? ~ decimal+ ~ (("." ~ decimal+ ~ (expmark ~ decimal+)?) | (expmark ~ decimal+)) }
 int = @{ "-"? ~ decimal+ }
 expmark = { ("e" | "E") ~ ("+" | "-")? }
@@ -51,7 +53,7 @@ decimal = { '0'..'9' }
 collection_value = _{ tuple | object }
 tuple = { "[" ~ (expression ~ ("," ~ expression)* ~ ","?)? ~ "]" }
 object = { "{" ~ (object_item ~ ("," ~ object_item)* ~ ","?)? ~ "}" }
-object_item = { (identifier | expression) ~ ("=" | ":") ~ expression }
+object_item = _{ (identifier | expression) ~ ("=" | ":") ~ expression }
 
 // Heredoc
 heredoc = ${

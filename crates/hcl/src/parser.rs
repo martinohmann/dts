@@ -1,117 +1,212 @@
-use crate::{ast::*, Error, Result};
-use pest::iterators::{Pair, Pairs};
-use pest::Parser as ParseTrait;
 use pest_derive::Parser;
 
 #[derive(Parser)]
 #[grammar = "grammars/hcl.pest"]
 pub(crate) struct HclParser;
 
-pub fn parse(s: &str) -> Result<Body<'_>, Error> {
-    let body = HclParser::parse(Rule::hcl, s)
-        .map_err(|e| Error::ParseError(e.to_string()))?
-        .filter_map(parse_structure)
-        .collect();
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pest::*;
 
-    Ok(body)
-}
-
-fn parse_structure(pair: Pair<Rule>) -> Option<Structure> {
-    match pair.as_rule() {
-        Rule::attribute => Some(parse_attribute(pair.into_inner())),
-        Rule::block => Some(parse_block(pair.into_inner())),
-        Rule::EOI => None,
-        _ => unreachable!(),
+    #[test]
+    fn identifier() {
+        parses_to! {
+            parser: HclParser,
+            input: "_an-id3nt1fieR",
+            rule: Rule::identifier,
+            tokens: [
+                identifier(0, 14)
+            ]
+        };
     }
-}
 
-fn parse_attribute(mut pairs: Pairs<Rule>) -> Structure {
-    let ident = parse_identifier(pairs.next().unwrap());
-    let expr = parse_expression(inner(pairs.next().unwrap()));
-    Structure::Attribute(ident, expr)
-}
-
-fn parse_block(mut pairs: Pairs<Rule>) -> Structure {
-    let ident = parse_block_identifier(pairs.next().unwrap().into_inner());
-    let body = parse_block_body(pairs.next().unwrap().into_inner());
-    Structure::Block(ident, Box::new(body))
-}
-
-fn parse_block_identifier(pairs: Pairs<Rule>) -> Vec<&str> {
-    pairs.map(parse_identifier).collect()
-}
-
-fn parse_block_body(pairs: Pairs<Rule>) -> Body {
-    pairs.filter_map(parse_structure).collect()
-}
-
-fn parse_identifier(ident: Pair<Rule>) -> &str {
-    match ident.as_rule() {
-        Rule::identifier | Rule::string => ident.as_str(),
-        _ => unreachable!(),
+    #[test]
+    fn string() {
+        parses_to! {
+            parser: HclParser,
+            input: "\"a string\"",
+            rule: Rule::string_lit,
+            tokens: [
+                string(1, 9)
+            ]
+        };
     }
-}
 
-fn parse_expression(pair: Pair<Rule>) -> Expression {
-    match pair.as_rule() {
-        Rule::value => Expression::Value(parse_value(inner(pair))),
-        // For now, do not distinguish between any other expressions just map the as expose them
-        // as RawExpr.
-        _ => Expression::RawExpr(pair.as_str()),
+    #[test]
+    fn number() {
+        parses_to! {
+            parser: HclParser,
+            input: "-12e+10",
+            rule: Rule::numeric_lit,
+            tokens: [
+                float(0, 7)
+            ]
+        };
+
+        parses_to! {
+            parser: HclParser,
+            input: "42",
+            rule: Rule::numeric_lit,
+            tokens: [
+                int(0, 2)
+            ]
+        };
     }
-}
 
-fn parse_value(pair: Pair<Rule>) -> Value {
-    match pair.as_rule() {
-        Rule::null_lit => Value::Null,
-        Rule::boolean_lit => Value::Bool(pair.as_str().parse().unwrap()),
-        Rule::numeric_lit => Value::Number(parse_number(inner(pair))),
-        Rule::string => Value::String(pair.as_str()),
-        Rule::heredoc => Value::String(parse_heredoc(pair.into_inner())),
-        Rule::object => Value::Object(parse_object(pair.into_inner())),
-        Rule::tuple => Value::Tuple(parse_tuple(pair.into_inner())),
-        _ => unreachable!(),
+    #[test]
+    fn attr() {
+        parses_to! {
+            parser: HclParser,
+            input: "foo = \"bar\"",
+            rule: Rule::attribute,
+            tokens: [
+                attribute(0, 11, [
+                    identifier(0, 3),
+                    string(7, 10)
+                ])
+            ]
+        };
     }
-}
 
-fn parse_heredoc(mut pairs: Pairs<Rule>) -> &str {
-    // The first pair is the heredoc identifier, e.g. `HEREDOC`, the second one is the template
-    // that we are interested in.
-    pairs.nth(1).unwrap().as_str()
-}
-
-fn parse_object(pairs: Pairs<Rule>) -> Vec<ObjectItem> {
-    pairs
-        .map(|pair| parse_object_item(pair.into_inner()))
-        .collect()
-}
-
-fn parse_object_item(mut pairs: Pairs<Rule>) -> ObjectItem {
-    let key = parse_object_key(pairs.next().unwrap());
-    let expr = parse_expression(inner(pairs.next().unwrap()));
-    ObjectItem(key, expr)
-}
-
-fn parse_object_key(pair: Pair<Rule>) -> ObjectKey {
-    match pair.as_rule() {
-        Rule::identifier => ObjectKey::Identifier(pair.as_str()),
-        Rule::expression => ObjectKey::Expression(parse_expression(inner(pair))),
-        _ => unreachable!(),
+    #[test]
+    fn conditional() {
+        parses_to! {
+            parser: HclParser,
+            input: "var.enabled ? 1 : 0",
+            rule: Rule::conditional,
+            tokens: [
+                conditional(0, 19, [
+                    cond_expr(0, 11, [
+                        variable_expr(0, 11)
+                    ]),
+                    int(14, 15),
+                    int(18, 19)
+                ])
+            ]
+        };
     }
-}
 
-fn parse_tuple(pairs: Pairs<Rule>) -> Vec<Expression> {
-    pairs.map(|pair| parse_expression(inner(pair))).collect()
-}
+    #[test]
+    fn terraform() {
+        parses_to! {
+            parser: HclParser,
+            input: r#"
+resource "aws_s3_bucket" "mybucket" {
+  bucket        = "mybucket"
+  force_destroy = true
 
-fn parse_number(pair: Pair<Rule>) -> Number {
-    match pair.as_rule() {
-        Rule::float => Number::Float(pair.as_str().parse().unwrap()),
-        Rule::int => Number::Int(pair.as_str().parse().unwrap()),
-        _ => unreachable!(),
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        kms_master_key_id = aws_kms_key.mykey.arn
+        sse_algorithm     = "aws:kms"
+      }
     }
+  }
 }
+            "#,
+            rule: Rule::body,
+            tokens: [
+                block(1, 299, [
+                    block_identifier(1, 36, [
+                        identifier(1, 9),
+                        string(11, 24),
+                        string(27, 35)
+                    ]),
+                    block_body(41, 297, [
+                        attribute(41, 67, [
+                            identifier(41, 47),
+                            string(58, 66)
+                        ]),
+                        attribute(70, 90, [
+                            identifier(70, 83),
+                            boolean(86, 90)
+                        ]),
+                        block(94, 297, [
+                            block_identifier(94, 131, [
+                                identifier(94, 130)
+                            ]),
+                            block_body(137, 293, [
+                                block(137, 293, [
+                                    block_identifier(137, 142, [
+                                        identifier(137, 141)
+                                    ]),
+                                    block_body(150, 287, [
+                                        block(150, 287, [
+                                            block_identifier(150, 190, [
+                                                identifier(150, 189)
+                                            ]),
+                                            block_body(200, 279, [
+                                                attribute(200, 241, [
+                                                    identifier(200, 217),
+                                                    variable_expr(220, 241)
+                                                ]),
+                                                attribute(250, 279, [
+                                                    identifier(250, 263),
+                                                    string(271, 278)
+                                                ])
+                                            ])
+                                        ])
+                                    ])
+                                ])
+                            ])
+                        ])
+                    ])
+                ])
+            ]
+        };
+    }
 
-fn inner(pair: Pair<Rule>) -> Pair<Rule> {
-    pair.into_inner().next().unwrap()
+    #[test]
+    fn collections() {
+        parses_to! {
+            parser: HclParser,
+            input: r#"foo = ["bar", ["baz"]]"#,
+            rule: Rule::attribute,
+            tokens: [
+                attribute(0, 22, [
+                    identifier(0, 3),
+                    tuple(6, 22, [
+                        string(8, 11),
+                        tuple(14, 21, [
+                            string(16, 19)
+                        ])
+                    ])
+                ])
+            ]
+        };
+
+        parses_to! {
+            parser: HclParser,
+            input: r#"foo = {"bar" = "baz","qux" = ident }"#,
+            rule: Rule::attribute,
+            tokens: [
+                attribute(0, 36, [
+                    identifier(0, 3),
+                    object(6, 36, [
+                        string(8, 11),
+                        string(16, 19),
+                        string(22, 25),
+                        variable_expr(29, 34)
+                    ])
+                ])
+            ]
+        };
+    }
+
+    #[test]
+    fn template() {
+        parses_to! {
+            parser: HclParser,
+            input: "<<HEREDOC\n${foo}\n%{if asdf}qux%{endif}\nheredoc\nHEREDOC",
+            rule: Rule::expr_term,
+            tokens: [
+                heredoc(0, 54, [
+                    identifier(2, 9),
+                    template(10, 46)
+                ])
+            ]
+        };
+    }
 }

@@ -1,0 +1,614 @@
+use crate::{
+    parser::{HclParser, Rule},
+    Error, Result,
+};
+use pest::iterators::{Pair, Pairs};
+use pest::Parser as ParserTrait;
+use serde::de::{
+    self, DeserializeSeed, EnumAccess, IntoDeserializer, MapAccess, SeqAccess, VariantAccess,
+    Visitor,
+};
+use serde::Deserialize;
+use std::str::FromStr;
+
+pub struct Deserializer<'de> {
+    pair: Option<Pair<'de, Rule>>,
+}
+
+impl<'de> Deserializer<'de> {
+    pub fn from_str(input: &'de str) -> Result<Self> {
+        let pair = HclParser::parse(Rule::hcl, input)
+            .map_err(|e| Error::ParseError(e.to_string()))?
+            .next()
+            .unwrap();
+        Ok(Deserializer::from_pair(pair))
+    }
+
+    fn from_pair(pair: Pair<'de, Rule>) -> Self {
+        Deserializer { pair: Some(pair) }
+    }
+}
+
+pub fn from_str<'de, T>(s: &'de str) -> Result<T>
+where
+    T: Deserialize<'de>,
+{
+    let mut deserializer = Deserializer::from_str(s)?;
+    T::deserialize(&mut deserializer)
+}
+
+impl<'de> Deserializer<'de> {
+    fn peek_pair(&mut self) -> Result<&Pair<'de, Rule>> {
+        self.pair.as_ref().ok_or(Error::Eof)
+    }
+
+    fn peek_rule(&mut self) -> Result<Rule> {
+        self.peek_pair().map(Pair::as_rule)
+    }
+
+    fn take_pair(&mut self) -> Result<Pair<'de, Rule>> {
+        self.pair.take().ok_or(Error::Eof)
+    }
+
+    fn parse_bool(&mut self) -> Result<bool> {
+        let pair = self.take_pair()?;
+
+        match pair.as_rule() {
+            Rule::boolean => Ok(pair.as_str().parse().unwrap()),
+            _ => Err(Error::token_expected("boolean")),
+        }
+    }
+
+    fn parse_int<T>(&mut self) -> Result<T>
+    where
+        T: FromStr,
+    {
+        let pair = self.take_pair()?;
+
+        match pair.as_rule() {
+            Rule::int => pair.as_str().parse().map_err(|_| Error::Syntax),
+            _ => Err(Error::token_expected("int")),
+        }
+    }
+
+    fn parse_float<T>(&mut self) -> Result<T>
+    where
+        T: FromStr,
+    {
+        let pair = self.take_pair()?;
+
+        match pair.as_rule() {
+            Rule::float => pair.as_str().parse().map_err(|_| Error::Syntax),
+            _ => Err(Error::token_expected("float")),
+        }
+    }
+
+    fn parse_str(&mut self) -> Result<&'de str> {
+        let pair = self.take_pair()?;
+
+        match pair.as_rule() {
+            Rule::heredoc => Ok(pair.into_inner().nth(1).unwrap().as_str()),
+            Rule::string | Rule::identifier => Ok(pair.as_str()),
+            _ => Err(Error::token_expected("string, identifier or heredoc")),
+        }
+    }
+
+    fn parse_char(&mut self) -> Result<char> {
+        let s = self.parse_str()?;
+
+        if s.len() == 1 {
+            Ok(s.chars().next().unwrap())
+        } else {
+            Err(Error::token_expected("char"))
+        }
+    }
+
+    fn interpolate_expression(&mut self) -> Result<String> {
+        Ok(format!("${{{}}}", self.take_pair()?.as_str()))
+    }
+}
+
+impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
+    type Error = Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        match self.peek_rule()? {
+            Rule::null => self.deserialize_unit(visitor),
+            Rule::boolean => self.deserialize_bool(visitor),
+            // Strings
+            Rule::string => self.deserialize_string(visitor),
+            Rule::identifier => self.deserialize_string(visitor),
+            Rule::heredoc => self.deserialize_string(visitor),
+            // Numbers
+            Rule::float => self.deserialize_f64(visitor),
+            Rule::int => self.deserialize_i64(visitor),
+            // Seqs
+            Rule::config_file => self.deserialize_seq(visitor),
+            Rule::block => self.deserialize_seq(visitor),
+            Rule::block_identifier => self.deserialize_seq(visitor),
+            Rule::block_body => self.deserialize_seq(visitor),
+            Rule::tuple => self.deserialize_seq(visitor),
+            // Maps
+            Rule::attribute => self.deserialize_map(visitor),
+            Rule::object => self.deserialize_map(visitor),
+            // Anthing else is treated as an expression and gets interpolated to distinguish it
+            // from normal string values.
+            _ => visitor.visit_string(self.interpolate_expression()?),
+        }
+    }
+
+    fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_bool(self.parse_bool()?)
+    }
+
+    fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_i8(self.parse_int()?)
+    }
+
+    fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_i16(self.parse_int()?)
+    }
+
+    fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_i32(self.parse_int()?)
+    }
+
+    fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_i64(self.parse_int()?)
+    }
+
+    fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_u8(self.parse_int()?)
+    }
+
+    fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_u16(self.parse_int()?)
+    }
+
+    fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_u32(self.parse_int()?)
+    }
+
+    fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_u64(self.parse_int()?)
+    }
+
+    fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_f32(self.parse_float()?)
+    }
+
+    fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_f64(self.parse_float()?)
+    }
+
+    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_char(self.parse_char()?)
+    }
+
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_borrowed_str(self.parse_str()?)
+    }
+
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(visitor)
+    }
+
+    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_bytes(self.parse_str()?.as_bytes())
+    }
+
+    fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_byte_buf(self.parse_str()?.as_bytes().to_vec())
+    }
+
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        if self.peek_rule()? == Rule::null {
+            self.take_pair()?; // consume `null`
+            visitor.visit_none()
+        } else {
+            visitor.visit_some(self)
+        }
+    }
+
+    fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        match self.take_pair()?.as_rule() {
+            Rule::null => visitor.visit_unit(),
+            _ => Err(Error::token_expected("null")),
+        }
+    }
+
+    fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_unit(visitor)
+    }
+
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        let pair = self.take_pair()?;
+
+        match pair.as_rule() {
+            Rule::config_file
+            | Rule::block
+            | Rule::block_identifier
+            | Rule::block_body
+            | Rule::tuple => visitor.visit_seq(Seq::new(pair.into_inner())),
+            _ => Err(Error::token_expected(
+                "config file, block, block identifier, block body or tuple",
+            )),
+        }
+    }
+
+    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_seq(visitor)
+    }
+
+    fn deserialize_tuple_struct<V>(
+        self,
+        _name: &'static str,
+        _len: usize,
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_seq(visitor)
+    }
+
+    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        let pair = self.take_pair()?;
+
+        match pair.as_rule() {
+            Rule::attribute | Rule::object => visitor.visit_map(Map::new(pair.into_inner())),
+            _ => Err(Error::token_expected("attribute or object")),
+        }
+    }
+
+    fn deserialize_struct<V>(
+        self,
+        _name: &'static str,
+        _fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_map(visitor)
+    }
+
+    fn deserialize_enum<V>(
+        self,
+        _name: &'static str,
+        _variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        match self.peek_rule()? {
+            Rule::string | Rule::identifier | Rule::heredoc => {
+                visitor.visit_enum(self.parse_str()?.into_deserializer())
+            }
+            Rule::attribute | Rule::object => {
+                visitor.visit_enum(Enum::new(self.take_pair()?.into_inner()))
+            }
+            _ => Err(Error::token_expected("enum")),
+        }
+    }
+
+    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_str(visitor)
+    }
+
+    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_any(visitor)
+    }
+}
+
+struct Seq<'de> {
+    pairs: Pairs<'de, Rule>,
+}
+
+impl<'de> Seq<'de> {
+    fn new(pairs: Pairs<'de, Rule>) -> Self {
+        Self { pairs }
+    }
+}
+
+impl<'de> SeqAccess<'de> for Seq<'de> {
+    type Error = Error;
+
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        match self.pairs.next() {
+            Some(pair) => seed
+                .deserialize(&mut Deserializer::from_pair(pair))
+                .map(Some),
+            None => Ok(None),
+        }
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        self.pairs.size_hint().1
+    }
+}
+
+struct Map<'de> {
+    pairs: Pairs<'de, Rule>,
+}
+
+impl<'de> Map<'de> {
+    fn new(pairs: Pairs<'de, Rule>) -> Self {
+        Self { pairs }
+    }
+}
+
+impl<'de> MapAccess<'de> for Map<'de> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        match self.pairs.next() {
+            Some(pair) => seed
+                .deserialize(&mut Deserializer::from_pair(pair))
+                .map(Some),
+            None => Ok(None),
+        }
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        match self.pairs.next() {
+            Some(pair) => seed.deserialize(&mut Deserializer::from_pair(pair)),
+            None => Err(Error::token_expected("map value")),
+        }
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        self.pairs.size_hint().1.map(|hint| hint / 2)
+    }
+}
+
+struct Enum<'de> {
+    pairs: Pairs<'de, Rule>,
+}
+
+impl<'de> Enum<'de> {
+    fn new(pairs: Pairs<'de, Rule>) -> Self {
+        Self { pairs }
+    }
+}
+
+impl<'de> EnumAccess<'de> for Enum<'de> {
+    type Error = Error;
+    type Variant = EnumVariant<'de>;
+
+    fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        let mut pairs = self.pairs;
+
+        match pairs.next() {
+            Some(pair) => {
+                let val = seed.deserialize(&mut Deserializer::from_pair(pair))?;
+
+                match pairs.next() {
+                    Some(pair) => Ok((val, EnumVariant::new(pair))),
+                    None => Err(Error::token_expected("variant")),
+                }
+            }
+            None => Err(Error::token_expected("variant seed")),
+        }
+    }
+}
+
+struct EnumVariant<'de> {
+    pair: Pair<'de, Rule>,
+}
+
+impl<'de> EnumVariant<'de> {
+    fn new(pair: Pair<'de, Rule>) -> Self {
+        Self { pair }
+    }
+}
+
+impl<'de> VariantAccess<'de> for EnumVariant<'de> {
+    type Error = Error;
+
+    fn unit_variant(self) -> Result<()> {
+        Err(Error::token_expected("string"))
+    }
+
+    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        seed.deserialize(&mut Deserializer::from_pair(self.pair))
+    }
+
+    fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        de::Deserializer::deserialize_seq(&mut Deserializer::from_pair(self.pair), visitor)
+    }
+
+    fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        de::Deserializer::deserialize_map(&mut Deserializer::from_pair(self.pair), visitor)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use serde_json::{json, Value};
+
+    #[test]
+    fn test_string_attribute() {
+        let h = r#"foo = "bar""#;
+        let expected: Value = json!([{"foo": "bar"}]);
+        assert_eq!(expected, from_str::<Value>(h).unwrap());
+    }
+
+    #[test]
+    fn test_object() {
+        let h = r#"foo = { bar = 42, "baz" = true }"#;
+        let expected: Value = json!([{"foo": {"bar": 42, "baz": true}}]);
+        assert_eq!(expected, from_str::<Value>(h).unwrap());
+    }
+
+    #[test]
+    fn test_block() {
+        let h = r#"resource "aws_s3_bucket" "mybucket" { name = "mybucket" }"#;
+        let expected: Value =
+            json!([[["resource", "aws_s3_bucket", "mybucket"], [{"name": "mybucket"}]]]);
+        assert_eq!(expected, from_str::<Value>(h).unwrap());
+
+        let h = r#"block { name = "asdf" }"#;
+        let expected: Value = json!([[["block"], [{"name": "asdf"}]]]);
+        assert_eq!(expected, from_str::<Value>(h).unwrap());
+    }
+
+    #[test]
+    fn test_tuple() {
+        let h = r#"foo = [true, 2, "three", var.enabled]"#;
+        let expected: Value = json!([{"foo": [true, 2, "three", "${var.enabled}"]}]);
+        assert_eq!(expected, from_str::<Value>(h).unwrap());
+    }
+
+    #[test]
+    fn test_struct() {
+        #[derive(Deserialize, PartialEq, Debug)]
+        struct Test {
+            foo: u32,
+        }
+
+        let h = r#"foo = 1"#;
+        let expected = vec![Test { foo: 1 }];
+        assert_eq!(expected, from_str::<Vec<Test>>(h).unwrap());
+    }
+
+    #[test]
+    fn test_enum() {
+        #[derive(Deserialize, PartialEq, Debug)]
+        enum E {
+            Unit,
+            Newtype(u32),
+            Tuple(u32, u32),
+            Struct { a: u32 },
+        }
+
+        #[derive(Deserialize, PartialEq, Debug)]
+        struct Test {
+            foo: E,
+        }
+
+        let h = r#"foo = "Unit""#;
+        let expected = vec![Test { foo: E::Unit }];
+        assert_eq!(expected, from_str::<Vec<Test>>(h).unwrap());
+
+        let h = r#"Newtype = 1"#;
+        let expected = vec![E::Newtype(1)];
+        assert_eq!(expected, from_str::<Vec<E>>(h).unwrap());
+
+        let h = r#"Tuple = [1,2]"#;
+        let expected = vec![E::Tuple(1, 2)];
+        assert_eq!(expected, from_str::<Vec<E>>(h).unwrap());
+
+        let h = r#"foo = {"Struct" = {"a" = 1}}"#;
+        let expected = vec![Test {
+            foo: E::Struct { a: 1 },
+        }];
+        assert_eq!(expected, from_str::<Vec<Test>>(h).unwrap());
+    }
+}
