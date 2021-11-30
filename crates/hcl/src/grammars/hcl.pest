@@ -23,7 +23,7 @@ index_expr = { variable_expr ~ index }
 get_attr_expr = { variable_expr ~ get_attr }
 
 // Values
-value = { literal_value | collection_value | heredoc_template }
+value = { literal_value | collection_value | heredoc }
 
 // Literal values
 literal_value = _{ string_lit | numeric_lit | boolean_lit | null_lit }
@@ -53,11 +53,11 @@ tuple = { "[" ~ (expression ~ ("," ~ expression)* ~ ","?)? ~ "]" }
 object = { "{" ~ (object_item ~ ("," ~ object_item)* ~ ","?)? ~ "}" }
 object_item = { (identifier | expression) ~ ("=" | ":") ~ expression }
 
-// Heredoc template
-heredoc_template = {
-    ("<<" | "<<-") ~ identifier ~
-    template ~
-    identifier
+// Heredoc
+heredoc = ${
+    ("<<-" | "<<") ~ PUSH(identifier) ~ WHITESPACE+ ~
+    template ~ WHITESPACE+ ~
+    POP
 }
 
 // String literals
@@ -104,10 +104,13 @@ cond_expr = { expr_term | operation }
 conditional = { cond_expr ~ "?" ~ expression ~ ":" ~ expression }
 
 // Templates
-template_literal = { (!("%{" | "${") ~ ANY)+ }
-template = { template_literal | template_interpolation | template_directive }
-template_directive = { template_if | template_for }
-template_interpolation = { ("${" | "${~") ~ expression ~ ("}" | "~}") }
+template_literal = _{ (ANY~ !PEEK)* }
+// @TODO(mohmann): treat everything as template literals for now as it's really hard to get
+// interpolations and directives right recursively. We are not going to consume the tokens anyways right now.
+// template = { template_interpolation | template_directive | template_literal }
+template = { template_literal }
+template_directive = _{ template_if | template_for }
+template_interpolation = _{ ("${" | "${~") ~ expression ~ ("}" | "~}") }
 template_if = {
     ("%{" | "%{~") ~ "if" ~ expression ~ ("}" | "~}") ~
     template ~

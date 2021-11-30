@@ -67,12 +67,17 @@ fn parse_value(pair: Pair<Rule>) -> Value {
         Rule::boolean_lit => Value::Bool(pair.as_str().parse().unwrap()),
         Rule::numeric_lit => Value::Number(parse_number(inner(pair))),
         Rule::string => Value::String(pair.as_str()),
-        // @TODO: we actually need the inner template here but this requires more work.
-        Rule::heredoc_template => Value::String(pair.as_str()),
+        Rule::heredoc => Value::String(parse_heredoc(pair.into_inner())),
         Rule::object => Value::Object(parse_object(pair.into_inner())),
         Rule::tuple => Value::Tuple(parse_tuple(pair.into_inner())),
         _ => unreachable!(),
     }
+}
+
+fn parse_heredoc(mut pairs: Pairs<Rule>) -> &str {
+    // The first pair is the heredoc identifier, e.g. `HEREDOC`, the second one is the template
+    // that we are interested in.
+    pairs.nth(1).unwrap().as_str()
 }
 
 fn parse_object(pairs: Pairs<Rule>) -> Vec<ObjectItem> {

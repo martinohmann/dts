@@ -470,20 +470,13 @@ fn collections() {
 fn template() {
     parses_to! {
         parser: HclParser,
-        input: "<<HEREDOC\n${foo}\nHEREDOC",
+        input: "<<HEREDOC\n${foo}\n%{if asdf}qux%{endif}\nheredoc\nHEREDOC",
         rule: Rule::expr_term,
         tokens: [
-            value(0, 24, [
-                heredoc_template(0, 24, [
+            value(0, 54, [
+                heredoc(0, 54, [
                     identifier(2, 9),
-                    template(10, 16, [
-                         template_interpolation(10, 16, [
-                             expression(12, 15, [
-                                 variable_expr(12, 15)
-                             ])
-                         ])
-                    ]),
-                    identifier(17, 24)
+                    template(10, 46)
                 ])
             ])
         ]
