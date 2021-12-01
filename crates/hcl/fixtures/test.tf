@@ -7,11 +7,8 @@ resource "aws_eks_cluster" "this" {
   version                   = var.cluster_version
 
   vpc_config {
-    security_group_ids      = compact([local.cluster_security_group_id])
-    subnet_ids              = var.subnets
-    endpoint_private_access = var.cluster_endpoint_private_access
-    endpoint_public_access  = var.cluster_endpoint_public_access
-    public_access_cidrs     = var.cluster_endpoint_public_access_cidrs
+    security_group_ids = compact([local.cluster_security_group_id])
+    subnet_ids         = var.subnets
   }
 
   kubernetes_network_config {
@@ -34,18 +31,7 @@ resource "aws_eks_cluster" "this" {
     var.cluster_tags,
   )
 
-  timeouts {
-    create = var.cluster_create_timeout
-    delete = var.cluster_delete_timeout
-    update = var.cluster_update_timeout
-  }
-
   depends_on = [
-    aws_security_group_rule.cluster_egress_internet,
-    aws_security_group_rule.cluster_https_worker_ingress,
-    aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
-    aws_iam_role_policy_attachment.cluster_AmazonEKSServicePolicy,
-    aws_iam_role_policy_attachment.cluster_AmazonEKSVPCResourceControllerPolicy,
     aws_cloudwatch_log_group.this
   ]
 }
