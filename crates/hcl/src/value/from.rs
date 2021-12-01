@@ -1,4 +1,5 @@
-use super::{Map, Value};
+use super::{Map, Structure, Value};
+use maplit::hashmap;
 use std::borrow::Cow;
 
 macro_rules! impl_from_integer {
@@ -60,19 +61,19 @@ impl From<Map<String, Value>> for Value {
 
 impl<T: Into<Value>> From<Vec<T>> for Value {
     fn from(f: Vec<T>) -> Self {
-        Self::List(f.into_iter().map(Into::into).collect())
+        Self::Array(f.into_iter().map(Into::into).collect())
     }
 }
 
 impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     fn from(f: &'a [T]) -> Self {
-        Self::List(f.iter().cloned().map(Into::into).collect())
+        Self::Array(f.iter().cloned().map(Into::into).collect())
     }
 }
 
 impl<T: Into<Value>> FromIterator<T> for Value {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Self::List(iter.into_iter().map(Into::into).collect())
+        Self::Array(iter.into_iter().map(Into::into).collect())
     }
 }
 
@@ -89,5 +90,23 @@ impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
 impl From<()> for Value {
     fn from((): ()) -> Self {
         Self::Null
+    }
+}
+
+impl From<Structure> for Value {
+    fn from(s: Structure) -> Self {
+        match s {
+            Structure::Attribute(k, v) => Value::Object(hashmap! {k => v}),
+            Structure::Block(ident, body) => Value::Array(vec![
+                Value::Array(ident.into_iter().map(Value::String).collect()),
+                Value::Array(body.into_iter().map(From::from).collect()),
+            ]),
+        }
+    }
+}
+
+impl From<&Structure> for Value {
+    fn from(s: &Structure) -> Self {
+        From::from(s.clone())
     }
 }

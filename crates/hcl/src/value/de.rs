@@ -69,7 +69,7 @@ impl<'de> Deserialize<'de> for Value {
                     vec.push(elem);
                 }
 
-                Ok(Value::List(vec))
+                Ok(Value::Array(vec))
             }
 
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>

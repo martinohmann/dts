@@ -2,7 +2,7 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{self, Display};
 
 /// Represents a HCL number.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Number {
     /// Represents a positive integer.
     PosInt(u64),
