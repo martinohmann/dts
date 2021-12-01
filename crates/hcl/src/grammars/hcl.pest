@@ -18,9 +18,9 @@ expr_term = _{
     for_expr | index_expr | get_attr_expr | splat_expr |
     variable_expr | ("(" ~ expression ~ ")")
 }
-splat_expr = { variable_expr ~ splat }
-index_expr = { variable_expr ~ index }
-get_attr_expr = { variable_expr ~ get_attr }
+splat_expr = @{ variable_expr ~ splat ~ ("." ~ variable_expr)* }
+index_expr = @{ variable_expr ~ index ~ ("." ~ variable_expr)* }
+get_attr_expr = @{ variable_expr ~ get_attr ~ ("." ~ variable_expr)* }
 
 // Values
 value = _{ literal_value | collection_value | heredoc }
@@ -51,8 +51,8 @@ decimal = { '0'..'9' }
 
 // Collection values
 collection_value = _{ tuple | object }
-tuple = { "[" ~ (expression ~ ("," ~ expression)* ~ ","?)? ~ "]" }
-object = { "{" ~ (object_item ~ ("," ~ object_item)* ~ ","?)? ~ "}" }
+tuple = { "[" ~ (expression ~ (","? ~ expression)* ~ ","?)? ~ "]" }
+object = { "{" ~ (object_item ~ (","? ~ object_item)* ~ ","?)? ~ "}" }
 object_item = _{ (identifier | expression) ~ ("=" | ":") ~ expression }
 
 // Heredoc
@@ -64,14 +64,21 @@ heredoc = ${
 
 // String literals
 string_lit = _{ "\"" ~ string ~ "\"" }
-string = @{ (!"\"" ~ ANY)* }
+string = @{ (template_interpolation | ("\\" ~ "\"") | (!"\"" ~ ANY))* }
 
 // Variables and variable expressions
-variable_expr = @{ identifier ~ ("." ~ identifier)* }
+variable_expr = @{ identifier ~ (splat | index | get_attr)* }
 
 // Functions and function calls
-function_call = { identifier ~ "(" ~ arguments ~ ")" }
-arguments = { (expression ~ ("," ~ expression)* ~ ("," | "...")?)? }
+function_call = @{
+    identifier ~ "(" ~
+    WHITESPACE* ~ (COMMENT ~ WHITESPACE*)* ~
+    arguments ~
+    WHITESPACE* ~ (COMMENT ~ WHITESPACE*)* ~
+    ")" ~
+    (splat | index | get_attr)*
+}
+arguments = !{ (expression ~ ("," ~ expression)* ~ ("," | "...")?)? }
 
 // For expressions
 for_expr = { for_tuple_expr | for_object_expr }
@@ -81,21 +88,21 @@ for_intro = { "for" ~ identifier ~ ("," ~ identifier)? ~ "in" ~ expression ~ ":"
 for_cond = { "if" ~ expression }
 
 // Index operator
-index = { ("[" ~ expression ~ "]") | legacy_index }
-legacy_index = { "." ~ decimal+ }
+index = @{ ("[" ~ expression ~ "]") | legacy_index }
+legacy_index = @{ "." ~ decimal+ }
 
 // Attribute access operator
-get_attr = { "." ~ identifier }
+get_attr = @{ "." ~ identifier }
 
 // Splat operators
 splat = { attr_splat | full_splat }
-attr_splat = { "." ~ "*" ~ get_attr* }
-full_splat = { "[" ~ "*" ~ "]" ~ (get_attr | index)* }
+attr_splat = @{ "." ~ "*" ~ get_attr* }
+full_splat = @{ "[" ~ "*" ~ "]" ~ (get_attr | index)* }
 
 // Operations
 operation = { unary_op | binary_op }
 unary_op = { ("-" | "!") ~ expr_term }
-binary_op = { expr_term ~ binary_operator ~ expr_term }
+binary_op = { expr_term ~ binary_operator ~ (conditional | operation | expr_term) }
 binary_operator = { compare_operator | arithmetic_operator | logic_operator }
 compare_operator = { "==" | "!=" | "<" | ">" | "<=" | ">=" }
 arithmetic_operator = { "+" | "-" | "*" | "/" | "%" }

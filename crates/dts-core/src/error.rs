@@ -78,6 +78,10 @@ pub enum Error {
     /// Error emitted by serde_xml.
     #[error(transparent)]
     XMLError(#[from] serde_xml_rs::Error),
+
+    /// Error emitted by hcl.
+    #[error(transparent)]
+    HCLError(#[from] hcl::Error),
 }
 
 impl Error {

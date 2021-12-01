@@ -33,6 +33,8 @@ pub enum Encoding {
     Text,
     /// Gron <https://github.com/TomNomNom/gron>
     Gron,
+    /// HCL
+    HCL,
 }
 
 impl Encoding {
@@ -54,6 +56,7 @@ impl Encoding {
             "csv" => Some(Encoding::CSV),
             "xml" => Some(Encoding::XML),
             "txt" | "text" => Some(Encoding::Text),
+            "hcl" | "tf" => Some(Encoding::HCL),
             _ => None,
         }
     }
@@ -70,13 +73,14 @@ impl Encoding {
             Encoding::XML => "xml",
             Encoding::Text => "text",
             Encoding::Gron => "gron",
+            Encoding::HCL => "hcl",
         }
     }
 }
 
 impl fmt::Display for Encoding {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.as_str().fmt(f)
+        fmt::Display::fmt(self.as_str(), f)
     }
 }
 

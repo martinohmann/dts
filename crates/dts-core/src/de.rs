@@ -142,6 +142,7 @@ where
             Encoding::XML => self.deserialize_xml(),
             Encoding::Text => self.deserialize_text(),
             Encoding::Gron => self.deserialize_gron(),
+            Encoding::HCL => self.deserialize_hcl(),
         }
     }
 
@@ -257,6 +258,12 @@ where
             .collect::<Result<Map<_, _>>>()?;
 
         Ok(Value::Object(map))
+    }
+
+    fn deserialize_hcl(&mut self) -> Result<Value> {
+        let mut s = String::new();
+        self.reader.read_to_string(&mut s)?;
+        Ok(hcl::de::from_str(&s)?)
     }
 }
 
