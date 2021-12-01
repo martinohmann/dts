@@ -63,7 +63,7 @@ impl<'de> Deserialize<'de> for Value {
             where
                 V: de::SeqAccess<'de>,
             {
-                let mut vec = Vec::new();
+                let mut vec = Vec::with_capacity(visitor.size_hint().unwrap_or(0));
 
                 while let Some(elem) = visitor.next_element()? {
                     vec.push(elem);
