@@ -1,3 +1,7 @@
+mod de;
+mod from;
+mod ser;
+
 use crate::number::Number;
 
 /// The map type used for objects.
