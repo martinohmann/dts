@@ -15,12 +15,9 @@ block_identifier = { identifier ~ (string_lit | identifier)* }
 expression = _{ operation | conditional | expr_term }
 expr_term = _{
     value | function_call |
-    for_expr | index_expr | get_attr_expr | splat_expr |
-    variable_expr | ("(" ~ expression ~ ")")
+    for_expr | variable_expr |
+    ("(" ~ expression ~ ")")
 }
-splat_expr = @{ variable_expr ~ splat ~ ("." ~ variable_expr)* }
-index_expr = @{ variable_expr ~ index ~ ("." ~ variable_expr)* }
-get_attr_expr = @{ variable_expr ~ get_attr ~ ("." ~ variable_expr)* }
 
 // Values
 value = _{ literal_value | collection_value | heredoc }
@@ -62,12 +59,34 @@ heredoc = ${
     POP
 }
 
+// Templates
+template_literal = _{ (ANY~ !PEEK)* }
+// @TODO(mohmann): treat everything as template literals for now as it's really hard to get
+// interpolations and directives right recursively. We are not going to consume the tokens anyways
+// right now.
+//
+// template = { template_interpolation | template_directive | template_literal }
+template = { template_literal }
+template_directive = _{ template_if | template_for }
+template_interpolation = _{ ("${" | "${~") ~ expression ~ ("}" | "~}") }
+template_if = {
+    ("%{" | "%{~") ~ "if" ~ expression ~ ("}" | "~}") ~
+    template ~
+    (
+        ("%{" | "%{~") ~ "else" ~ ("}" | "~}") ~
+        template
+    )? ~
+    ("%{" | "%{~") ~ "endif" ~ ("}" | "~}")
+}
+template_for = {
+    ("%{" | "%{~") ~ "for" ~ identifier ~ ("," ~ identifier)? ~ "in" ~ expression ~ ("}" | "~}") ~
+    template ~
+    ("%{" | "%{~") ~ "endfor" ~ ("}" | "~}")
+}
+
 // String literals
 string_lit = _{ "\"" ~ string ~ "\"" }
 string = @{ (template_interpolation | ("\\" ~ "\"") | (!"\"" ~ ANY))* }
-
-// Variables and variable expressions
-variable_expr = @{ identifier ~ (splat | index | get_attr)* }
 
 // Functions and function calls
 function_call = @{
@@ -86,6 +105,9 @@ for_tuple_expr = { "[" ~ for_intro ~ expression ~ for_cond? ~ "]" }
 for_object_expr = { "{" ~ for_intro ~ expression ~ "=>" ~ expression ~ "..."? ~ for_cond? ~ "}" }
 for_intro = { "for" ~ identifier ~ ("," ~ identifier)? ~ "in" ~ expression ~ ":" }
 for_cond = { "if" ~ expression }
+
+// Variables and variable expressions
+variable_expr = @{ identifier ~ (splat | index | get_attr)* }
 
 // Index operator
 index = @{ ("[" ~ expression ~ "]") | legacy_index }
@@ -111,29 +133,6 @@ logic_operator = { "&&" | "||" | "!" }
 // Conditional operator
 cond_expr = { expr_term | operation }
 conditional = { cond_expr ~ "?" ~ expression ~ ":" ~ expression }
-
-// Templates
-template_literal = _{ (ANY~ !PEEK)* }
-// @TODO(mohmann): treat everything as template literals for now as it's really hard to get
-// interpolations and directives right recursively. We are not going to consume the tokens anyways right now.
-// template = { template_interpolation | template_directive | template_literal }
-template = { template_literal }
-template_directive = _{ template_if | template_for }
-template_interpolation = _{ ("${" | "${~") ~ expression ~ ("}" | "~}") }
-template_if = {
-    ("%{" | "%{~") ~ "if" ~ expression ~ ("}" | "~}") ~
-    template ~
-    (
-        ("%{" | "%{~") ~ "else" ~ ("}" | "~}") ~
-        template
-    )? ~
-    ("%{" | "%{~") ~ "endif" ~ ("}" | "~}")
-}
-template_for = {
-    ("%{" | "%{~") ~ "for" ~ identifier ~ ("," ~ identifier)? ~ "in" ~ expression ~ ("}" | "~}") ~
-    template ~
-    ("%{" | "%{~") ~ "endfor" ~ ("}" | "~}")
-}
 
 // Comments
 COMMENT = _{ inline_comment | block_comment }
