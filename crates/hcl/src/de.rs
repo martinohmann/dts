@@ -127,12 +127,12 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             Rule::int => self.deserialize_i64(visitor),
             // Seqs
             Rule::config_file => self.deserialize_seq(visitor),
-            Rule::block => self.deserialize_seq(visitor),
             Rule::block_identifier => self.deserialize_seq(visitor),
             Rule::block_body => self.deserialize_seq(visitor),
             Rule::tuple => self.deserialize_seq(visitor),
             // Maps
             Rule::attribute => self.deserialize_map(visitor),
+            Rule::block => self.deserialize_map(visitor),
             Rule::object => self.deserialize_map(visitor),
             // Anthing else is treated as an expression and gets interpolated to distinguish it
             // from normal string values.
@@ -295,11 +295,9 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let pair = self.take_pair()?;
 
         match pair.as_rule() {
-            Rule::config_file
-            | Rule::block
-            | Rule::block_identifier
-            | Rule::block_body
-            | Rule::tuple => visitor.visit_seq(Seq::new(pair.into_inner())),
+            Rule::config_file | Rule::block_identifier | Rule::block_body | Rule::tuple => {
+                visitor.visit_seq(Seq::new(pair.into_inner()))
+            }
             _ => Err(Error::token_expected(
                 "config file, block, block identifier, block body or tuple",
             )),
@@ -332,7 +330,17 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let pair = self.take_pair()?;
 
         match pair.as_rule() {
-            Rule::attribute | Rule::object => visitor.visit_map(Map::new(pair.into_inner())),
+            Rule::attribute => visitor.visit_map(Structure::new(
+                "attribute",
+                &["kind", "key", "value"],
+                pair.into_inner(),
+            )),
+            Rule::block => visitor.visit_map(Structure::new(
+                "block",
+                &["kind", "ident", "body"],
+                pair.into_inner(),
+            )),
+            Rule::object => visitor.visit_map(Map::new(pair.into_inner())),
             _ => Err(Error::token_expected("attribute or object")),
         }
     }
@@ -411,6 +419,53 @@ impl<'de> SeqAccess<'de> for Seq<'de> {
 
     fn size_hint(&self) -> Option<usize> {
         self.pairs.size_hint().1
+    }
+}
+
+struct Structure<'de> {
+    typ: Option<&'static str>,
+    keys: std::slice::Iter<'de, &'static str>,
+    pairs: Pairs<'de, Rule>,
+}
+
+impl<'de> Structure<'de> {
+    fn new(typ: &'static str, keys: &'de [&'static str], pairs: Pairs<'de, Rule>) -> Self {
+        Self {
+            typ: Some(typ),
+            keys: keys.iter(),
+            pairs,
+        }
+    }
+}
+
+impl<'de> MapAccess<'de> for Structure<'de> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        match self.keys.next() {
+            Some(key) => seed.deserialize(key.into_deserializer()).map(Some),
+            None => Ok(None),
+        }
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        match self.typ.take() {
+            Some(typ) => seed.deserialize(typ.into_deserializer()),
+            None => match self.pairs.next() {
+                Some(pair) => seed.deserialize(&mut Deserializer::from_pair(pair)),
+                None => Err(Error::token_expected("structure")),
+            },
+        }
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        self.keys.size_hint().1.map(|hint| hint / 2)
     }
 }
 
@@ -536,33 +591,60 @@ mod test {
     #[test]
     fn test_string_attribute() {
         let h = r#"foo = "bar""#;
-        let expected: Value = json!([{"foo": "bar"}]);
+        let expected: Value = json!([{
+            "kind": "attribute",
+            "key": "foo",
+            "value": "bar"
+        }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
     }
 
     #[test]
     fn test_object() {
         let h = r#"foo = { bar = 42, "baz" = true }"#;
-        let expected: Value = json!([{"foo": {"bar": 42, "baz": true}}]);
+        let expected: Value = json!([{
+            "kind": "attribute",
+            "key": "foo",
+            "value": {"bar": 42, "baz": true}
+        }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
     }
 
     #[test]
     fn test_block() {
         let h = r#"resource "aws_s3_bucket" "mybucket" { name = "mybucket" }"#;
-        let expected: Value =
-            json!([[["resource", "aws_s3_bucket", "mybucket"], [{"name": "mybucket"}]]]);
+        let expected: Value = json!([{
+            "kind": "block",
+            "ident": ["resource", "aws_s3_bucket", "mybucket"],
+            "body": [{
+                "kind": "attribute",
+                "key": "name",
+                "value": "mybucket"
+            }],
+        }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
 
         let h = r#"block { name = "asdf" }"#;
-        let expected: Value = json!([[["block"], [{"name": "asdf"}]]]);
+        let expected: Value = json!([{
+            "kind": "block",
+            "ident": ["block"],
+            "body": [{
+                "kind": "attribute",
+                "key": "name",
+                "value": "asdf"
+            }],
+        }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
     }
 
     #[test]
     fn test_tuple() {
         let h = r#"foo = [true, 2, "three", var.enabled]"#;
-        let expected: Value = json!([{"foo": [true, 2, "three", "${var.enabled}"]}]);
+        let expected: Value = json!([{
+            "kind": "attribute",
+            "key": "foo",
+            "value": [true, 2, "three", "${var.enabled}"]
+        }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
     }
 
@@ -570,11 +652,17 @@ mod test {
     fn test_struct() {
         #[derive(Deserialize, PartialEq, Debug)]
         struct Test {
-            foo: u32,
+            kind: String,
+            key: String,
+            value: u32,
         }
 
         let h = r#"foo = 1"#;
-        let expected = vec![Test { foo: 1 }];
+        let expected = vec![Test {
+            kind: "attribute".into(),
+            key: "foo".into(),
+            value: 1,
+        }];
         assert_eq!(expected, from_str::<Vec<Test>>(h).unwrap());
     }
 
@@ -590,11 +678,17 @@ mod test {
 
         #[derive(Deserialize, PartialEq, Debug)]
         struct Test {
-            foo: E,
+            kind: String,
+            key: String,
+            value: E,
         }
 
         let h = r#"foo = "Unit""#;
-        let expected = vec![Test { foo: E::Unit }];
+        let expected = vec![Test {
+            kind: "attribute".into(),
+            key: "foo".into(),
+            value: E::Unit,
+        }];
         assert_eq!(expected, from_str::<Vec<Test>>(h).unwrap());
 
         let h = r#"Newtype = 1"#;
@@ -607,7 +701,9 @@ mod test {
 
         let h = r#"foo = {"Struct" = {"a" = 1}}"#;
         let expected = vec![Test {
-            foo: E::Struct { a: 1 },
+            kind: "attribute".into(),
+            key: "foo".into(),
+            value: E::Struct { a: 1 },
         }];
         assert_eq!(expected, from_str::<Vec<Test>>(h).unwrap());
     }
@@ -617,49 +713,107 @@ mod test {
         let hcl = std::fs::read_to_string("fixtures/test.tf").unwrap();
         let value: Value = from_str(&hcl).unwrap();
         let expected = json!([
-            [
-                ["resource", "aws_eks_cluster", "this"],
-                [
-                    {"count": "${var.create_eks ? 1 : 0}"},
-                    {"name": "${var.cluster_name}"},
-                    {"enabled_cluster_log_types": "${var.cluster_enabled_log_types}"},
-                    {"role_arn": "${local.cluster_iam_role_arn}"},
-                    {"version": "${var.cluster_version}"},
-                    [
-                        ["vpc_config"],
-                        [
-                            {"security_group_ids": "${compact([local.cluster_security_group_id])}"},
-                            {"subnet_ids": "${var.subnets}"},
+            {
+                "kind": "block",
+                "ident": ["resource", "aws_eks_cluster", "this"],
+                "body": [
+                    {
+                        "kind": "attribute",
+                        "key": "count",
+                        "value": "${var.create_eks ? 1 : 0}"
+                    },
+                    {
+                        "kind": "attribute",
+                        "key": "name",
+                        "value": "${var.cluster_name}"
+                    },
+                    {
+                        "kind": "attribute",
+                        "key": "enabled_cluster_log_types",
+                        "value": "${var.cluster_enabled_log_types}"
+                    },
+                    {
+                        "kind": "attribute",
+                        "key": "role_arn",
+                        "value": "${local.cluster_iam_role_arn}"
+                    },
+                    {
+                        "kind": "attribute",
+                        "key": "version",
+                        "value": "${var.cluster_version}"
+                    },
+                    {
+                        "kind": "block",
+                        "ident": ["vpc_config"],
+                        "body": [
+                            {
+                                "kind": "attribute",
+                                "key": "security_group_ids",
+                                "value": "${compact([local.cluster_security_group_id])}"
+                            },
+                            {
+                                "kind": "attribute",
+                                "key": "subnet_ids",
+                                "value": "${var.subnets}"
+                            },
                         ]
-                    ],
-                    [
-                        ["kubernetes_network_config"],
-                        [
-                            {"service_ipv4_cidr": "${var.cluster_service_ipv4_cidr}"},
+                    },
+                    {
+                        "kind": "block",
+                        "ident": ["kubernetes_network_config"],
+                        "body": [
+                            {
+                                "kind": "attribute",
+                                "key": "service_ipv4_cidr",
+                                "value": "${var.cluster_service_ipv4_cidr}"
+                            },
                         ]
-                    ],
-                    [
-                        ["dynamic", "encryption_config"],
-                        [
-                            {"for_each": "${toset(var.cluster_encryption_config)}"},
-                            [
-                                ["content"],
-                                [
-                                    [
-                                        ["provider"],
-                                        [
-                                            {"key_arn": "${encryption_config.value[\"provider_key_arn\"]}"}
+                    },
+                    {
+                        "kind": "block",
+                        "ident": ["dynamic", "encryption_config"],
+                        "body": [
+                            {
+                                "kind": "attribute",
+                                "key": "for_each",
+                                "value": "${toset(var.cluster_encryption_config)}"
+                            },
+                            {
+                                "kind": "block",
+                                "ident": ["content"],
+                                "body": [
+                                    {
+                                        "kind": "block",
+                                        "ident": ["provider"],
+                                        "body": [
+                                            {
+                                                "kind": "attribute",
+                                                "key": "key_arn",
+                                                "value": "${encryption_config.value[\"provider_key_arn\"]}"
+                                            }
                                         ]
-                                    ],
-                                    {"resources": "${encryption_config.value[\"resources\"]}"}
+                                    },
+                                    {
+                                        "kind": "attribute",
+                                        "key": "resources",
+                                        "value": "${encryption_config.value[\"resources\"]}"
+                                    }
                                 ]
-                            ]
+                            }
                         ]
-                    ],
-                    {"tags": "${merge(\n    var.tags,\n    var.cluster_tags,\n  )}"},
-                    {"depends_on": ["${aws_cloudwatch_log_group.this}"]}
-                ],
-            ]
+                    },
+                    {
+                        "kind": "attribute",
+                        "key": "tags",
+                        "value": "${merge(\n    var.tags,\n    var.cluster_tags,\n  )}"
+                    },
+                    {
+                        "kind": "attribute",
+                        "key": "depends_on",
+                        "value": ["${aws_cloudwatch_log_group.this}"]
+                    }
+                ]
+            }
         ]);
         assert_eq!(expected, value);
     }
