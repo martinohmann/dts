@@ -8,3 +8,4 @@ pub mod structure;
 pub mod value;
 
 pub use error::*;
+pub use value::{Map, Value};

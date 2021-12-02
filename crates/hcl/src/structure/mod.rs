@@ -3,9 +3,62 @@ mod from;
 mod ser;
 
 use crate::value::Value;
+use std::slice::Iter;
+use std::vec::IntoIter;
 
 /// The body of a HCL config file or block.
-pub type Body = Vec<Structure>;
+#[derive(Debug, PartialEq, Clone)]
+pub struct Body {
+    inner: Vec<Structure>,
+}
+
+impl Body {
+    pub fn iter(&self) -> StructureIter {
+        StructureIter {
+            inner: self.inner.iter(),
+        }
+    }
+
+    pub fn attributes(&self) -> BlockIter {
+        BlockIter {
+            inner: self.inner.iter(),
+        }
+    }
+
+    pub fn blocks(&self) -> BlockIter {
+        BlockIter {
+            inner: self.inner.iter(),
+        }
+    }
+
+    pub fn has_attributes(&self) -> bool {
+        self.iter().any(|s| s.is_attribute())
+    }
+
+    pub fn has_blocks(&self) -> bool {
+        self.iter().any(|s| s.is_block())
+    }
+}
+
+impl FromIterator<Structure> for Body {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Structure>,
+    {
+        Self {
+            inner: iter.into_iter().collect(),
+        }
+    }
+}
+
+impl IntoIterator for Body {
+    type Item = Structure;
+    type IntoIter = IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
+}
 
 /// Represents a HCL structure.
 #[derive(Debug, PartialEq, Clone)]
@@ -70,8 +123,14 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(ident: Vec<String>, body: Body) -> Self {
-        Self { ident, body }
+    pub fn new<B>(ident: Vec<String>, body: B) -> Self
+    where
+        B: IntoIterator<Item = Structure>,
+    {
+        Self {
+            ident,
+            body: body.into_iter().collect(),
+        }
     }
 
     pub fn ident(&self) -> &Vec<String> {
@@ -80,5 +139,55 @@ impl Block {
 
     pub fn body(&self) -> &Body {
         &self.body
+    }
+}
+
+pub struct StructureIter<'a> {
+    inner: Iter<'a, Structure>,
+}
+
+impl<'a> Iterator for StructureIter<'a> {
+    type Item = &'a Structure;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+pub struct AttributeIter<'a> {
+    inner: Iter<'a, Structure>,
+}
+
+impl<'a> Iterator for AttributeIter<'a> {
+    type Item = &'a Attribute;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for structure in &mut self.inner {
+            match structure.as_attribute() {
+                Some(attr) => return Some(attr),
+                None => continue,
+            }
+        }
+
+        None
+    }
+}
+
+pub struct BlockIter<'a> {
+    inner: Iter<'a, Structure>,
+}
+
+impl<'a> Iterator for BlockIter<'a> {
+    type Item = &'a Block;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for structure in &mut self.inner {
+            match structure.as_block() {
+                Some(block) => return Some(block),
+                None => continue,
+            }
+        }
+
+        None
     }
 }

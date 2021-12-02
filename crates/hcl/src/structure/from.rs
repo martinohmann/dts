@@ -1,5 +1,27 @@
-use super::{Attribute, Block, Structure, Value};
+use super::{Attribute, Block, Body, Structure, Value};
 use crate::Error;
+
+impl TryFrom<&Value> for Body {
+    type Error = Error;
+
+    fn try_from(v: &Value) -> Result<Self, Self::Error> {
+        match v {
+            Value::Array(array) => Ok(array
+                .iter()
+                .map(TryFrom::try_from)
+                .collect::<Result<Body, Self::Error>>()?),
+            _ => Err(Error::new("not a HCL config file or block body")),
+        }
+    }
+}
+
+impl TryFrom<Value> for Body {
+    type Error = Error;
+
+    fn try_from(v: Value) -> Result<Self, Self::Error> {
+        TryFrom::try_from(&v)
+    }
+}
 
 impl TryFrom<&Value> for Structure {
     type Error = Error;
@@ -83,7 +105,7 @@ impl TryFrom<&Value> for Block {
                     Some(Value::Array(array)) => array
                         .iter()
                         .map(TryFrom::try_from)
-                        .collect::<Result<_, _>>()?,
+                        .collect::<Result<Body, _>>()?,
                     _ => return Err(Error::new("not a block body")),
                 };
 

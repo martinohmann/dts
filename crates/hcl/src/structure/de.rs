@@ -1,10 +1,10 @@
-use super::Structure;
-use crate::value::{Map, Value};
+use super::Body;
+use crate::value::Value;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 
-impl<'de> Deserialize<'de> for Structure {
+impl<'de> Deserialize<'de> for Body {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -12,23 +12,23 @@ impl<'de> Deserialize<'de> for Structure {
         struct ValueVisitor;
 
         impl<'de> Visitor<'de> for ValueVisitor {
-            type Value = Structure;
+            type Value = Body;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a HCL structure")
+                formatter.write_str("a HCL config file or block")
             }
 
-            fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
+            fn visit_seq<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
             where
-                V: de::MapAccess<'de>,
+                V: de::SeqAccess<'de>,
             {
-                let mut map = Map::with_capacity(visitor.size_hint().unwrap_or(0));
+                let mut vec = Vec::with_capacity(visitor.size_hint().unwrap_or(0));
 
-                while let Some((key, value)) = visitor.next_entry()? {
-                    map.insert(key, value);
+                while let Some(elem) = visitor.next_element()? {
+                    vec.push(elem);
                 }
 
-                Value::Object(map).try_into().map_err(de::Error::custom)
+                Value::Array(vec).try_into().map_err(de::Error::custom)
             }
         }
 
@@ -53,7 +53,7 @@ mod test {
             }
         "#;
         let body: Body = from_str(hcl).unwrap();
-        let expected = vec![
+        let expected = Body::from_iter(vec![
             Attribute::new("foo".into(), 42.into()).into(),
             Block::new(
                 vec!["block".into()],
@@ -67,7 +67,7 @@ mod test {
                 ],
             )
             .into(),
-        ];
+        ]);
 
         assert_eq!(body, expected);
     }
