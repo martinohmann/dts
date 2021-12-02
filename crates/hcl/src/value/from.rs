@@ -1,6 +1,4 @@
 use super::{Map, Value};
-use crate::structure::{Attribute, Block, Structure};
-use maplit::hashmap;
 use std::borrow::Cow;
 
 macro_rules! impl_from_integer {
@@ -91,53 +89,5 @@ impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
 impl From<()> for Value {
     fn from((): ()) -> Self {
         Self::Null
-    }
-}
-
-impl From<&Structure> for Value {
-    fn from(s: &Structure) -> Self {
-        match s {
-            Structure::Attribute(attr) => attr.into(),
-            Structure::Block(block) => block.into(),
-        }
-    }
-}
-
-impl From<Structure> for Value {
-    fn from(s: Structure) -> Self {
-        From::from(&s)
-    }
-}
-
-impl From<&Attribute> for Value {
-    fn from(attr: &Attribute) -> Self {
-        Value::Object(hashmap! {
-            "kind".into() => "attribute".into(),
-            "key".into() => attr.key().into(),
-            "value".into() => attr.value().clone(),
-        })
-    }
-}
-
-impl From<Attribute> for Value {
-    fn from(attr: Attribute) -> Self {
-        From::from(&attr)
-    }
-}
-
-impl From<&Block> for Value {
-    fn from(block: &Block) -> Self {
-        Value::Object(hashmap! {
-            "kind".into() => "block".into(),
-            "ident".into() => Value::String(block.ident().to_string()),
-            "keys".into() => Value::Array(block.keys().iter().cloned().map(Value::String).collect()),
-            "body".into() => Value::Array(block.body().iter().map(From::from).collect()),
-        })
-    }
-}
-
-impl From<Block> for Value {
-    fn from(block: Block) -> Self {
-        From::from(&block)
     }
 }
