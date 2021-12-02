@@ -1,4 +1,6 @@
+mod de;
 mod from;
+mod ser;
 
 use crate::value::Value;
 

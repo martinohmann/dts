@@ -98,6 +98,30 @@ impl TryFrom<Value> for Block {
     }
 }
 
+impl From<&Attribute> for Structure {
+    fn from(attr: &Attribute) -> Self {
+        Structure::Attribute(attr.clone())
+    }
+}
+
+impl From<Attribute> for Structure {
+    fn from(attr: Attribute) -> Self {
+        Structure::Attribute(attr)
+    }
+}
+
+impl From<&Block> for Structure {
+    fn from(block: &Block) -> Self {
+        Structure::Block(block.clone())
+    }
+}
+
+impl From<Block> for Structure {
+    fn from(block: Block) -> Self {
+        Structure::Block(block)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

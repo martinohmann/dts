@@ -130,7 +130,7 @@ impl From<&Block> for Value {
         Value::Object(hashmap! {
             "kind".into() => "block".into(),
             "ident".into() => Value::Array(block.ident().iter().cloned().map(Value::String).collect()),
-            "value".into() => Value::Array(block.body().iter().map(From::from).collect()),
+            "body".into() => Value::Array(block.body().iter().map(From::from).collect()),
         })
     }
 }
