@@ -1,4 +1,5 @@
-use super::{Map, Structure, Value};
+use super::{Map, Value};
+use crate::structure::{Attribute, Block, Structure};
 use maplit::hashmap;
 use std::borrow::Cow;
 
@@ -93,20 +94,49 @@ impl From<()> for Value {
     }
 }
 
-impl From<Structure> for Value {
-    fn from(s: Structure) -> Self {
+impl From<&Structure> for Value {
+    fn from(s: &Structure) -> Self {
         match s {
-            Structure::Attribute(k, v) => Value::Object(hashmap! {k => v}),
-            Structure::Block(ident, body) => Value::Array(vec![
-                Value::Array(ident.into_iter().map(Value::String).collect()),
-                Value::Array(body.into_iter().map(From::from).collect()),
-            ]),
+            Structure::Attribute(attr) => attr.into(),
+            Structure::Block(block) => block.into(),
         }
     }
 }
 
-impl From<&Structure> for Value {
-    fn from(s: &Structure) -> Self {
-        From::from(s.clone())
+impl From<Structure> for Value {
+    fn from(s: Structure) -> Self {
+        From::from(&s)
+    }
+}
+
+impl From<&Attribute> for Value {
+    fn from(attr: &Attribute) -> Self {
+        Value::Object(hashmap! {
+            "kind".into() => "attribute".into(),
+            "key".into() => attr.key().into(),
+            "value".into() => attr.value().clone(),
+        })
+    }
+}
+
+impl From<Attribute> for Value {
+    fn from(attr: Attribute) -> Self {
+        From::from(&attr)
+    }
+}
+
+impl From<&Block> for Value {
+    fn from(block: &Block) -> Self {
+        Value::Object(hashmap! {
+            "kind".into() => "block".into(),
+            "ident".into() => Value::Array(block.ident().iter().cloned().map(Value::String).collect()),
+            "value".into() => Value::Array(block.body().iter().map(From::from).collect()),
+        })
+    }
+}
+
+impl From<Block> for Value {
+    fn from(block: Block) -> Self {
+        From::from(&block)
     }
 }

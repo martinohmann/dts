@@ -3,8 +3,6 @@ mod from;
 mod ser;
 
 use crate::number::Number;
-use crate::structure::Structure;
-use crate::Result;
 
 /// The map type used for objects.
 pub type Map<K, V> = std::collections::HashMap<K, V>;
@@ -42,9 +40,5 @@ impl Value {
 
     pub fn is_string(&self) -> bool {
         matches!(self, Self::String(_))
-    }
-
-    pub fn into_structure(self) -> Result<Structure> {
-        self.try_into()
     }
 }
