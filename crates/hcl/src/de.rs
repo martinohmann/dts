@@ -90,7 +90,9 @@ impl<'de> Deserializer<'de> {
             Rule::heredoc => Ok(pair.into_inner().nth(1).unwrap().as_str()),
             Rule::block_identifier => Ok(pair.into_inner().next().unwrap().as_str()),
             Rule::string | Rule::identifier => Ok(pair.as_str()),
-            _ => Err(Error::token_expected("string, identifier or heredoc")),
+            _ => Err(Error::token_expected(
+                "string, identifier, block identifier, or heredoc",
+            )),
         }
     }
 
@@ -301,7 +303,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
                 visitor.visit_seq(Seq::new(pair.into_inner()))
             }
             _ => Err(Error::token_expected(
-                "config file, block, block identifier, block body or tuple",
+                "config file, block, block keys, block body or tuple",
             )),
         }
     }

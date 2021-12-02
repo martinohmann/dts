@@ -127,7 +127,7 @@ operation = { unary_op | binary_op }
 unary_op = { ("-" | "!") ~ expr_term }
 binary_op = { expr_term ~ binary_operator ~ (conditional | operation | expr_term) }
 binary_operator = { compare_operator | arithmetic_operator | logic_operator }
-compare_operator = { "==" | "!=" | "<" | ">" | "<=" | ">=" }
+compare_operator = { "==" | "!=" | "<=" | ">=" | "<" | ">" }
 arithmetic_operator = { "+" | "-" | "*" | "/" | "%" }
 logic_operator = { "&&" | "||" | "!" }
 
