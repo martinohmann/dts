@@ -88,7 +88,7 @@ impl<'de> Deserializer<'de> {
 
         match pair.as_rule() {
             Rule::heredoc => Ok(pair.into_inner().nth(1).unwrap().as_str()),
-            Rule::block_identifier => Ok(pair.into_inner().nth(0).unwrap().as_str()),
+            Rule::block_identifier => Ok(pair.into_inner().next().unwrap().as_str()),
             Rule::string | Rule::identifier => Ok(pair.as_str()),
             _ => Err(Error::token_expected("string, identifier or heredoc")),
         }

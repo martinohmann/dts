@@ -13,6 +13,14 @@ pub struct Body {
 }
 
 impl Body {
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
     pub fn iter(&self) -> StructureIter {
         StructureIter {
             inner: self.inner.iter(),

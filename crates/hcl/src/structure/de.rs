@@ -1,5 +1,5 @@
-use super::Body;
-use crate::value::Value;
+use super::{Body, Structure};
+use crate::value::Map;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
@@ -9,13 +9,13 @@ impl<'de> Deserialize<'de> for Body {
     where
         D: Deserializer<'de>,
     {
-        struct ValueVisitor;
+        struct BodyVisitor;
 
-        impl<'de> Visitor<'de> for ValueVisitor {
+        impl<'de> Visitor<'de> for BodyVisitor {
             type Value = Body;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a HCL config file or block")
+                formatter.write_str("a HCL config file or block body")
             }
 
             fn visit_seq<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
@@ -24,15 +24,47 @@ impl<'de> Deserialize<'de> for Body {
             {
                 let mut vec = Vec::with_capacity(visitor.size_hint().unwrap_or(0));
 
-                while let Some(elem) = visitor.next_element()? {
-                    vec.push(elem);
+                while let Some(structure) = visitor.next_element()? {
+                    vec.push(structure);
                 }
 
-                Value::Array(vec).try_into().map_err(de::Error::custom)
+                Ok(Body::from_iter(vec))
             }
         }
 
-        deserializer.deserialize_any(ValueVisitor)
+        deserializer.deserialize_any(BodyVisitor)
+    }
+}
+
+impl<'de> Deserialize<'de> for Structure {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct StructureVisitor;
+
+        impl<'de> Visitor<'de> for StructureVisitor {
+            type Value = Structure;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a HCL structure")
+            }
+
+            fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
+            where
+                V: de::MapAccess<'de>,
+            {
+                let mut map = Map::with_capacity(visitor.size_hint().unwrap_or(0));
+
+                while let Some((key, value)) = visitor.next_entry()? {
+                    map.insert(key, value);
+                }
+
+                Structure::try_from(map).map_err(de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_any(StructureVisitor)
     }
 }
 

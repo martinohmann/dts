@@ -1,43 +1,26 @@
 use super::{Attribute, Block, Body, Structure, Value};
+use crate::value::Map;
 use crate::Error;
-
-impl TryFrom<&Value> for Body {
-    type Error = Error;
-
-    fn try_from(v: &Value) -> Result<Self, Self::Error> {
-        match v.as_array() {
-            Some(array) => Ok(array
-                .iter()
-                .map(TryFrom::try_from)
-                .collect::<Result<Body, Self::Error>>()?),
-            _ => Err(Error::new("not a HCL config file or block body")),
-        }
-    }
-}
 
 impl TryFrom<Value> for Body {
     type Error = Error;
 
     fn try_from(v: Value) -> Result<Self, Self::Error> {
-        TryFrom::try_from(&v)
+        match v {
+            Value::Array(array) => TryFrom::try_from(array),
+            _ => Err(Error::new("not a HCL config file or block body")),
+        }
     }
 }
 
-impl TryFrom<&Value> for Structure {
+impl TryFrom<Vec<Value>> for Body {
     type Error = Error;
 
-    fn try_from(v: &Value) -> Result<Self, Self::Error> {
-        match v.as_object() {
-            Some(object) => match object.get("kind") {
-                Some(Value::String(kind)) => match kind.as_str() {
-                    "attribute" => Attribute::try_from(v).map(Structure::Attribute),
-                    "block" => Block::try_from(v).map(Structure::Block),
-                    kind => Err(Error::new(format!("invalid HCL structure kind `{}`", kind))),
-                },
-                _ => Err(Error::new("not a HCL structure")),
-            },
-            _ => Err(Error::new("object expected")),
-        }
+    fn try_from(array: Vec<Value>) -> Result<Self, Self::Error> {
+        array
+            .into_iter()
+            .map(TryFrom::try_from)
+            .collect::<Result<Body, Self::Error>>()
     }
 }
 
@@ -45,105 +28,82 @@ impl TryFrom<Value> for Structure {
     type Error = Error;
 
     fn try_from(v: Value) -> Result<Self, Self::Error> {
-        TryFrom::try_from(&v)
-    }
-}
-
-impl TryFrom<&Value> for Attribute {
-    type Error = Error;
-
-    fn try_from(v: &Value) -> Result<Self, Self::Error> {
-        match v.as_object() {
-            Some(object) => {
-                let key = object
-                    .get("key")
-                    .and_then(|i| i.as_str())
-                    .ok_or_else(|| Error::new("not an attribute key"))?;
-
-                let value = object
-                    .get("value")
-                    .ok_or_else(|| Error::new("not an attribute value"))?;
-
-                Ok(Attribute::new(key, value.clone()))
-            }
-            _ => Err(Error::new("not a HCL attribute")),
-        }
-    }
-}
-
-impl TryFrom<Value> for Attribute {
-    type Error = Error;
-
-    fn try_from(v: Value) -> Result<Self, Self::Error> {
-        TryFrom::try_from(&v)
-    }
-}
-
-impl TryFrom<&Value> for Block {
-    type Error = Error;
-
-    fn try_from(v: &Value) -> Result<Self, Self::Error> {
         match v {
-            Value::Object(object) => {
-                let ident = object
-                    .get("ident")
-                    .and_then(|i| i.as_str())
-                    .ok_or_else(|| Error::new("not a block identifier"))?;
-
-                let keys = match object.get("keys") {
-                    Some(Value::Array(array)) => {
-                        if array.iter().all(Value::is_string) {
-                            array
-                                .iter()
-                                .filter_map(Value::as_str)
-                                .map(|s| s.to_string())
-                                .collect()
-                        } else {
-                            return Err(Error::new("block keys must be strings"));
-                        }
-                    }
-                    Some(_) => return Err(Error::new("block keys must be an array")),
-                    None => Vec::new(),
-                };
-
-                let body = match object.get("body") {
-                    Some(Value::Array(array)) => array
-                        .iter()
-                        .map(TryFrom::try_from)
-                        .collect::<Result<Body, _>>()?,
-                    _ => return Err(Error::new("not a block body")),
-                };
-
-                Ok(Block::new(ident, keys, body))
-            }
-            _ => Err(Error::new("not a HCL block")),
+            Value::Object(object) => TryFrom::try_from(object),
+            _ => Err(Error::new("not a HCL structure")),
         }
     }
 }
 
-impl TryFrom<Value> for Block {
+impl TryFrom<Map<String, Value>> for Structure {
     type Error = Error;
 
-    fn try_from(v: Value) -> Result<Self, Self::Error> {
-        TryFrom::try_from(&v)
+    fn try_from(map: Map<String, Value>) -> Result<Self, Self::Error> {
+        match map.get("kind") {
+            Some(Value::String(kind)) => match kind.as_str() {
+                "attribute" => Attribute::try_from(map).map(Structure::Attribute),
+                "block" => Block::try_from(map).map(Structure::Block),
+                kind => Err(Error::new(format!("invalid HCL structure kind `{}`", kind))),
+            },
+            _ => Err(Error::new("not a HCL structure")),
+        }
     }
 }
 
-impl From<&Attribute> for Structure {
-    fn from(attr: &Attribute) -> Self {
-        Structure::Attribute(attr.clone())
+impl TryFrom<Map<String, Value>> for Attribute {
+    type Error = Error;
+
+    fn try_from(map: Map<String, Value>) -> Result<Self, Self::Error> {
+        let key = map
+            .get("key")
+            .and_then(|i| i.as_str())
+            .ok_or_else(|| Error::new("not an attribute key"))?;
+
+        let value = map
+            .get("value")
+            .ok_or_else(|| Error::new("not an attribute value"))?;
+
+        Ok(Attribute::new(key, value.clone()))
+    }
+}
+
+impl TryFrom<Map<String, Value>> for Block {
+    type Error = Error;
+
+    fn try_from(map: Map<String, Value>) -> Result<Self, Self::Error> {
+        let ident = map
+            .get("ident")
+            .and_then(|i| i.as_str())
+            .ok_or_else(|| Error::new("not a block identifier"))?;
+
+        let keys = match map.get("keys") {
+            Some(Value::Array(array)) => {
+                if array.iter().all(Value::is_string) {
+                    array
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(|s| s.to_string())
+                        .collect()
+                } else {
+                    return Err(Error::new("block keys must be strings"));
+                }
+            }
+            Some(_) => return Err(Error::new("block keys must be an array")),
+            None => Vec::new(),
+        };
+
+        let body = match map.get("body") {
+            Some(Value::Array(array)) => Body::try_from(array.clone())?,
+            _ => return Err(Error::new("not a block body")),
+        };
+
+        Ok(Block::new(ident, keys, body))
     }
 }
 
 impl From<Attribute> for Structure {
     fn from(attr: Attribute) -> Self {
         Structure::Attribute(attr)
-    }
-}
-
-impl From<&Block> for Structure {
-    fn from(block: &Block) -> Self {
-        Structure::Block(block.clone())
     }
 }
 
