@@ -102,8 +102,11 @@ pub struct Attribute {
 }
 
 impl Attribute {
-    pub fn new(key: String, value: Value) -> Self {
-        Self { key, value }
+    pub fn new(key: &str, value: Value) -> Self {
+        Self {
+            key: key.to_owned(),
+            value,
+        }
     }
 
     pub fn key(&self) -> &str {
@@ -118,23 +121,30 @@ impl Attribute {
 /// Represents a HCL block.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Block {
-    ident: Vec<String>,
+    ident: String,
+    keys: Vec<String>,
     body: Body,
 }
 
 impl Block {
-    pub fn new<B>(ident: Vec<String>, body: B) -> Self
+    pub fn new<K, B>(ident: &str, keys: K, body: B) -> Self
     where
+        K: IntoIterator<Item = String>,
         B: IntoIterator<Item = Structure>,
     {
         Self {
-            ident,
+            ident: ident.to_owned(),
+            keys: keys.into_iter().collect(),
             body: body.into_iter().collect(),
         }
     }
 
-    pub fn ident(&self) -> &Vec<String> {
+    pub fn ident(&self) -> &str {
         &self.ident
+    }
+
+    pub fn keys(&self) -> &Vec<String> {
+        &self.keys
     }
 
     pub fn body(&self) -> &Body {

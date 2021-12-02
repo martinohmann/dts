@@ -5,8 +5,8 @@ impl TryFrom<&Value> for Body {
     type Error = Error;
 
     fn try_from(v: &Value) -> Result<Self, Self::Error> {
-        match v {
-            Value::Array(array) => Ok(array
+        match v.as_array() {
+            Some(array) => Ok(array
                 .iter()
                 .map(TryFrom::try_from)
                 .collect::<Result<Body, Self::Error>>()?),
@@ -27,8 +27,8 @@ impl TryFrom<&Value> for Structure {
     type Error = Error;
 
     fn try_from(v: &Value) -> Result<Self, Self::Error> {
-        match v {
-            Value::Object(object) => match object.get("kind") {
+        match v.as_object() {
+            Some(object) => match object.get("kind") {
                 Some(Value::String(kind)) => match kind.as_str() {
                     "attribute" => Attribute::try_from(v).map(Structure::Attribute),
                     "block" => Block::try_from(v).map(Structure::Block),
@@ -53,19 +53,18 @@ impl TryFrom<&Value> for Attribute {
     type Error = Error;
 
     fn try_from(v: &Value) -> Result<Self, Self::Error> {
-        match v {
-            Value::Object(object) => {
-                let key = match object.get("key") {
-                    Some(Value::String(key)) => key.clone(),
-                    _ => return Err(Error::new("not an attribute key")),
-                };
+        match v.as_object() {
+            Some(object) => {
+                let key = object
+                    .get("key")
+                    .and_then(|i| i.as_str())
+                    .ok_or_else(|| Error::new("not an attribute key"))?;
 
-                let value = match object.get("value") {
-                    Some(value) => value.clone(),
-                    _ => return Err(Error::new("not an attribute value")),
-                };
+                let value = object
+                    .get("value")
+                    .ok_or_else(|| Error::new("not an attribute value"))?;
 
-                Ok(Attribute::new(key, value))
+                Ok(Attribute::new(key, value.clone()))
             }
             _ => Err(Error::new("not a HCL attribute")),
         }
@@ -86,7 +85,12 @@ impl TryFrom<&Value> for Block {
     fn try_from(v: &Value) -> Result<Self, Self::Error> {
         match v {
             Value::Object(object) => {
-                let ident = match object.get("ident") {
+                let ident = object
+                    .get("ident")
+                    .and_then(|i| i.as_str())
+                    .ok_or_else(|| Error::new("not a block identifier"))?;
+
+                let keys = match object.get("keys") {
                     Some(Value::Array(array)) => {
                         if array.iter().all(Value::is_string) {
                             array
@@ -95,10 +99,11 @@ impl TryFrom<&Value> for Block {
                                 .map(|s| s.to_string())
                                 .collect()
                         } else {
-                            return Err(Error::new("block identifiers must be strings"));
+                            return Err(Error::new("block keys must be strings"));
                         }
                     }
-                    _ => return Err(Error::new("not a block identifier")),
+                    Some(_) => return Err(Error::new("block keys must be an array")),
+                    None => Vec::new(),
                 };
 
                 let body = match object.get("body") {
@@ -109,7 +114,7 @@ impl TryFrom<&Value> for Block {
                     _ => return Err(Error::new("not a block body")),
                 };
 
-                Ok(Block::new(ident, body))
+                Ok(Block::new(ident, keys, body))
             }
             _ => Err(Error::new("not a HCL block")),
         }
@@ -190,8 +195,8 @@ mod test {
     fn block_from_value() {
         let value = Value::Object(hashmap! {
             "kind".into() => "block".into(),
-            "ident".into() => Value::Array(vec![
-                "resource".into(),
+            "ident".into() => "resource".into(),
+            "keys".into() => Value::Array(vec![
                 "aws_s3_bucket".into(),
                 "mybucket".into()
             ]),
@@ -207,7 +212,8 @@ mod test {
         assert_eq!(
             Structure::try_from(value).unwrap(),
             Structure::Block(Block::new(
-                vec!["resource".into(), "aws_s3_bucket".into(), "mybucket".into()],
+                "resource",
+                vec!["aws_s3_bucket".into(), "mybucket".into()],
                 vec![Structure::Attribute(Attribute::new(
                     "name".into(),
                     Value::String("mybucket".into())

@@ -88,6 +88,7 @@ impl<'de> Deserializer<'de> {
 
         match pair.as_rule() {
             Rule::heredoc => Ok(pair.into_inner().nth(1).unwrap().as_str()),
+            Rule::block_identifier => Ok(pair.into_inner().nth(0).unwrap().as_str()),
             Rule::string | Rule::identifier => Ok(pair.as_str()),
             _ => Err(Error::token_expected("string, identifier or heredoc")),
         }
@@ -121,13 +122,14 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             // Strings
             Rule::string => self.deserialize_string(visitor),
             Rule::identifier => self.deserialize_string(visitor),
+            Rule::block_identifier => self.deserialize_string(visitor),
             Rule::heredoc => self.deserialize_string(visitor),
             // Numbers
             Rule::float => self.deserialize_f64(visitor),
             Rule::int => self.deserialize_i64(visitor),
             // Seqs
             Rule::config_file => self.deserialize_seq(visitor),
-            Rule::block_identifier => self.deserialize_seq(visitor),
+            Rule::block_keys => self.deserialize_seq(visitor),
             Rule::block_body => self.deserialize_seq(visitor),
             Rule::tuple => self.deserialize_seq(visitor),
             // Maps
@@ -295,7 +297,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let pair = self.take_pair()?;
 
         match pair.as_rule() {
-            Rule::config_file | Rule::block_identifier | Rule::block_body | Rule::tuple => {
+            Rule::config_file | Rule::block_keys | Rule::block_body | Rule::tuple => {
                 visitor.visit_seq(Seq::new(pair.into_inner()))
             }
             _ => Err(Error::token_expected(
@@ -337,7 +339,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             )),
             Rule::block => visitor.visit_map(Structure::new(
                 "block",
-                &["kind", "ident", "body"],
+                &["kind", "ident", "keys", "body"],
                 pair.into_inner(),
             )),
             Rule::object => visitor.visit_map(Map::new(pair.into_inner())),
@@ -615,7 +617,8 @@ mod test {
         let h = r#"resource "aws_s3_bucket" "mybucket" { name = "mybucket" }"#;
         let expected: Value = json!([{
             "kind": "block",
-            "ident": ["resource", "aws_s3_bucket", "mybucket"],
+            "ident": "resource",
+            "keys": ["aws_s3_bucket", "mybucket"],
             "body": [{
                 "kind": "attribute",
                 "key": "name",
@@ -627,7 +630,8 @@ mod test {
         let h = r#"block { name = "asdf" }"#;
         let expected: Value = json!([{
             "kind": "block",
-            "ident": ["block"],
+            "ident": "block",
+            "keys": [],
             "body": [{
                 "kind": "attribute",
                 "key": "name",
@@ -715,7 +719,8 @@ mod test {
         let expected = json!([
             {
                 "kind": "block",
-                "ident": ["resource", "aws_eks_cluster", "this"],
+                "ident": "resource",
+                "keys": ["aws_eks_cluster", "this"],
                 "body": [
                     {
                         "kind": "attribute",
@@ -744,7 +749,8 @@ mod test {
                     },
                     {
                         "kind": "block",
-                        "ident": ["vpc_config"],
+                        "ident": "vpc_config",
+                        "keys": [],
                         "body": [
                             {
                                 "kind": "attribute",
@@ -760,7 +766,8 @@ mod test {
                     },
                     {
                         "kind": "block",
-                        "ident": ["kubernetes_network_config"],
+                        "ident": "kubernetes_network_config",
+                        "keys": [],
                         "body": [
                             {
                                 "kind": "attribute",
@@ -771,7 +778,8 @@ mod test {
                     },
                     {
                         "kind": "block",
-                        "ident": ["dynamic", "encryption_config"],
+                        "ident": "dynamic",
+                        "keys": ["encryption_config"],
                         "body": [
                             {
                                 "kind": "attribute",
@@ -780,11 +788,13 @@ mod test {
                             },
                             {
                                 "kind": "block",
-                                "ident": ["content"],
+                                "ident": "content",
+                                "keys": [],
                                 "body": [
                                     {
                                         "kind": "block",
-                                        "ident": ["provider"],
+                                        "ident": "provider",
+                                        "keys": [],
                                         "body": [
                                             {
                                                 "kind": "attribute",

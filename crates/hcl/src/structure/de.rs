@@ -56,7 +56,8 @@ mod test {
         let expected = Body::from_iter(vec![
             Attribute::new("foo".into(), 42.into()).into(),
             Block::new(
-                vec!["block".into()],
+                "block",
+                vec![],
                 vec![
                     Attribute::new("bar".into(), true.into()).into(),
                     Attribute::new(

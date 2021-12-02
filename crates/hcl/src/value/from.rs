@@ -129,7 +129,8 @@ impl From<&Block> for Value {
     fn from(block: &Block) -> Self {
         Value::Object(hashmap! {
             "kind".into() => "block".into(),
-            "ident".into() => Value::Array(block.ident().iter().cloned().map(Value::String).collect()),
+            "ident".into() => Value::String(block.ident().to_string()),
+            "keys".into() => Value::Array(block.keys().iter().cloned().map(Value::String).collect()),
             "body".into() => Value::Array(block.body().iter().map(From::from).collect()),
         })
     }

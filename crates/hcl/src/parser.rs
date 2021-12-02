@@ -109,8 +109,10 @@ resource "aws_s3_bucket" "mybucket" {
             rule: Rule::body,
             tokens: [
                 block(1, 299, [
-                    block_identifier(1, 36, [
+                    block_identifier(1, 9, [
                         identifier(1, 9),
+                    ]),
+                    block_keys(10, 36, [
                         string(11, 24),
                         string(27, 35)
                     ]),
@@ -124,19 +126,22 @@ resource "aws_s3_bucket" "mybucket" {
                             boolean(86, 90)
                         ]),
                         block(94, 297, [
-                            block_identifier(94, 131, [
+                            block_identifier(94, 130, [
                                 identifier(94, 130)
                             ]),
+                            block_keys(131, 131),
                             block_body(137, 293, [
                                 block(137, 293, [
-                                    block_identifier(137, 142, [
+                                    block_identifier(137, 141, [
                                         identifier(137, 141)
                                     ]),
+                                    block_keys(142, 142),
                                     block_body(150, 287, [
                                         block(150, 287, [
-                                            block_identifier(150, 190, [
+                                            block_identifier(150, 189, [
                                                 identifier(150, 189)
                                             ]),
+                                            block_keys(190, 190),
                                             block_body(200, 279, [
                                                 attribute(200, 241, [
                                                     identifier(200, 217),

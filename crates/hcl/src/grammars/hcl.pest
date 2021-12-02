@@ -8,8 +8,9 @@ config_file = { body }
 body = _{ NEWLINE* ~ (attribute | block)* }
 block_body = { body }
 attribute = { identifier ~ "=" ~ expression }
-block = { block_identifier ~ "{" ~ block_body ~ "}" }
-block_identifier = { identifier ~ (string_lit | identifier)* }
+block = { block_identifier ~ block_keys ~ "{" ~ block_body ~ "}" }
+block_identifier = { identifier }
+block_keys = { (string_lit | identifier)* }
 
 // Expressions
 expression = _{ operation | conditional | expr_term }
