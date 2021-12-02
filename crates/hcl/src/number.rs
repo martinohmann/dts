@@ -12,6 +12,41 @@ pub enum Number {
     Float(f64),
 }
 
+impl Number {
+    pub fn as_f64(&self) -> Option<f64> {
+        match *self {
+            Self::Float(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub fn as_i64(&self) -> Option<i64> {
+        match *self {
+            Self::NegInt(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub fn as_u64(&self) -> Option<u64> {
+        match *self {
+            Self::PosInt(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub fn is_f64(&self) -> bool {
+        matches!(self, Self::Float(_))
+    }
+
+    pub fn is_i64(&self) -> bool {
+        matches!(self, Self::NegInt(_))
+    }
+
+    pub fn is_u64(&self) -> bool {
+        matches!(self, Self::PosInt(_))
+    }
+}
+
 macro_rules! impl_from_unsigned {
     ($($ty:ty),*) => {
         $(

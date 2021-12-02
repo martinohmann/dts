@@ -67,7 +67,11 @@ impl TryFrom<&Value> for Block {
                 let ident = match object.get("ident") {
                     Some(Value::Array(array)) => {
                         if array.iter().all(Value::is_string) {
-                            array.iter().filter_map(Value::as_string).cloned().collect()
+                            array
+                                .iter()
+                                .filter_map(Value::as_str)
+                                .map(|s| s.to_string())
+                                .collect()
                         } else {
                             return Err(Error::new("block identifiers must be strings"));
                         }

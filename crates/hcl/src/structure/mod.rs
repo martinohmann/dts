@@ -25,15 +25,15 @@ impl Structure {
         }
     }
 
-    pub fn is_attribute(&self) -> bool {
-        matches!(self, Self::Attribute(_))
-    }
-
     pub fn as_block(&self) -> Option<&Block> {
         match self {
             Self::Block(block) => Some(block),
             Self::Attribute(_) => None,
         }
+    }
+
+    pub fn is_attribute(&self) -> bool {
+        matches!(self, Self::Attribute(_))
     }
 
     pub fn is_block(&self) -> bool {
@@ -74,7 +74,7 @@ impl Block {
         Self { ident, body }
     }
 
-    pub fn ident(&self) -> &[String] {
+    pub fn ident(&self) -> &Vec<String> {
         &self.ident
     }
 
