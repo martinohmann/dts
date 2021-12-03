@@ -7,5 +7,6 @@ mod parser;
 pub mod structure;
 pub mod value;
 
+pub use de::{from_reader, from_str};
 pub use error::*;
 pub use value::{Map, Value};

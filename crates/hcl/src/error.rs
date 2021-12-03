@@ -4,7 +4,7 @@ use thiserror::Error;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Error, Clone, Debug, PartialEq)]
+#[derive(Error, Debug)]
 pub enum Error {
     #[error("HCL parse error:\n{0}")]
     ParseError(String),
@@ -16,6 +16,8 @@ pub enum Error {
     Syntax,
     #[error("Token expected `{0}`")]
     TokenExpected(String),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
 }
 
 impl Error {

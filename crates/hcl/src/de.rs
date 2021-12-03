@@ -1,3 +1,5 @@
+//! Deserialize HCL data to a Rust data structure.
+
 use crate::{
     parser::{HclParser, Rule},
     Error, Result,
@@ -5,17 +7,25 @@ use crate::{
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as ParserTrait;
 use serde::de::{
-    self, DeserializeSeed, EnumAccess, IntoDeserializer, MapAccess, SeqAccess, VariantAccess,
-    Visitor,
+    self, DeserializeOwned, DeserializeSeed, EnumAccess, IntoDeserializer, MapAccess, SeqAccess,
+    VariantAccess, Visitor,
 };
 use serde::Deserialize;
 use std::str::FromStr;
 
+/// A structure that deserializes HCL into Rust values.
 pub struct Deserializer<'de> {
     pair: Option<Pair<'de, Rule>>,
 }
 
 impl<'de> Deserializer<'de> {
+    /// Creates a HCL deserializer from a `&str`.
+    ///
+    /// ## Errors
+    ///
+    /// An [`Error`][Error] is returned when the input is not valid HCL.
+    ///
+    /// [Error]: ../error/enum.Error.html
     pub fn from_str(input: &'de str) -> Result<Self> {
         let pair = HclParser::parse(Rule::hcl, input)
             .map_err(|e| Error::ParseError(e.to_string()))?
@@ -29,6 +39,7 @@ impl<'de> Deserializer<'de> {
     }
 }
 
+/// Deserialize an instance of type `T` from a string of HCL text.
 pub fn from_str<'de, T>(s: &'de str) -> Result<T>
 where
     T: Deserialize<'de>,
@@ -37,6 +48,19 @@ where
     T::deserialize(&mut deserializer)
 }
 
+/// Deserialize an instance of type `T` from an IO stream of HCL.
+pub fn from_reader<T, R>(mut reader: R) -> Result<T>
+where
+    T: DeserializeOwned,
+    R: std::io::Read,
+{
+    let mut s = String::new();
+    reader.read_to_string(&mut s)?;
+
+    from_str(&s)
+}
+
+// Utility functions for consuming the input.
 impl<'de> Deserializer<'de> {
     fn peek_pair(&mut self) -> Result<&Pair<'de, Rule>> {
         self.pair.as_ref().ok_or(Error::Eof)
