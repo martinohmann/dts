@@ -124,8 +124,8 @@ full_splat = @{ "[" ~ "*" ~ "]" ~ (get_attr | index)* }
 
 // Operations
 operation = { unary_op | binary_op }
-unary_op = { ("-" | "!") ~ expr_term }
-binary_op = { expr_term ~ binary_operator ~ (conditional | operation | expr_term) }
+unary_op = { ("-" | "!") ~ expression }
+binary_op = { expr_term ~ binary_operator ~ expression }
 binary_operator = { compare_operator | arithmetic_operator | logic_operator }
 compare_operator = { "==" | "!=" | "<=" | ">=" | "<" | ">" }
 arithmetic_operator = { "+" | "-" | "*" | "/" | "%" }
