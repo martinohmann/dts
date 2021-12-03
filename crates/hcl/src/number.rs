@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{self, Display};
 
@@ -13,35 +15,58 @@ pub enum Number {
 }
 
 impl Number {
+    /// Represents the `Number` as f64 if possible. Returns None otherwise.
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
-            Self::Float(f) => Some(f),
-            _ => None,
+            Self::PosInt(n) => Some(n as f64),
+            Self::NegInt(n) => Some(n as f64),
+            Self::Float(n) => Some(n),
         }
     }
 
+    /// If the `Number` is an integer, represent it as i64 if possible. Returns None otherwise.
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
-            Self::NegInt(f) => Some(f),
-            _ => None,
+            Self::PosInt(n) => {
+                if n <= i64::max_value() as u64 {
+                    Some(n as i64)
+                } else {
+                    None
+                }
+            }
+            Self::NegInt(n) => Some(n),
+            Self::Float(_) => None,
         }
     }
 
+    /// If the `Number` is an integer, represent it as u64 if possible. Returns None otherwise.
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
-            Self::PosInt(f) => Some(f),
-            _ => None,
+            Self::PosInt(n) => Some(n),
+            Self::NegInt(_) | Self::Float(_) => None,
         }
     }
 
+    /// Returns true if the `Number` is a float.
+    ///
+    /// For any `Number` on which `is_f64` returns true, `as_f64` is guaranteed to return the
+    /// integer value.
     pub fn is_f64(&self) -> bool {
         matches!(self, Self::Float(_))
     }
 
+    /// Returns true if the `Number` is an integer between `i64::MIN` and `i64::MAX`.
+    ///
+    /// For any `Number` on which `is_i64` returns true, `as_i64` is guaranteed to return the
+    /// integer value.
     pub fn is_i64(&self) -> bool {
         matches!(self, Self::NegInt(_))
     }
 
+    /// Returns true if the `Number` is an integer between zero and `u64::MAX`.
+    ///
+    /// For any `Number` on which `is_u64` returns true, `as_u64` is guaranteed to return the
+    /// integer value.
     pub fn is_u64(&self) -> bool {
         matches!(self, Self::PosInt(_))
     }
