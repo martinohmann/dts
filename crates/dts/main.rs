@@ -25,7 +25,7 @@ fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let mut de = Deserializer::with_options(BufReader::new(reader), opts.into());
 
     de.deserialize(encoding)
-        .with_context(|| format!("Failed to deserialize `{}`", encoding))
+        .with_context(|| format!("Failed to deserialize `{}` from `{}`", encoding, source))
 }
 
 fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
@@ -67,7 +67,7 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
         Err(Error::IOError(e)) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
         Err(err) => Err(err),
     }
-    .with_context(|| format!("Failed to serialize `{}`", encoding))
+    .with_context(|| format!("Failed to serialize `{}` to `{}`", encoding, sink))
 }
 
 fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Result<()> {
