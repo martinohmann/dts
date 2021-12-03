@@ -453,15 +453,15 @@ impl<'de> SeqAccess<'de> for Seq<'de> {
 }
 
 struct Structure<'de> {
-    typ: Option<&'static str>,
-    keys: std::slice::Iter<'de, &'static str>,
+    kind: Option<&'static str>,
+    keys: std::slice::Iter<'static, &'static str>,
     pairs: Pairs<'de, Rule>,
 }
 
 impl<'de> Structure<'de> {
-    fn new(typ: &'static str, keys: &'de [&'static str], pairs: Pairs<'de, Rule>) -> Self {
+    fn new(kind: &'static str, keys: &'static [&'static str], pairs: Pairs<'de, Rule>) -> Self {
         Self {
-            typ: Some(typ),
+            kind: Some(kind),
             keys: keys.iter(),
             pairs,
         }
@@ -485,8 +485,8 @@ impl<'de> MapAccess<'de> for Structure<'de> {
     where
         V: DeserializeSeed<'de>,
     {
-        match self.typ.take() {
-            Some(typ) => seed.deserialize(typ.into_deserializer()),
+        match self.kind.take() {
+            Some(kind) => seed.deserialize(kind.into_deserializer()),
             None => match self.pairs.next() {
                 Some(pair) => seed.deserialize(&mut Deserializer::from_pair(pair)),
                 None => Err(Error::token_expected("structure")),

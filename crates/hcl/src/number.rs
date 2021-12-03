@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{self, Display};
 
@@ -50,9 +48,12 @@ impl Number {
     /// Returns true if the `Number` is a float.
     ///
     /// For any `Number` on which `is_f64` returns true, `as_f64` is guaranteed to return the
-    /// integer value.
+    /// float value.
     pub fn is_f64(&self) -> bool {
-        matches!(self, Self::Float(_))
+        match self {
+            Self::Float(_) => true,
+            Self::PosInt(_) | Self::NegInt(_) => false,
+        }
     }
 
     /// Returns true if the `Number` is an integer between `i64::MIN` and `i64::MAX`.
@@ -60,7 +61,11 @@ impl Number {
     /// For any `Number` on which `is_i64` returns true, `as_i64` is guaranteed to return the
     /// integer value.
     pub fn is_i64(&self) -> bool {
-        matches!(self, Self::NegInt(_))
+        match *self {
+            Self::PosInt(v) => v <= i64::max_value() as u64,
+            Self::NegInt(_) => true,
+            Self::Float(_) => false,
+        }
     }
 
     /// Returns true if the `Number` is an integer between zero and `u64::MAX`.
@@ -68,7 +73,10 @@ impl Number {
     /// For any `Number` on which `is_u64` returns true, `as_u64` is guaranteed to return the
     /// integer value.
     pub fn is_u64(&self) -> bool {
-        matches!(self, Self::PosInt(_))
+        match self {
+            Self::PosInt(_) => true,
+            Self::NegInt(_) | Self::Float(_) => false,
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 use pest_derive::Parser;
 
 #[derive(Parser)]
-#[grammar = "grammars/hcl.pest"]
+#[grammar = "grammar/hcl.pest"]
 pub(crate) struct HclParser;
 
 #[cfg(test)]

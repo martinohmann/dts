@@ -187,6 +187,11 @@ impl Attribute {
     pub fn value(&self) -> &Value {
         &self.value
     }
+
+    /// Returns a mutable reference to the attribute value.
+    pub fn value_mut(&mut self) -> &mut Value {
+        &mut self.value
+    }
 }
 
 /// Represents a HCL block.
@@ -223,7 +228,7 @@ impl Block {
     }
 
     /// Returns a mutable reference to the block keys.
-    pub fn keys_(&mut self) -> &mut Vec<String> {
+    pub fn keys_mut(&mut self) -> &mut Vec<String> {
         &mut self.keys
     }
 
@@ -274,9 +279,8 @@ impl<'a> Iterator for AttributeIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for structure in &mut self.inner {
-            match structure.as_attribute() {
-                Some(attr) => return Some(attr),
-                None => continue,
+            if let Some(attr) = structure.as_attribute() {
+                return Some(attr);
             }
         }
 
@@ -294,9 +298,8 @@ impl<'a> Iterator for AttributeIterMut<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for structure in &mut self.inner {
-            match structure.as_attribute_mut() {
-                Some(attr) => return Some(attr),
-                None => continue,
+            if let Some(attr) = structure.as_attribute_mut() {
+                return Some(attr);
             }
         }
 
@@ -314,9 +317,8 @@ impl<'a> Iterator for BlockIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for structure in &mut self.inner {
-            match structure.as_block() {
-                Some(block) => return Some(block),
-                None => continue,
+            if let Some(block) = structure.as_block() {
+                return Some(block);
             }
         }
 
@@ -334,9 +336,8 @@ impl<'a> Iterator for BlockIterMut<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for structure in &mut self.inner {
-            match structure.as_block_mut() {
-                Some(block) => return Some(block),
-                None => continue,
+            if let Some(block) = structure.as_block_mut() {
+                return Some(block);
             }
         }
 

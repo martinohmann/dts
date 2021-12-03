@@ -8,7 +8,7 @@ impl TryFrom<Value> for Body {
     fn try_from(v: Value) -> Result<Self, Self::Error> {
         match v {
             Value::Array(array) => TryFrom::try_from(array),
-            _ => Err(Error::new("not a HCL config file or block body")),
+            _ => Err(Error::new("array expected")),
         }
     }
 }
@@ -30,7 +30,7 @@ impl TryFrom<Value> for Structure {
     fn try_from(v: Value) -> Result<Self, Self::Error> {
         match v {
             Value::Object(object) => TryFrom::try_from(object),
-            _ => Err(Error::new("not a HCL structure")),
+            _ => Err(Error::new("object expected")),
         }
     }
 }
@@ -57,11 +57,11 @@ impl TryFrom<Map<String, Value>> for Attribute {
         let key = map
             .get("key")
             .and_then(|i| i.as_str())
-            .ok_or_else(|| Error::new("not an attribute key"))?;
+            .ok_or_else(|| Error::new("attribute key missing or not a string"))?;
 
         let value = map
             .get("value")
-            .ok_or_else(|| Error::new("not an attribute value"))?;
+            .ok_or_else(|| Error::new("attribute value missing"))?;
 
         Ok(Attribute::new(key, value.clone()))
     }
@@ -74,7 +74,7 @@ impl TryFrom<Map<String, Value>> for Block {
         let ident = map
             .get("ident")
             .and_then(|i| i.as_str())
-            .ok_or_else(|| Error::new("not a block identifier"))?;
+            .ok_or_else(|| Error::new("block identifier missing or not a string"))?;
 
         let keys = match map.get("keys") {
             Some(Value::Array(array)) => {
@@ -94,7 +94,7 @@ impl TryFrom<Map<String, Value>> for Block {
 
         let body = match map.get("body") {
             Some(Value::Array(array)) => Body::try_from(array.clone())?,
-            _ => return Err(Error::new("not a block body")),
+            _ => return Err(Error::new("block body missing or not an array")),
         };
 
         Ok(Block::new(ident, keys, body))
