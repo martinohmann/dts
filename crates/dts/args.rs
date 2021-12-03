@@ -83,10 +83,6 @@ pub struct InputOptions {
     #[clap(short = 's', long)]
     pub text_split_pattern: Option<Regex>,
 
-    /// Number of threads to use for deserialization.
-    #[clap(short = 'j', long, default_value = "10")]
-    pub threads: usize,
-
     /// Glob pattern for directories.
     ///
     /// Required if any of the input paths is a directory. Ignored otherwise.
