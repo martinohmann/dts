@@ -28,7 +28,9 @@ mod test {
             input: "\"a string\"",
             rule: Rule::string_lit,
             tokens: [
-                string(1, 9)
+                string_lit(0, 10, [
+                    string(1, 9)
+                ])
             ]
         };
     }
@@ -63,7 +65,9 @@ mod test {
             tokens: [
                 attribute(0, 11, [
                     identifier(0, 3),
-                    string(7, 10)
+                    string_lit(6, 11, [
+                        string(7, 10)
+                    ])
                 ])
             ]
         };
@@ -113,13 +117,19 @@ resource "aws_s3_bucket" "mybucket" {
                         identifier(1, 9),
                     ]),
                     block_keys(10, 36, [
-                        string(11, 24),
-                        string(27, 35)
+                        string_lit(10, 25, [
+                            string(11, 24)
+                        ]),
+                        string_lit(26, 36, [
+                            string(27, 35)
+                        ])
                     ]),
                     block_body(41, 297, [
                         attribute(41, 67, [
                             identifier(41, 47),
-                            string(58, 66)
+                            string_lit(57, 67, [
+                                string(58, 66)
+                            ])
                         ]),
                         attribute(70, 90, [
                             identifier(70, 83),
@@ -149,7 +159,9 @@ resource "aws_s3_bucket" "mybucket" {
                                                 ]),
                                                 attribute(250, 279, [
                                                     identifier(250, 263),
-                                                    string(271, 278)
+                                                    string_lit(270, 279, [
+                                                        string(271, 278)
+                                                    ])
                                                 ])
                                             ])
                                         ])
@@ -173,9 +185,13 @@ resource "aws_s3_bucket" "mybucket" {
                 attribute(0, 22, [
                     identifier(0, 3),
                     tuple(6, 22, [
-                        string(8, 11),
+                        string_lit(7, 12, [
+                            string(8, 11)
+                        ]),
                         tuple(14, 21, [
-                            string(16, 19)
+                            string_lit(15, 20, [
+                                string(16, 19)
+                            ])
                         ])
                     ])
                 ])
@@ -190,9 +206,15 @@ resource "aws_s3_bucket" "mybucket" {
                 attribute(0, 36, [
                     identifier(0, 3),
                     object(6, 36, [
-                        string(8, 11),
-                        string(16, 19),
-                        string(22, 25),
+                        string_lit(7, 12, [
+                            string(8, 11)
+                        ]),
+                        string_lit(15, 20, [
+                            string(16, 19)
+                        ]),
+                        string_lit(21, 26, [
+                            string(22, 25)
+                        ]),
                         variable_expr(29, 34)
                     ])
                 ])

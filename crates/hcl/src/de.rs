@@ -88,8 +88,10 @@ impl<'de> Deserializer<'de> {
 
         match pair.as_rule() {
             Rule::heredoc => Ok(pair.into_inner().nth(1).unwrap().as_str()),
-            Rule::block_identifier => Ok(pair.into_inner().next().unwrap().as_str()),
-            Rule::string | Rule::identifier => Ok(pair.as_str()),
+            Rule::block_identifier | Rule::string_lit => {
+                Ok(pair.into_inner().next().unwrap().as_str())
+            }
+            Rule::identifier => Ok(pair.as_str()),
             _ => Err(Error::token_expected(
                 "string, identifier, block identifier, or heredoc",
             )),
@@ -122,7 +124,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             Rule::null => self.deserialize_unit(visitor),
             Rule::boolean => self.deserialize_bool(visitor),
             // Strings
-            Rule::string => self.deserialize_string(visitor),
+            Rule::string_lit => self.deserialize_string(visitor),
             Rule::identifier => self.deserialize_string(visitor),
             Rule::block_identifier => self.deserialize_string(visitor),
             Rule::heredoc => self.deserialize_string(visitor),
@@ -371,7 +373,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         match self.peek_rule()? {
-            Rule::string | Rule::identifier | Rule::heredoc => {
+            Rule::string_lit | Rule::block_identifier | Rule::identifier | Rule::heredoc => {
                 visitor.visit_enum(self.parse_str()?.into_deserializer())
             }
             Rule::attribute | Rule::object => {
