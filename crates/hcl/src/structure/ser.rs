@@ -54,3 +54,64 @@ impl Serialize for Block {
         map.end()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::value::Value;
+    use pretty_assertions::assert_eq;
+    use serde_json::json;
+
+    #[test]
+    fn body_to_json() {
+        let body = Body::from_iter(vec![
+            Attribute::new("foo".into(), 42.into()).into(),
+            Block::new(
+                "block",
+                vec![],
+                vec![
+                    Attribute::new("bar".into(), true.into()).into(),
+                    Attribute::new(
+                        "baz".into(),
+                        Value::Array(vec!["${var.enabled}".into(), 1.into(), "two".into()]),
+                    )
+                    .into(),
+                ],
+            )
+            .into(),
+        ]);
+
+        let value = serde_json::to_value(body).unwrap();
+
+        let expected = json!([
+             {
+                 "kind": "attribute",
+                 "key": "foo",
+                 "value": 42,
+             },
+             {
+                 "kind": "block",
+                 "ident": "block",
+                 "keys": [],
+                 "body": [
+                     {
+                        "kind": "attribute",
+                        "key": "bar",
+                        "value": true,
+                     },
+                     {
+                        "kind": "attribute",
+                        "key": "baz",
+                        "value": [
+                            "${var.enabled}",
+                            1,
+                            "two"
+                        ],
+                     }
+                 ]
+             }
+        ]);
+
+        assert_eq!(value, expected);
+    }
+}
