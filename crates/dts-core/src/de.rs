@@ -261,9 +261,7 @@ where
     }
 
     fn deserialize_hcl(&mut self) -> Result<Value> {
-        let mut s = String::new();
-        self.reader.read_to_string(&mut s)?;
-        Ok(hcl::de::from_str(&s)?)
+        Ok(hcl::from_reader(&mut self.reader)?)
     }
 }
 
