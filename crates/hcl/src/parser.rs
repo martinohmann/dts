@@ -236,4 +236,35 @@ resource "aws_s3_bucket" "mybucket" {
             ]
         };
     }
+
+    #[test]
+    fn cond_in_interpolation() {
+        parses_to! {
+            parser: HclParser,
+            input: r#"name = "${var.l ? "us-east-1." : ""}""#,
+            rule: Rule::attribute,
+            tokens: [
+                attribute(0, 37, [
+                    identifier(0, 4),
+                    string_lit(7, 37, [
+                        string(8, 36, [
+                            template_interpolation(8, 36, [
+                                conditional(10, 35, [
+                                    cond_expr(10, 15, [
+                                        variable_expr(10, 15)
+                                    ]),
+                                    string_lit(18, 30, [
+                                        string(19, 29)
+                                    ]),
+                                    string_lit(33, 35, [
+                                        string(34, 34)
+                                    ])
+                                ])
+                            ])
+                        ])
+                    ])
+                ])
+            ]
+        };
+    }
 }

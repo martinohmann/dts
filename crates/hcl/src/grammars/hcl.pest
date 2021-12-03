@@ -69,7 +69,7 @@ template_literal = _{ (ANY~ !PEEK)* }
 // template = { template_interpolation | template_directive | template_literal }
 template = { template_literal }
 template_directive = _{ template_if | template_for }
-template_interpolation = _{ ("${" | "${~") ~ expression ~ ("}" | "~}") }
+template_interpolation = !{ ("${" | "${~") ~ ("\"" | expression) ~ ("}" | "~}") }
 template_if = {
     ("%{" | "%{~") ~ "if" ~ expression ~ ("}" | "~}") ~
     template ~
