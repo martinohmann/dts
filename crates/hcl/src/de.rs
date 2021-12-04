@@ -1,4 +1,9 @@
 //! Deserialize HCL data to a Rust data structure.
+//!
+//! The `Deserializer` implementation tries to follow the [HCL JSON Specification][hcl-json-spec]
+//! as close as possible.
+//!
+//! [hcl-json-spec]: https://github.com/hashicorp/hcl/blob/main/json/spec.md
 
 use crate::{
     parser::{HclParser, Rule},
@@ -112,9 +117,7 @@ impl<'de> Deserializer<'de> {
 
         match pair.as_rule() {
             Rule::heredoc => Ok(pair.into_inner().nth(1).unwrap().as_str()),
-            Rule::block_identifier | Rule::string_lit => {
-                Ok(pair.into_inner().next().unwrap().as_str())
-            }
+            Rule::string_lit => Ok(pair.into_inner().next().unwrap().as_str()),
             Rule::identifier => Ok(pair.as_str()),
             _ => Err(Error::token_expected(
                 "string, identifier, block identifier, or heredoc",
@@ -150,19 +153,19 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
             // Strings
             Rule::string_lit => self.deserialize_string(visitor),
             Rule::identifier => self.deserialize_string(visitor),
-            Rule::block_identifier => self.deserialize_string(visitor),
             Rule::heredoc => self.deserialize_string(visitor),
             // Numbers
             Rule::float => self.deserialize_f64(visitor),
             Rule::int => self.deserialize_i64(visitor),
             // Seqs
             Rule::config_file => self.deserialize_seq(visitor),
-            Rule::block_keys => self.deserialize_seq(visitor),
             Rule::block_body => self.deserialize_seq(visitor),
             Rule::tuple => self.deserialize_seq(visitor),
             // Maps
             Rule::attribute => self.deserialize_map(visitor),
+            Rule::block_body_inner => self.deserialize_map(visitor),
             Rule::block => self.deserialize_map(visitor),
+            Rule::block_labeled => self.deserialize_map(visitor),
             Rule::object => self.deserialize_map(visitor),
             // Anthing else is treated as an expression and gets interpolated to distinguish it
             // from normal string values.
@@ -325,7 +328,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let pair = self.take_pair()?;
 
         match pair.as_rule() {
-            Rule::config_file | Rule::block_keys | Rule::block_body | Rule::tuple => {
+            Rule::config_file | Rule::block_body | Rule::tuple => {
                 visitor.visit_seq(Seq::new(pair.into_inner()))
             }
             _ => Err(Error::token_expected(
@@ -360,17 +363,10 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let pair = self.take_pair()?;
 
         match pair.as_rule() {
-            Rule::attribute => visitor.visit_map(Structure::new(
-                "attribute",
-                &["kind", "key", "value"],
-                pair.into_inner(),
-            )),
-            Rule::block => visitor.visit_map(Structure::new(
-                "block",
-                &["kind", "ident", "keys", "body"],
-                pair.into_inner(),
-            )),
-            Rule::object => visitor.visit_map(Map::new(pair.into_inner())),
+            Rule::block_body_inner => visitor.visit_map(Block::new(pair.into_inner())),
+            Rule::attribute | Rule::block | Rule::block_labeled | Rule::object => {
+                visitor.visit_map(Map::new(pair.into_inner()))
+            }
             _ => Err(Error::token_expected("attribute or object")),
         }
     }
@@ -397,7 +393,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         match self.peek_rule()? {
-            Rule::string_lit | Rule::block_identifier | Rule::identifier | Rule::heredoc => {
+            Rule::string_lit | Rule::identifier | Rule::heredoc => {
                 visitor.visit_enum(self.parse_str()?.into_deserializer())
             }
             Rule::attribute | Rule::object => {
@@ -452,53 +448,6 @@ impl<'de> SeqAccess<'de> for Seq<'de> {
     }
 }
 
-struct Structure<'de> {
-    kind: Option<&'static str>,
-    keys: std::slice::Iter<'static, &'static str>,
-    pairs: Pairs<'de, Rule>,
-}
-
-impl<'de> Structure<'de> {
-    fn new(kind: &'static str, keys: &'static [&'static str], pairs: Pairs<'de, Rule>) -> Self {
-        Self {
-            kind: Some(kind),
-            keys: keys.iter(),
-            pairs,
-        }
-    }
-}
-
-impl<'de> MapAccess<'de> for Structure<'de> {
-    type Error = Error;
-
-    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
-    where
-        K: DeserializeSeed<'de>,
-    {
-        match self.keys.next() {
-            Some(key) => seed.deserialize(key.into_deserializer()).map(Some),
-            None => Ok(None),
-        }
-    }
-
-    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
-    where
-        V: DeserializeSeed<'de>,
-    {
-        match self.kind.take() {
-            Some(kind) => seed.deserialize(kind.into_deserializer()),
-            None => match self.pairs.next() {
-                Some(pair) => seed.deserialize(&mut Deserializer::from_pair(pair)),
-                None => Err(Error::token_expected("structure")),
-            },
-        }
-    }
-
-    fn size_hint(&self) -> Option<usize> {
-        self.keys.size_hint().1.map(|hint| hint / 2)
-    }
-}
-
 struct Map<'de> {
     pairs: Pairs<'de, Rule>,
 }
@@ -530,6 +479,58 @@ impl<'de> MapAccess<'de> for Map<'de> {
     {
         match self.pairs.next() {
             Some(pair) => seed.deserialize(&mut Deserializer::from_pair(pair)),
+            None => Err(Error::token_expected("map value")),
+        }
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        self.pairs.size_hint().1.map(|hint| hint / 2)
+    }
+}
+
+struct Block<'de> {
+    pairs: Pairs<'de, Rule>,
+    current_inner: Option<Pairs<'de, Rule>>,
+}
+
+impl<'de> Block<'de> {
+    fn new(pairs: Pairs<'de, Rule>) -> Self {
+        Self {
+            pairs,
+            current_inner: None,
+        }
+    }
+}
+
+impl<'de> MapAccess<'de> for Block<'de> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        self.current_inner = self.pairs.next().map(|pair| pair.into_inner());
+
+        match self.current_inner {
+            Some(ref mut inner) => match inner.next() {
+                Some(pair) => seed
+                    .deserialize(&mut Deserializer::from_pair(pair))
+                    .map(Some),
+                None => Ok(None),
+            },
+            None => Ok(None),
+        }
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+    where
+        V: DeserializeSeed<'de>,
+    {
+        match self.current_inner {
+            Some(ref mut inner) => match inner.next() {
+                Some(pair) => seed.deserialize(&mut Deserializer::from_pair(pair)),
+                None => Err(Error::token_expected("map value")),
+            },
             None => Err(Error::token_expected("map value")),
         }
     }
@@ -622,9 +623,7 @@ mod test {
     fn test_string_attribute() {
         let h = r#"foo = "bar""#;
         let expected: Value = json!([{
-            "kind": "attribute",
-            "key": "foo",
-            "value": "bar"
+            "foo": "bar"
         }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
     }
@@ -633,9 +632,7 @@ mod test {
     fn test_object() {
         let h = r#"foo = { bar = 42, "baz" = true }"#;
         let expected: Value = json!([{
-            "kind": "attribute",
-            "key": "foo",
-            "value": {"bar": 42, "baz": true}
+            "foo": {"bar": 42, "baz": true}
         }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
     }
@@ -644,27 +641,25 @@ mod test {
     fn test_block() {
         let h = r#"resource "aws_s3_bucket" "mybucket" { name = "mybucket" }"#;
         let expected: Value = json!([{
-            "kind": "block",
-            "ident": "resource",
-            "keys": ["aws_s3_bucket", "mybucket"],
-            "body": [{
-                "kind": "attribute",
-                "key": "name",
-                "value": "mybucket"
-            }],
+            "resource": {
+                "aws_s3_bucket": {
+                    "mybucket": [
+                        {
+                            "name": "mybucket"
+                        }
+                    ]
+                }
+            }
         }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
 
         let h = r#"block { name = "asdf" }"#;
         let expected: Value = json!([{
-            "kind": "block",
-            "ident": "block",
-            "keys": [],
-            "body": [{
-                "kind": "attribute",
-                "key": "name",
-                "value": "asdf"
-            }],
+            "block": [
+                {
+                    "name": "asdf"
+                }
+            ]
         }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
     }
@@ -673,9 +668,7 @@ mod test {
     fn test_tuple() {
         let h = r#"foo = [true, 2, "three", var.enabled]"#;
         let expected: Value = json!([{
-            "kind": "attribute",
-            "key": "foo",
-            "value": [true, 2, "three", "${var.enabled}"]
+            "foo": [true, 2, "three", "${var.enabled}"]
         }]);
         assert_eq!(expected, from_str::<Value>(h).unwrap());
     }
@@ -684,17 +677,11 @@ mod test {
     fn test_struct() {
         #[derive(Deserialize, PartialEq, Debug)]
         struct Test {
-            kind: String,
-            key: String,
-            value: u32,
+            foo: u32,
         }
 
         let h = r#"foo = 1"#;
-        let expected = vec![Test {
-            kind: "attribute".into(),
-            key: "foo".into(),
-            value: 1,
-        }];
+        let expected = vec![Test { foo: 1 }];
         assert_eq!(expected, from_str::<Vec<Test>>(h).unwrap());
     }
 
@@ -710,17 +697,11 @@ mod test {
 
         #[derive(Deserialize, PartialEq, Debug)]
         struct Test {
-            kind: String,
-            key: String,
             value: E,
         }
 
-        let h = r#"foo = "Unit""#;
-        let expected = vec![Test {
-            kind: "attribute".into(),
-            key: "foo".into(),
-            value: E::Unit,
-        }];
+        let h = r#"value = "Unit""#;
+        let expected = vec![Test { value: E::Unit }];
         assert_eq!(expected, from_str::<Vec<Test>>(h).unwrap());
 
         let h = r#"Newtype = 1"#;
@@ -731,10 +712,8 @@ mod test {
         let expected = vec![E::Tuple(1, 2)];
         assert_eq!(expected, from_str::<Vec<E>>(h).unwrap());
 
-        let h = r#"foo = {"Struct" = {"a" = 1}}"#;
+        let h = r#"value = {"Struct" = {"a" = 1}}"#;
         let expected = vec![Test {
-            kind: "attribute".into(),
-            key: "foo".into(),
             value: E::Struct { a: 1 },
         }];
         assert_eq!(expected, from_str::<Vec<Test>>(h).unwrap());
@@ -746,111 +725,49 @@ mod test {
         let value: Value = from_str(&hcl).unwrap();
         let expected = json!([
             {
-                "kind": "block",
-                "ident": "resource",
-                "keys": ["aws_eks_cluster", "this"],
-                "body": [
-                    {
-                        "kind": "attribute",
-                        "key": "count",
-                        "value": "${var.create_eks ? 1 : 0}"
-                    },
-                    {
-                        "kind": "attribute",
-                        "key": "name",
-                        "value": "${var.cluster_name}"
-                    },
-                    {
-                        "kind": "attribute",
-                        "key": "enabled_cluster_log_types",
-                        "value": "${var.cluster_enabled_log_types}"
-                    },
-                    {
-                        "kind": "attribute",
-                        "key": "role_arn",
-                        "value": "${local.cluster_iam_role_arn}"
-                    },
-                    {
-                        "kind": "attribute",
-                        "key": "version",
-                        "value": "${var.cluster_version}"
-                    },
-                    {
-                        "kind": "block",
-                        "ident": "vpc_config",
-                        "keys": [],
-                        "body": [
+                "resource": {
+                    "aws_eks_cluster": {
+                        "this": [
                             {
-                                "kind": "attribute",
-                                "key": "security_group_ids",
-                                "value": "${compact([local.cluster_security_group_id])}"
-                            },
-                            {
-                                "kind": "attribute",
-                                "key": "subnet_ids",
-                                "value": "${var.subnets}"
-                            },
-                        ]
-                    },
-                    {
-                        "kind": "block",
-                        "ident": "kubernetes_network_config",
-                        "keys": [],
-                        "body": [
-                            {
-                                "kind": "attribute",
-                                "key": "service_ipv4_cidr",
-                                "value": "${var.cluster_service_ipv4_cidr}"
-                            },
-                        ]
-                    },
-                    {
-                        "kind": "block",
-                        "ident": "dynamic",
-                        "keys": ["encryption_config"],
-                        "body": [
-                            {
-                                "kind": "attribute",
-                                "key": "for_each",
-                                "value": "${toset(var.cluster_encryption_config)}"
-                            },
-                            {
-                                "kind": "block",
-                                "ident": "content",
-                                "keys": [],
-                                "body": [
+                                "count": "${var.create_eks ? 1 : 0}",
+                                "name": "${var.cluster_name}",
+                                "enabled_cluster_log_types": "${var.cluster_enabled_log_types}",
+                                "role_arn": "${local.cluster_iam_role_arn}",
+                                "version": "${var.cluster_version}",
+                                "vpc_config": [
                                     {
-                                        "kind": "block",
-                                        "ident": "provider",
-                                        "keys": [],
-                                        "body": [
-                                            {
-                                                "kind": "attribute",
-                                                "key": "key_arn",
-                                                "value": "${encryption_config.value[\"provider_key_arn\"]}"
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        "kind": "attribute",
-                                        "key": "resources",
-                                        "value": "${encryption_config.value[\"resources\"]}"
+                                        "security_group_ids": "${compact([local.cluster_security_group_id])}",
+                                        "subnet_ids": "${var.subnets}"
                                     }
-                                ]
+                                ],
+                                "kubernetes_network_config": [
+                                    {
+                                        "service_ipv4_cidr": "${var.cluster_service_ipv4_cidr}"
+                                    },
+                                ],
+                                "dynamic": {
+                                    "encryption_config": [
+                                        {
+                                            "for_each": "${toset(var.cluster_encryption_config)}",
+                                            "content": [
+                                                {
+                                                    "provider": [
+                                                        {
+                                                            "key_arn": "${encryption_config.value[\"provider_key_arn\"]}"
+                                                        }
+                                                    ],
+                                                    "resources": "${encryption_config.value[\"resources\"]}"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "tags": "${merge(\n    var.tags,\n    var.cluster_tags,\n  )}",
+                                "depends_on": ["${aws_cloudwatch_log_group.this}"]
                             }
                         ]
-                    },
-                    {
-                        "kind": "attribute",
-                        "key": "tags",
-                        "value": "${merge(\n    var.tags,\n    var.cluster_tags,\n  )}"
-                    },
-                    {
-                        "kind": "attribute",
-                        "key": "depends_on",
-                        "value": ["${aws_cloudwatch_log_group.this}"]
                     }
-                ]
+                }
             }
         ]);
         assert_eq!(expected, value);
