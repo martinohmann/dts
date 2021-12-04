@@ -6,10 +6,7 @@ hcl = _{ SOI ~ config_file ~ EOI }
 // Structural elements
 config_file = { body }
 body = _{ NEWLINE* ~ (attribute | block)* }
-// block_body = { body }
 attribute = { identifier ~ "=" ~ expression }
-// block = { block_identifier ~ "{" ~ block_body ~ "}" }
-// block_identifier = { identifier ~ (string_lit | identifier)* }
 
 block = { identifier ~ (block_labeled | block_body) }
 block_labeled = { (string_lit | identifier) ~ (block_labeled | block_body) }
