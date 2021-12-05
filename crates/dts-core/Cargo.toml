@@ -23,6 +23,10 @@ pest = "2.1.3"
 pest_derive = "2.1.0"
 rayon = "1.5.1"
 
+[dependencies.indexmap]
+features = ["rayon"]
+version = "1.7.0"
+
 [dependencies.serde]
 features = ["derive"]
 version = "1.0.130"

@@ -7,9 +7,9 @@ pub use error::*;
 
 use crate::parsers::flat_key::{KeyPart, KeyParts};
 use crate::{Result, Value, ValueExt};
+use indexmap::IndexMap;
 use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
-use rayon::iter::ParallelBridge;
 use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Map;
@@ -375,7 +375,8 @@ pub fn expand_keys(value: Value) -> Result<Value, TransformError> {
     match value {
         Value::Object(object) => object
             .into_iter()
-            .par_bridge()
+            .collect::<IndexMap<String, Value>>()
+            .into_par_iter()
             .map(|(key, value)| {
                 let mut parts = KeyParts::parse(&key)?;
                 parts.reverse();
