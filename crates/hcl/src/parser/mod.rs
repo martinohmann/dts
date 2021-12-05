@@ -1,8 +1,22 @@
+mod ast;
+
+pub use ast::{interpolate, Node};
+
+use crate::{Error, Result};
+use pest::Parser as ParserTrait;
 use pest_derive::Parser;
 
 #[derive(Parser)]
-#[grammar = "grammar/hcl.pest"]
+#[grammar = "parser/grammar/hcl.pest"]
 pub(crate) struct HclParser;
+
+pub(crate) fn parse(input: &str) -> Result<ast::Node<'_>> {
+    let pair = HclParser::parse(Rule::hcl, input)
+        .map_err(|e| Error::ParseError(e.to_string()))?
+        .next()
+        .unwrap();
+    Ok(Node::from_pair(pair))
+}
 
 #[cfg(test)]
 mod test {
