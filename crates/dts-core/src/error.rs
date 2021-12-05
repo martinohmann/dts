@@ -28,7 +28,7 @@ pub enum Error {
 
     /// Represents generic IO errors.
     #[error(transparent)]
-    IOError(#[from] std::io::Error),
+    IoError(#[from] std::io::Error),
 
     /// Represents an invalid glob pattern.
     #[error("Invalid glob pattern `{pattern}`")]
@@ -45,31 +45,31 @@ pub enum Error {
 
     /// Error emitted by serde_yaml.
     #[error(transparent)]
-    YAMLError(#[from] serde_yaml::Error),
+    YamlError(#[from] serde_yaml::Error),
 
     /// Error emitted by serde_json.
     #[error(transparent)]
-    JSONError(#[from] serde_json::Error),
+    JsonError(#[from] serde_json::Error),
 
     /// Error emitted by json5.
     #[error(transparent)]
-    JSON5Error(#[from] json5::Error),
+    Json5Error(#[from] json5::Error),
 
     /// Serialization error emitted by toml.
     #[error(transparent)]
-    TOMLSerializeError(#[from] toml::ser::Error),
+    TomlSerializeError(#[from] toml::ser::Error),
 
     /// Deserialization error emitted by toml.
     #[error(transparent)]
-    TOMLDeserializeError(#[from] toml::de::Error),
+    TomlDeserializeError(#[from] toml::de::Error),
 
     /// Error emitted by csv.
     #[error(transparent)]
-    CSVError(#[from] csv::Error),
+    CsvError(#[from] csv::Error),
 
     /// Indicates an error at a specific row of input or output data.
     #[error("Error at row index {0}: {1}")]
-    CSVRowError(usize, String),
+    CsvRowError(usize, String),
 
     /// Error emitted by serde_qs.
     #[error(transparent)]
@@ -77,11 +77,11 @@ pub enum Error {
 
     /// Error emitted by serde_xml.
     #[error(transparent)]
-    XMLError(#[from] serde_xml_rs::Error),
+    XmlError(#[from] serde_xml_rs::Error),
 
     /// Error emitted by hcl.
     #[error(transparent)]
-    HCLError(#[from] hcl::Error),
+    HclError(#[from] hcl::Error),
 }
 
 impl Error {

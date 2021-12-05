@@ -54,7 +54,7 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
     let encoding = opts
         .output_encoding
         .or_else(|| sink.encoding())
-        .unwrap_or(Encoding::JSON);
+        .unwrap_or(Encoding::Json);
 
     let writer = sink
         .to_writer()
@@ -64,7 +64,7 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
 
     match ser.serialize(encoding, value) {
         Ok(()) => Ok(()),
-        Err(Error::IOError(e)) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
+        Err(Error::IoError(e)) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
         Err(err) => Err(err),
     }
     .with_context(|| format!("Failed to serialize `{}` to `{}`", encoding, sink))

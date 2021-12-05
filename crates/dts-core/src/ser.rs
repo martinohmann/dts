@@ -131,7 +131,7 @@ where
     /// # fn main() -> Result<(), Box<dyn Error>> {
     /// let mut buf = Vec::new();
     /// let mut ser = SerializerBuilder::new().build(&mut buf);
-    /// ser.serialize(Encoding::JSON, &json!(["foo"]))?;
+    /// ser.serialize(Encoding::Json, &json!(["foo"]))?;
     ///
     /// assert_eq!(&buf, r#"["foo"]"#.as_bytes());
     /// #     Ok(())
@@ -139,12 +139,12 @@ where
     /// ```
     pub fn serialize(&mut self, encoding: Encoding, value: &Value) -> Result<()> {
         match encoding {
-            Encoding::YAML => self.serialize_yaml(value)?,
-            Encoding::JSON => self.serialize_json(value)?,
-            Encoding::TOML => self.serialize_toml(value)?,
-            Encoding::CSV => self.serialize_csv(value)?,
+            Encoding::Yaml => self.serialize_yaml(value)?,
+            Encoding::Json => self.serialize_json(value)?,
+            Encoding::Toml => self.serialize_toml(value)?,
+            Encoding::Csv => self.serialize_csv(value)?,
             Encoding::QueryString => self.serialize_query_string(value)?,
-            Encoding::XML => self.serialize_xml(value)?,
+            Encoding::Xml => self.serialize_xml(value)?,
             Encoding::Text => self.serialize_text(value)?,
             Encoding::Gron => self.serialize_gron(value)?,
             encoding => return Err(Error::UnsupportedEncoding(encoding)),
@@ -199,14 +199,14 @@ where
             for (i, row) in value.to_array().iter().enumerate() {
                 let row_data = if !self.opts.keys_as_csv_headers {
                     row.as_array()
-                        .ok_or_else(|| Error::CSVRowError(i, "array expected".into()))?
+                        .ok_or_else(|| Error::CsvRowError(i, "array expected".into()))?
                         .iter()
                         .map(ValueExt::to_string_unquoted)
                         .collect::<Vec<_>>()
                 } else {
                     let row = row
                         .as_object()
-                        .ok_or_else(|| Error::CSVRowError(i, "object expected".into()))?;
+                        .ok_or_else(|| Error::CsvRowError(i, "object expected".into()))?;
 
                     // The first row dictates the header fields.
                     if headers.is_none() {
@@ -278,14 +278,14 @@ mod test {
     fn test_serialize_json() {
         let mut buf = Vec::new();
         let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::JSON, &json!(["one", "two"]))
+        ser.serialize(Encoding::Json, &json!(["one", "two"]))
             .unwrap();
         assert_eq!(&buf, "[\"one\",\"two\"]".as_bytes());
 
         buf.clear();
 
         let mut ser = SerializerBuilder::new().pretty(true).build(&mut buf);
-        ser.serialize(Encoding::JSON, &json!(["one", "two"]))
+        ser.serialize(Encoding::Json, &json!(["one", "two"]))
             .unwrap();
         assert_eq!(&buf, "[\n  \"one\",\n  \"two\"\n]".as_bytes());
     }
@@ -294,7 +294,7 @@ mod test {
     fn test_serialize_csv() {
         let mut buf = Vec::new();
         let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::CSV, &json!([["one", "two"], ["three", "four"]]))
+        ser.serialize(Encoding::Csv, &json!([["one", "two"], ["three", "four"]]))
             .unwrap();
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "one,two\nthree,four\n");
 
@@ -304,7 +304,7 @@ mod test {
             .keys_as_csv_headers(true)
             .build(&mut buf);
         ser.serialize(
-            Encoding::CSV,
+            Encoding::Csv,
             &json!([
                 {"one": "val1", "two": "val2"},
                 {"one": "val3", "three": "val4"},
@@ -322,7 +322,7 @@ mod test {
         let mut ser = SerializerBuilder::new()
             .keys_as_csv_headers(true)
             .build(&mut buf);
-        ser.serialize(Encoding::CSV, &json!({"one": "val1", "two": "val2"}))
+        ser.serialize(Encoding::Csv, &json!({"one": "val1", "two": "val2"}))
             .unwrap();
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "one,two\nval1,val2\n");
     }
@@ -331,16 +331,16 @@ mod test {
     fn test_serialize_csv_errors() {
         let mut buf = Vec::new();
         let mut ser = Serializer::new(&mut buf);
-        assert!(ser.serialize(Encoding::CSV, &json!("non-array")).is_err());
+        assert!(ser.serialize(Encoding::Csv, &json!("non-array")).is_err());
         assert!(ser
-            .serialize(Encoding::CSV, &json!([{"non-array": "row"}]))
+            .serialize(Encoding::Csv, &json!([{"non-array": "row"}]))
             .is_err());
 
         let mut ser = SerializerBuilder::new()
             .keys_as_csv_headers(true)
             .build(&mut buf);
         assert!(ser
-            .serialize(Encoding::CSV, &json!([["non-object-row"]]))
+            .serialize(Encoding::Csv, &json!([["non-object-row"]]))
             .is_err());
     }
 

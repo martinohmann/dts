@@ -144,10 +144,10 @@ mod test {
     fn test_encoding() {
         assert_eq!(Source::from("-").encoding(), None);
         assert_eq!(Source::from("foo").encoding(), None);
-        assert_eq!(Source::from("foo.json").encoding(), Some(Encoding::JSON));
+        assert_eq!(Source::from("foo.json").encoding(), Some(Encoding::Json));
         assert_eq!(
             Source::from("http://localhost/bar.yaml").encoding(),
-            Some(Encoding::YAML)
+            Some(Encoding::Yaml)
         );
     }
 

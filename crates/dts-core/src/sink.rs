@@ -94,7 +94,7 @@ mod test {
     fn test_encoding() {
         assert_eq!(Sink::from("-").encoding(), None);
         assert_eq!(Sink::from("foo").encoding(), None);
-        assert_eq!(Sink::from("foo.json").encoding(), Some(Encoding::JSON));
+        assert_eq!(Sink::from("foo.json").encoding(), Some(Encoding::Json));
     }
 
     #[test]
