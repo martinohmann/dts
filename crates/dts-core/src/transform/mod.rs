@@ -13,6 +13,7 @@ use key::KeyFlattener;
 use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Map;
+use std::iter;
 use std::str::FromStr;
 
 /// A type that can apply transformations to a `Value`.
@@ -57,7 +58,7 @@ impl Transformation {
             Self::RemoveEmptyValues => remove_empty_values(value),
             Self::Chain(chain) => apply_chain(chain, value)?,
             Self::DeepMerge => deep_merge(value),
-            Self::ExpandKeys => expand_keys(value)?,
+            Self::ExpandKeys => expand_keys(value),
             Self::Keys => keys(value),
             Self::DeleteKeys(pattern) => delete_keys(value, pattern)?,
         };
@@ -358,45 +359,36 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// # use std::error::Error;
-/// #
-/// # fn main() -> Result<(), Box<dyn Error>> {
 /// use dts_core::transform::expand_keys;
 /// use serde_json::json;
 ///
 /// let value = json!([{"foo.bar": 1, "foo[\"bar-baz\"]": 2}]);
 /// let expected = json!([{"foo": {"bar": 1, "bar-baz": 2}}]);
 ///
-/// assert_eq!(expand_keys(value)?, expected);
-/// #   Ok(())
-/// # }
+/// assert_eq!(expand_keys(value), expected);
 /// ```
-pub fn expand_keys(value: Value) -> Result<Value, TransformError> {
+pub fn expand_keys(value: Value) -> Value {
     match value {
         Value::Object(object) => object
             .into_iter()
             .collect::<IndexMap<String, Value>>()
             .into_par_iter()
-            .map(|(key, value)| {
-                let mut parts = KeyParts::parse(&key)?;
-                parts.reverse();
-                Ok(expand_key_parts(&mut parts, value))
+            .map(|(key, value)| match KeyParts::parse(&key).ok() {
+                Some(mut parts) => {
+                    parts.reverse();
+                    expand_key_parts(&mut parts, value)
+                }
+                None => Value::Object(Map::from_iter(iter::once((key, value)))),
             })
             .reduce(
-                || Ok(Value::Null),
-                |a, b| {
-                    let (mut a, mut b) = (a?, b?);
+                || Value::Null,
+                |mut a, mut b| {
                     a.deep_merge(&mut b);
-                    Ok(a)
+                    a
                 },
             ),
-        Value::Array(array) => Ok(Value::Array(
-            array
-                .into_iter()
-                .map(expand_keys)
-                .collect::<Result<_, _>>()?,
-        )),
-        value => Ok(value),
+        Value::Array(array) => Value::Array(array.into_iter().map(expand_keys).collect()),
+        value => value,
     }
 }
 
@@ -613,7 +605,7 @@ mod tests {
         });
 
         assert_eq!(
-            expand_keys(value).unwrap(),
+            expand_keys(value),
             json!({"data": {"foo": {"bar": ["baz", "qux"]}}})
         );
     }
