@@ -1,19 +1,15 @@
 WHITESPACE = _{ " " | "\t" | "\r\n" | "\n"}
 
-char = _{
-    !("\"" | "\\" | "\'") ~ ANY
-    | "\\" ~ ("\"" | "\'" |  "\\" | "/" | "b" | "f" | "n" | "r" | "t")
-    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
-}
+string_lit = _{ string_lit_dq | string_lit_sq }
+string_lit_dq = _{ "\"" ~ string_dq ~ "\"" }
+string_lit_sq = _{ "'" ~ string_sq ~ "'" }
+string_dq = { (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
+string_sq = { (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
 
-string_dq = _{ "\"" ~ key_escaped ~ "\"" }
-string_sq = _{ "'" ~ key_escaped ~ "'" }
-string_quoted = _{ string_dq | string_sq }
-
+element_access = _{ ("." ~ key) | key_brackets }
 index = ${ ASCII_DIGIT+ }
 key = ${ (ASCII_ALPHANUMERIC | "_")* }
-key_escaped = ${ char* }
-key_brackets = _{ "[" ~ (string_quoted | index) ~ "]" }
+key_brackets = _{ "[" ~ (string_lit | index) ~ "]" }
 
-path = _{ key ~ key_brackets* ~ ("." ~ path)* }
+path = _{ key ~ element_access* }
 parts = _{ SOI ~ path ~ EOI }

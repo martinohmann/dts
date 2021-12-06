@@ -1,28 +1,24 @@
 WHITESPACE = _{ " " | "\t" | "\r\n" | "\n"}
 
-char = _{
-    !("\"" | "\\" | "\'") ~ ANY
-    | "\\" ~ ("\"" | "\'" |  "\\" | "/" | "b" | "f" | "n" | "r" | "t")
-    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
-}
+string_lit = _{ string_lit_dq | string_lit_sq }
+string_lit_dq = _{ "\"" ~ string_dq ~ "\"" }
+string_lit_sq = _{ "'" ~ string_sq ~ "'" }
+string_dq = { (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
+string_sq = { (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
 
-string_dq = _{ "\"" ~ key_escaped ~ "\"" }
-string_sq = _{ "'" ~ key_escaped ~ "'" }
-string_quoted = _{ string_dq | string_sq }
-
+element_access = _{ ("." ~ key) | key_brackets }
 index = _{ ASCII_DIGIT+ }
-key = _{ ASCII_ALPHANUMERIC* }
-key_escaped = _{ char* }
-key_brackets = _{ "[" ~ (string_quoted | index) ~ "]" }
+key = _{ (ASCII_ALPHANUMERIC | "_")* }
+key_brackets = _{ "[" ~ (string_lit | index) ~ "]" }
 
-sub_path = _{ key ~ key_brackets* ~ ("." ~ sub_path)* }
+sub_path = _{ key ~ element_access* }
 path = @{ sub_path }
 
 value = @{ (null | boolean | number | string | array | object) }
 
 boolean = @{ "true" | "false" }
 null = @{ "null" }
-string = @{ string_quoted }
+string = @{ string_lit }
 number = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT+)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
 array = @{ "[" ~ (value ~ ("," ~ value)*)* ~ "]" }
 object = @{ "{" ~ (object_inner ~ ("," ~ object_inner)*)* ~ "}" }

@@ -51,7 +51,8 @@ impl KeyParts {
             .into_iter()
             .filter_map(|pair| match pair.as_rule() {
                 Rule::key => Some(KeyPart::Ident(pair.as_str().to_owned())),
-                Rule::key_escaped => Some(KeyPart::Ident(pair.as_str().replace("\\\"", "\""))),
+                Rule::string_dq => Some(KeyPart::Ident(pair.as_str().replace("\\\"", "\""))),
+                Rule::string_sq => Some(KeyPart::Ident(pair.as_str().replace("\\'", "'"))),
                 Rule::index => Some(KeyPart::Index(pair.as_str().parse::<usize>().unwrap())),
                 Rule::EOI => None,
                 _ => unreachable!(),
