@@ -2,6 +2,7 @@
 
 mod error;
 pub(crate) mod key;
+pub(crate) mod sort;
 
 pub use error::*;
 
@@ -13,6 +14,7 @@ use key::KeyFlattener;
 use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Map;
+use sort::ValueSorter;
 use std::iter;
 use std::str::FromStr;
 
@@ -39,6 +41,8 @@ pub enum Transformation {
     Keys,
     /// Delete object keys matching a pattern.
     DeleteKeys(String),
+    /// Sort objects and arrays.
+    Sort(ValueSorter),
 }
 
 impl Transformation {
@@ -61,6 +65,7 @@ impl Transformation {
             Self::ExpandKeys => expand_keys(value),
             Self::Keys => keys(value),
             Self::DeleteKeys(pattern) => delete_keys(value, pattern)?,
+            Self::Sort(sorter) => sort(sorter, value),
         };
 
         Ok(value)
@@ -97,6 +102,14 @@ impl FromStr for Transformation {
                 "d" | "delete-keys" => value
                     .map(|pattern| Self::DeleteKeys(pattern.to_string()))
                     .ok_or_else(|| TransformError::ValueRequired(key.into()))?,
+                "s" | "sort" => {
+                    let sorter = match value {
+                        Some(value) => ValueSorter::from_str(value)?,
+                        None => ValueSorter::default(),
+                    };
+
+                    Self::Sort(sorter)
+                }
                 key => return Err(TransformError::UnknownTransformation(key.into())),
             }
         };
@@ -485,6 +498,12 @@ fn delete_keys_impl(value: Value, regex: &Regex) -> Value {
         ),
         value => value,
     }
+}
+
+/// Recursively sorts all maps and arrays.
+pub fn sort(sorter: &ValueSorter, mut value: Value) -> Value {
+    sorter.sort(&mut value);
+    value
 }
 
 #[cfg(test)]
