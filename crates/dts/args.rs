@@ -16,7 +16,11 @@ use unescape::unescape;
 ///
 /// Refer to the input, transform and output options below.
 #[derive(Parser, Debug)]
-#[clap(name = "dts", version)]
+#[clap(
+    name = "dts",
+    version,
+    after_help = "Hint: `dts -h` only provides a usage summary. Run `dts --help` for the full details to each flag."
+)]
 pub struct Options {
     /// Input sources.
     ///
