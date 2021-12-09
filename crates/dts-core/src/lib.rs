@@ -75,4 +75,7 @@ trait ValueExt {
     /// Deep merges `other` into `self`, replacing all values in `other` that were merged into
     /// `self` with `Value::Null`.
     fn deep_merge(&mut self, other: &mut Value);
+
+    /// Returns true if `self` is `Value::Null` or an empty array or map.
+    fn is_empty(&self) -> bool;
 }

@@ -43,6 +43,15 @@ impl ValueExt for Value {
             (lhs, rhs) => *lhs = std::mem::replace(rhs, Value::Null),
         }
     }
+
+    fn is_empty(&self) -> bool {
+        match self {
+            Value::Null => true,
+            Value::Array(array) if array.is_empty() => true,
+            Value::Object(object) if object.is_empty() => true,
+            _ => false,
+        }
+    }
 }
 
 #[cfg(test)]

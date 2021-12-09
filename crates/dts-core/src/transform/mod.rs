@@ -230,24 +230,14 @@ pub fn remove_empty_values(value: Value) -> Value {
             array
                 .into_iter()
                 .map(remove_empty_values)
-                .filter_map(|value| match value {
-                    Value::Null => None,
-                    Value::Array(array) if array.is_empty() => None,
-                    Value::Object(object) if object.is_empty() => None,
-                    value => Some(value),
-                })
+                .filter(|value| !value.is_empty())
                 .collect(),
         ),
         Value::Object(object) => Value::Object(
             object
                 .into_iter()
                 .map(|(key, value)| (key, remove_empty_values(value)))
-                .filter_map(|(key, value)| match value {
-                    Value::Null => None,
-                    Value::Array(array) if array.is_empty() => None,
-                    Value::Object(object) if object.is_empty() => None,
-                    value => Some((key, value)),
-                })
+                .filter(|(_, value)| !value.is_empty())
                 .collect(),
         ),
         value => value,
