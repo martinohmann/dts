@@ -74,7 +74,7 @@ fn json_to_gron() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-o", "gron"])
+        .args(&["-tF=json", "-o", "gron"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.js").unwrap());

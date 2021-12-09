@@ -1,7 +1,9 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{transform, Encoding, Error, Result, Value, ValueExt};
+use crate::{Encoding, Error, Result, Value, ValueExt};
+use serde_json::Map;
+use std::iter;
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
@@ -258,9 +260,13 @@ where
     }
 
     fn serialize_gron(&mut self, value: &Value) -> Result<()> {
-        let output = transform::flatten_keys(value.clone(), "json")
-            .as_object()
-            .unwrap()
+        // Wrap value into a map with `json` as key if it isn't already an object.
+        let object = match value.as_object() {
+            Some(object) => object.clone(),
+            None => Map::from_iter(iter::once(("json".into(), value.clone()))),
+        };
+
+        let output = object
             .iter()
             .map(|(k, v)| format!("{} = {};\n", k, v))
             .collect::<String>();
