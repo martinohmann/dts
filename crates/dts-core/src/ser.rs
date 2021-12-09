@@ -7,8 +7,9 @@ use crate::{transform, Encoding, Error, Result, Value, ValueExt};
 /// serializing into a certain `Encoding`.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SerializeOptions {
-    /// Pretty print the serialized data if supported by the encoding.
-    pub pretty: bool,
+    /// Emit output data in a compact format. This will disable pretty printing for encodings that
+    /// support it.
+    pub compact: bool,
     /// Append a trailing newline to the serialized data.
     pub newline: bool,
     /// When the input is an array of objects and the output encoding is CSV, the field names of
@@ -39,7 +40,6 @@ impl SerializeOptions {
 ///
 /// let writer = std::io::stdout();
 /// let mut serializer = SerializerBuilder::new()
-///     .pretty(true)
 ///     .newline(true)
 ///     .build(writer);
 /// ```
@@ -54,9 +54,10 @@ impl SerializerBuilder {
         Self::default()
     }
 
-    /// Pretty print the serialized data if supported by the encoding.
-    pub fn pretty(&mut self, yes: bool) -> &mut Self {
-        self.opts.pretty = yes;
+    /// Emit output data in a compact format. This will disable pretty printing for encodings that
+    /// support it.
+    pub fn compact(&mut self, yes: bool) -> &mut Self {
+        self.opts.compact = yes;
         self
     }
 
@@ -130,7 +131,7 @@ where
     /// #
     /// # fn main() -> Result<(), Box<dyn Error>> {
     /// let mut buf = Vec::new();
-    /// let mut ser = SerializerBuilder::new().build(&mut buf);
+    /// let mut ser = SerializerBuilder::new().compact(true).build(&mut buf);
     /// ser.serialize(Encoding::Json, &json!(["foo"]))?;
     ///
     /// assert_eq!(&buf, r#"["foo"]"#.as_bytes());
@@ -162,10 +163,10 @@ where
     }
 
     fn serialize_json(&mut self, value: &Value) -> Result<()> {
-        if self.opts.pretty {
-            serde_json::to_writer_pretty(&mut self.writer, value)?
-        } else {
+        if self.opts.compact {
             serde_json::to_writer(&mut self.writer, value)?
+        } else {
+            serde_json::to_writer_pretty(&mut self.writer, value)?
         }
 
         Ok(())
@@ -174,10 +175,10 @@ where
     fn serialize_toml(&mut self, value: &Value) -> Result<()> {
         let value = toml::Value::try_from(value)?;
 
-        let s = if self.opts.pretty {
-            toml::ser::to_string_pretty(&value)?
-        } else {
+        let s = if self.opts.compact {
             toml::ser::to_string(&value)?
+        } else {
+            toml::ser::to_string_pretty(&value)?
         };
 
         Ok(self.writer.write_all(s.as_bytes())?)
@@ -277,14 +278,14 @@ mod test {
     #[test]
     fn test_serialize_json() {
         let mut buf = Vec::new();
-        let mut ser = Serializer::new(&mut buf);
+        let mut ser = SerializerBuilder::new().compact(true).build(&mut buf);
         ser.serialize(Encoding::Json, &json!(["one", "two"]))
             .unwrap();
         assert_eq!(&buf, "[\"one\",\"two\"]".as_bytes());
 
         buf.clear();
 
-        let mut ser = SerializerBuilder::new().pretty(true).build(&mut buf);
+        let mut ser = SerializerBuilder::new().build(&mut buf);
         ser.serialize(Encoding::Json, &json!(["one", "two"]))
             .unwrap();
         assert_eq!(&buf, "[\n  \"one\",\n  \"two\"\n]".as_bytes());

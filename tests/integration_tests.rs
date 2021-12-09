@@ -30,7 +30,7 @@ fn yaml_to_pretty_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.yaml")
-        .args(&["-o", "json", "-p", "-n"])
+        .args(&["-o", "json", "-n"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.json").unwrap());
@@ -41,7 +41,7 @@ fn json_to_toml() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-o", "toml"])
+        .args(&["-o", "toml", "-c"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.toml").unwrap());
@@ -85,7 +85,7 @@ fn gron_to_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.js")
-        .args(&["-i", "gron", "-p"])
+        .args(&["-i", "gron"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.js.ungron.json").unwrap());
@@ -134,7 +134,7 @@ fn deep_merge_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-p", "-t", "j=.users,f,m", "-n"])
+        .args(&["-t", "j=.users,f,m", "-n"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.merged.json").unwrap());

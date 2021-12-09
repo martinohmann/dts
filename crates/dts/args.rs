@@ -233,9 +233,11 @@ pub struct OutputOptions {
     #[clap(arg_enum, short = 'o', long, setting = ArgSettings::HidePossibleValues)]
     pub output_encoding: Option<Encoding>,
 
-    /// Produce pretty output if supported by the encoder.
-    #[clap(short = 'p', long)]
-    pub pretty: bool,
+    /// Emit output data in a compact format.
+    ///
+    /// This will disable pretty printing for encodings that support it.
+    #[clap(short = 'c', long)]
+    pub compact: bool,
 
     /// Add a trailing newline to the output.
     #[clap(short = 'n', long)]
@@ -262,7 +264,7 @@ pub struct OutputOptions {
 impl From<&OutputOptions> for SerializeOptions {
     fn from(opts: &OutputOptions) -> Self {
         Self {
-            pretty: opts.pretty,
+            compact: opts.compact,
             newline: opts.newline,
             keys_as_csv_headers: opts.keys_as_csv_headers,
             csv_delimiter: opts.csv_output_delimiter,
