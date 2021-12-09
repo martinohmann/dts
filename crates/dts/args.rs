@@ -205,6 +205,18 @@ pub struct TransformOptions {
     /// Option: `d=<pattern>` or `delete-keys=<pattern>`.
     ///
     /// Recursively deletes all object keys matching a regex pattern.
+    ///
+    /// ## Sort
+    ///
+    /// Option: `s[=<order>[:<max-depth>]]` or `sort[=<order>[:<max-depth>]]`.
+    ///
+    /// Sorts collections (arrays and maps) recursively. Supported orders are "asc" and "desc". If
+    /// the order is omitted, the default is "asc".
+    ///
+    /// Optionally accepts a `max-depth` which defines the upper bound for child collections to be
+    /// visited and sorted. A `max-depth` of 0 means that only the top level is sorted. If
+    /// `max-depth` is omitted, the sorter will recursively visit all child collections and sort
+    /// them.
     #[clap(short = 't', long, parse(try_from_str = Transformation::from_str))]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
     pub transform: Vec<Transformation>,

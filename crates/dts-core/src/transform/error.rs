@@ -17,7 +17,13 @@ pub enum TransformError {
     /// Represents a parse error that happens during a transformation operation.
     #[error("Parse error during data transformation")]
     ParseError(#[from] ParseError),
+    /// Represents an invalid sort order.
+    #[error("Invalid sort order `{0}`")]
+    InvalidSortOrder(String),
     /// Represents an error while compiling a regex.
     #[error(transparent)]
     RegexError(#[from] regex::Error),
+    /// Represents an error while parsing an integer.
+    #[error(transparent)]
+    ParseIntError(#[from] std::num::ParseIntError),
 }
