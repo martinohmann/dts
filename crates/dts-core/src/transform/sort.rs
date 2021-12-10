@@ -20,7 +20,7 @@ impl FromStr for Order {
         match s.to_lowercase().as_str() {
             "asc" => Ok(Order::Asc),
             "desc" => Ok(Order::Desc),
-            other => Err(TransformError::InvalidSortOrder(other.into())),
+            other => Err(TransformError::invalid_sort_order(other)),
         }
     }
 }

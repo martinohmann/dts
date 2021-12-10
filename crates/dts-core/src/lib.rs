@@ -51,10 +51,7 @@ where
         let full_pattern = self.as_ref().join(pattern);
 
         glob::glob(&full_pattern.to_string_lossy())
-            .map_err(|e| Error::GlobPatternError {
-                pattern: full_pattern.to_string_lossy().into(),
-                source: e,
-            })?
+            .map_err(|err| Error::glob_pattern(full_pattern.display(), err))?
             .filter_map(|result| match result {
                 Ok(path) => path.is_file().then(|| Ok(path)),
                 Err(err) => Some(Err(err.into_error().into())),

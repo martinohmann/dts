@@ -10,7 +10,7 @@ use clap::Parser;
 use dts_core::{de::Deserializer, ser::Serializer};
 use dts_core::{transform, Encoding, Error, Sink, Source, Value};
 use rayon::prelude::*;
-use std::io::{BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter};
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let encoding = opts
@@ -64,7 +64,7 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
 
     match ser.serialize(encoding, value) {
         Ok(()) => Ok(()),
-        Err(Error::IoError(e)) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
+        Err(Error::Io(err)) if err.kind() == io::ErrorKind::BrokenPipe => Ok(()),
         Err(err) => Err(err),
     }
     .with_context(|| format!("Failed to serialize `{}` to `{}`", encoding, sink))
