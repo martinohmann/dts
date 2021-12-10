@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Display};
 use thiserror::Error;
 
 /// Error emitted by all parsers in this module.
@@ -10,8 +10,11 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    pub(crate) fn new<S: ToString>(kind: ParseErrorKind, msg: S) -> Self {
-        Self {
+    pub(crate) fn new<T>(kind: ParseErrorKind, msg: T) -> ParseError
+    where
+        T: Display,
+    {
+        ParseError {
             kind,
             msg: msg.to_string(),
         }
@@ -27,11 +30,11 @@ pub enum ParseErrorKind {
     Gron,
 }
 
-impl fmt::Display for ParseErrorKind {
+impl Display for ParseErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::FlatKey => write!(f, "flat key"),
-            Self::Gron => write!(f, "gron"),
+            ParseErrorKind::FlatKey => write!(f, "flat key"),
+            ParseErrorKind::Gron => write!(f, "gron"),
         }
     }
 }

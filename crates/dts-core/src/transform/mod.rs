@@ -94,14 +94,14 @@ impl FromStr for Transformation {
                 "F" | "flatten-keys" => Self::FlattenKeys(value.map(|v| v.to_string())),
                 "j" | "jsonpath" => value
                     .map(|query| Self::JsonPath(query.to_string()))
-                    .ok_or_else(|| TransformError::ValueRequired(key.into()))?,
+                    .ok_or_else(|| TransformError::value_required(key))?,
                 "r" | "remove-empty-values" => Self::RemoveEmptyValues,
                 "m" | "deep-merge" => Self::DeepMerge,
                 "e" | "expand-keys" => Self::ExpandKeys,
                 "k" | "keys" => Self::Keys,
                 "d" | "delete-keys" => value
                     .map(|pattern| Self::DeleteKeys(pattern.to_string()))
-                    .ok_or_else(|| TransformError::ValueRequired(key.into()))?,
+                    .ok_or_else(|| TransformError::value_required(key))?,
                 "s" | "sort" => {
                     let sorter = match value {
                         Some(value) => ValueSorter::from_str(value)?,
@@ -110,7 +110,7 @@ impl FromStr for Transformation {
 
                     Self::Sort(sorter)
                 }
-                key => return Err(TransformError::UnknownTransformation(key.into())),
+                key => return Err(TransformError::unknown_transformation(key)),
             }
         };
 
