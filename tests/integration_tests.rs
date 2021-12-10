@@ -108,7 +108,7 @@ fn encoding_required_for_stdin() {
 fn multiple_sinks_require_array() {
     Command::cargo_bin("dts")
         .unwrap()
-        .args(&["-i", "json", "-O", "-", "-"])
+        .args(&["-i", "json", "-O", "-", "-O", "-"])
         .write_stdin("{}")
         .assert()
         .failure()
