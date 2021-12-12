@@ -1,7 +1,7 @@
 # dts
 
 [![Build Status](https://github.com/martinohmann/dts/workflows/ci/badge.svg)](https://github.com/martinohmann/dts/actions?query=workflow%3Aci)
-![GitHub](https://img.shields.io/github/license/martinohmann/dts?color=orange)
+![MIT License](https://img.shields.io/github/license/martinohmann/dts?color=blue)
 
 A simple tool to _**deserialize**_ data from an input encoding, _**transform**_
 it and _**serialize**_ it back into an output encoding.
