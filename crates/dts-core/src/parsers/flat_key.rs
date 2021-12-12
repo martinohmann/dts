@@ -6,7 +6,25 @@ use std::fmt;
 
 #[derive(Parser)]
 #[grammar = "parsers/grammars/flat_key.pest"]
-struct Parser;
+struct FlatKeyParser;
+
+/// Parses `KeyParts` from a `&str`.
+pub fn parse(key: &str) -> Result<KeyParts, ParseError> {
+    let parts = FlatKeyParser::parse(Rule::parts, key)
+        .map_err(|e| ParseError::new(ParseErrorKind::FlatKey, e))?
+        .into_iter()
+        .filter_map(|pair| match pair.as_rule() {
+            Rule::key => Some(KeyPart::Ident(pair.as_str().to_owned())),
+            Rule::string_dq => Some(KeyPart::Ident(pair.as_str().replace("\\\"", "\""))),
+            Rule::string_sq => Some(KeyPart::Ident(pair.as_str().replace("\\'", "'"))),
+            Rule::index => Some(KeyPart::Index(pair.as_str().parse::<usize>().unwrap())),
+            Rule::EOI => None,
+            _ => unreachable!(),
+        })
+        .collect();
+
+    Ok(parts)
+}
 
 #[derive(Debug, PartialEq)]
 pub enum KeyPart {
@@ -44,23 +62,6 @@ impl KeyParts {
     pub fn reverse(&mut self) {
         self.inner.reverse()
     }
-
-    pub fn parse(key: &str) -> Result<Self, ParseError> {
-        let parts = Parser::parse(Rule::parts, key)
-            .map_err(|e| ParseError::new(ParseErrorKind::FlatKey, e))?
-            .into_iter()
-            .filter_map(|pair| match pair.as_rule() {
-                Rule::key => Some(KeyPart::Ident(pair.as_str().to_owned())),
-                Rule::string_dq => Some(KeyPart::Ident(pair.as_str().replace("\\\"", "\""))),
-                Rule::string_sq => Some(KeyPart::Ident(pair.as_str().replace("\\'", "'"))),
-                Rule::index => Some(KeyPart::Index(pair.as_str().parse::<usize>().unwrap())),
-                Rule::EOI => None,
-                _ => unreachable!(),
-            })
-            .collect();
-
-        Ok(parts)
-    }
 }
 
 impl fmt::Display for KeyParts {
@@ -81,7 +82,7 @@ impl FromIterator<KeyPart> for KeyParts {
     }
 }
 
-impl<'a> IntoIterator for KeyParts {
+impl IntoIterator for KeyParts {
     type Item = KeyPart;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -146,13 +147,13 @@ mod test {
 
     #[test]
     fn test_parse() {
-        assert!(KeyParts::parse("foo.[").is_err());
+        assert!(parse("foo.[").is_err());
         assert_eq!(
-            KeyParts::parse("foo").unwrap(),
+            parse("foo").unwrap(),
             KeyParts::from_iter(vec![KeyPart::Ident("foo".into())])
         );
         assert_eq!(
-            KeyParts::parse("foo.bar[5].baz").unwrap(),
+            parse("foo.bar[5].baz").unwrap(),
             KeyParts::from_iter(vec![
                 KeyPart::Ident("foo".into()),
                 KeyPart::Ident("bar".into()),
@@ -161,7 +162,7 @@ mod test {
             ])
         );
         assert_eq!(
-            KeyParts::parse("foo.bar_baz[0]").unwrap(),
+            parse("foo.bar_baz[0]").unwrap(),
             KeyParts::from_iter(vec![
                 KeyPart::Ident("foo".into()),
                 KeyPart::Ident("bar_baz".into()),
@@ -174,7 +175,7 @@ mod test {
     fn test_roundtrip() {
         let s = "foo[\"京\\\"\tasdf\"][0]";
 
-        let parsed = KeyParts::parse(s).unwrap();
+        let parsed = parse(s).unwrap();
 
         let expected = KeyParts::from_iter(vec![
             KeyPart::Ident("foo".into()),

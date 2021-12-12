@@ -6,7 +6,30 @@ use std::slice::Iter;
 
 #[derive(Parser)]
 #[grammar = "parsers/grammars/gron.pest"]
-struct Parser;
+struct GronParser;
+
+/// Parses `Statements` from a `&str`.
+pub fn parse(s: &str) -> Result<Statements<'_>, ParseError> {
+    let statements = GronParser::parse(Rule::statements, s)
+        .map_err(|e| ParseError::new(ParseErrorKind::Gron, e))?
+        .into_iter()
+        .filter_map(|pair| match pair.as_rule() {
+            Rule::statement => {
+                let mut inner = pair.into_inner();
+                // Guaranteed by the grammar that these will exist so unchecked unwrap here is
+                // safe.
+                let path = inner.next().unwrap().as_str();
+                let value = inner.next().unwrap().as_str();
+
+                Some(Statement::new(path, value))
+            }
+            Rule::EOI => None,
+            _ => unreachable!(),
+        })
+        .collect();
+
+    Ok(statements)
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Statement<'a> {
@@ -34,28 +57,6 @@ pub struct Statements<'a> {
 }
 
 impl<'a> Statements<'a> {
-    pub fn parse(s: &'a str) -> Result<Self, ParseError> {
-        let statements = Parser::parse(Rule::statements, s)
-            .map_err(|e| ParseError::new(ParseErrorKind::Gron, e))?
-            .into_iter()
-            .filter_map(|pair| match pair.as_rule() {
-                Rule::statement => {
-                    let mut inner = pair.into_inner();
-                    // Guaranteed by the grammar that these will exist so unchecked unwrap here is
-                    // safe.
-                    let path = inner.next().unwrap().as_str();
-                    let value = inner.next().unwrap().as_str();
-
-                    Some(Statement::new(path, value))
-                }
-                Rule::EOI => None,
-                _ => unreachable!(),
-            })
-            .collect();
-
-        Ok(statements)
-    }
-
     pub fn iter(&self) -> Iter<'a, Statement> {
         self.inner.iter()
     }
@@ -89,15 +90,15 @@ mod test {
     #[test]
     fn test_parse() {
         assert_eq!(
-            Statements::parse("foo.bar = \"baz\";").unwrap(),
+            parse("foo.bar = \"baz\";").unwrap(),
             Statements::from_iter(vec![Statement::new("foo.bar", "\"baz\"")])
         );
         assert_eq!(
-            Statements::parse("foo.bar[5].baz = []").unwrap(),
+            parse("foo.bar[5].baz = []").unwrap(),
             Statements::from_iter(vec![Statement::new("foo.bar[5].baz", "[]")])
         );
         assert_eq!(
-            Statements::parse("foo = \"bar\"; baz = 1").unwrap(),
+            parse("foo = \"bar\"; baz = 1").unwrap(),
             Statements::from_iter(vec![
                 Statement::new("foo", "\"bar\""),
                 Statement::new("baz", "1")

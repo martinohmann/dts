@@ -6,7 +6,7 @@ pub(crate) mod sort;
 
 pub use error::*;
 
-use crate::parsers::flat_key::{KeyPart, KeyParts};
+use crate::parsers::flat_key::{self, KeyPart, KeyParts};
 use crate::{Result, Value, ValueExt};
 use indexmap::IndexMap;
 use jsonpath_rust::JsonPathQuery;
@@ -376,7 +376,7 @@ pub fn expand_keys(value: Value) -> Value {
             .into_iter()
             .collect::<IndexMap<String, Value>>()
             .into_par_iter()
-            .map(|(key, value)| match KeyParts::parse(&key).ok() {
+            .map(|(key, value)| match flat_key::parse(&key).ok() {
                 Some(mut parts) => {
                     parts.reverse();
                     expand_key_parts(&mut parts, value)

@@ -1,7 +1,7 @@
 //! This module provides a `Deserializer` which supports deserializing input data with various
 //! encodings into a `Value`.
 
-use crate::parsers::gron::Statements as GronStatements;
+use crate::parsers::gron;
 use crate::{Encoding, Result, Value, ValueExt};
 use regex::Regex;
 use serde::Deserialize;
@@ -247,7 +247,7 @@ where
         let mut s = String::new();
         self.reader.read_to_string(&mut s)?;
 
-        let map = GronStatements::parse(&s)?
+        let map = gron::parse(&s)?
             .iter()
             .map(|statement| {
                 Ok((
