@@ -10,11 +10,11 @@ struct GronParser;
 
 /// Parses `Statements` from a `&str`.
 pub fn parse(s: &str) -> Result<Statements<'_>, ParseError> {
-    let statements = GronParser::parse(Rule::statements, s)
+    let statements = GronParser::parse(Rule::Statements, s)
         .map_err(|e| ParseError::new(ParseErrorKind::Gron, e))?
         .into_iter()
         .filter_map(|pair| match pair.as_rule() {
-            Rule::statement => {
+            Rule::Statement => {
                 let mut inner = pair.into_inner();
                 // Guaranteed by the grammar that these will exist so unchecked unwrap here is
                 // safe.

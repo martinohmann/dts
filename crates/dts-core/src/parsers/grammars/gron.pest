@@ -1,29 +1,29 @@
 WHITESPACE = _{ " " | "\t" | "\r\n" | "\n"}
 
-string_lit = _{ string_lit_dq | string_lit_sq }
-string_lit_dq = _{ "\"" ~ string_dq ~ "\"" }
-string_lit_sq = _{ "'" ~ string_sq ~ "'" }
-string_dq = { (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
-string_sq = { (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
+StringLit   = _{ StringLitDq | StringLitSq }
+StringLitDq = _{ "\"" ~ StringDq ~ "\"" }
+StringLitSq = _{ "'" ~ StringSq ~ "'" }
+StringDq    =  { (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
+StringSq    =  { (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
 
-element_access = _{ ("." ~ key) | key_brackets }
-index = _{ ASCII_DIGIT+ }
-key = _{ (ASCII_ALPHANUMERIC | "_")* }
-key_brackets = _{ "[" ~ (string_lit | index) ~ "]" }
+ElementAccess = _{ ("." ~ Key) | KeyBrackets }
+Index         = _{ ASCII_DIGIT+ }
+Key           = _{ (ASCII_ALPHANUMERIC | "_")* }
+KeyBrackets   = _{ "[" ~ (StringLit | Index) ~ "]" }
 
-sub_path = _{ key ~ element_access* }
-path = @{ sub_path }
+SubPath = _{ Key ~ ElementAccess* }
+Path    = @{ SubPath }
 
-value = @{ (null | boolean | number | string | array | object) }
+Value = @{ (Null | Boolean | Number | String | Array | Object) }
 
-boolean = @{ "true" | "false" }
-null = @{ "null" }
-string = @{ string_lit }
-number = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT+)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
-array = @{ "[" ~ (value ~ ("," ~ value)*)* ~ "]" }
-object = @{ "{" ~ (object_inner ~ ("," ~ object_inner)*)* ~ "}" }
-object_key = { WHITESPACE* ~ string_dq ~ WHITESPACE* }
-object_inner = { object_key ~ ":" ~ value }
+Boolean     = @{ "true" | "false" }
+Null        = @{ "null" }
+String      = @{ StringLit }
+Number      = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ ("." ~ ASCII_DIGIT+)? ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)? }
+Array       = @{ "[" ~ (Value ~ ("," ~ Value)*)* ~ "]" }
+Object      = @{ "{" ~ (ObjectInner ~ ("," ~ ObjectInner)*)* ~ "}" }
+ObjectKey   =  { WHITESPACE* ~ StringDq ~ WHITESPACE* }
+ObjectInner =  { ObjectKey ~ ":" ~ Value }
 
-statement = { path ~ "=" ~ value ~ ";"? }
-statements = _{ SOI ~ statement* ~ EOI }
+Statement  =  { Path ~ "=" ~ Value ~ ";"? }
+Statements = _{ SOI ~ Statement* ~ EOI }

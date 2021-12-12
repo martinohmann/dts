@@ -10,14 +10,14 @@ struct FlatKeyParser;
 
 /// Parses `KeyParts` from a `&str`.
 pub fn parse(key: &str) -> Result<KeyParts, ParseError> {
-    let parts = FlatKeyParser::parse(Rule::parts, key)
+    let parts = FlatKeyParser::parse(Rule::Parts, key)
         .map_err(|e| ParseError::new(ParseErrorKind::FlatKey, e))?
         .into_iter()
         .filter_map(|pair| match pair.as_rule() {
-            Rule::key => Some(KeyPart::Ident(pair.as_str().to_owned())),
-            Rule::string_dq => Some(KeyPart::Ident(pair.as_str().replace("\\\"", "\""))),
-            Rule::string_sq => Some(KeyPart::Ident(pair.as_str().replace("\\'", "'"))),
-            Rule::index => Some(KeyPart::Index(pair.as_str().parse::<usize>().unwrap())),
+            Rule::Key => Some(KeyPart::Ident(pair.as_str().to_owned())),
+            Rule::StringDq => Some(KeyPart::Ident(pair.as_str().replace("\\\"", "\""))),
+            Rule::StringSq => Some(KeyPart::Ident(pair.as_str().replace("\\'", "'"))),
+            Rule::Index => Some(KeyPart::Index(pair.as_str().parse::<usize>().unwrap())),
             Rule::EOI => None,
             _ => unreachable!(),
         })

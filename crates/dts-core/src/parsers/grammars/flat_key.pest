@@ -1,15 +1,15 @@
 WHITESPACE = _{ " " | "\t" | "\r\n" | "\n"}
 
-string_lit = _{ string_lit_dq | string_lit_sq }
-string_lit_dq = _{ "\"" ~ string_dq ~ "\"" }
-string_lit_sq = _{ "'" ~ string_sq ~ "'" }
-string_dq = { (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
-string_sq = { (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
+StringLit   = _{ StringLitDq | StringLitSq }
+StringLitDq = _{ "\"" ~ StringDq ~ "\"" }
+StringLitSq = _{ "'" ~ StringSq ~ "'" }
+StringDq    =  { (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
+StringSq    =  { (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
 
-element_access = _{ ("." ~ key) | key_brackets }
-index = ${ ASCII_DIGIT+ }
-key = ${ (ASCII_ALPHANUMERIC | "_")* }
-key_brackets = _{ "[" ~ (string_lit | index) ~ "]" }
+ElementAccess = _{ ("." ~ Key) | KeyBrackets }
+Index         = ${ ASCII_DIGIT+ }
+Key           = ${ (ASCII_ALPHANUMERIC | "_")* }
+KeyBrackets   = _{ "[" ~ (StringLit | Index) ~ "]" }
 
-path = _{ key ~ element_access* }
-parts = _{ SOI ~ path ~ EOI }
+Path  = _{ Key ~ ElementAccess* }
+Parts = _{ SOI ~ Path ~ EOI }
