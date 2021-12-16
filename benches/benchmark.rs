@@ -67,6 +67,15 @@ fn benchmark_transform(c: &mut Criterion) {
                        {"bar": {"bar": "qux", "buz": "foo"}, "bar": [2], "baz": 1}]))
         })
     });
+
+    c.bench_function("deserialize_hcl", |b| {
+        let fixture = std::fs::read_to_string("crates/hcl/fixtures/test.tf").unwrap();
+
+        b.iter(|| {
+            let value: hcl::Value = hcl::from_str(&fixture).unwrap();
+            value
+        })
+    });
 }
 
 criterion_group!(benches, benchmark_transform);

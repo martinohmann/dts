@@ -24,6 +24,7 @@ version = "3.0.0-rc.4"
 [dev-dependencies]
 assert_cmd = "2.0.2"
 criterion = "0.3"
+hcl = { path = "crates/hcl" }
 pretty_assertions = "1.0.0"
 predicates = "2.0.3"
 

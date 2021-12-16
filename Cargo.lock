@@ -343,6 +343,7 @@ dependencies = [
  "clap 3.0.0-rc.4",
  "criterion",
  "dts-core",
+ "hcl",
  "predicates",
  "pretty_assertions",
  "rayon",
