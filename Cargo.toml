@@ -12,6 +12,7 @@ members = [
 [dependencies]
 anyhow = "1.0.44"
 atty = "0.2.14"
+clap_generate = "3.0.0-rc.4"
 dts-core = { path = "crates/dts-core" }
 rayon = "1.5.1"
 regex = "1.5.4"

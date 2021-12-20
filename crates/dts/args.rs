@@ -2,6 +2,7 @@
 
 use anyhow::{anyhow, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};
+use clap_generate::Shell;
 use dts_core::{de::DeserializeOptions, ser::SerializeOptions};
 use dts_core::{transform::Transformation, Encoding, Sink, Source};
 use regex::Regex;
@@ -54,6 +55,10 @@ pub struct Options {
     /// Options for serializing the output.
     #[clap(flatten)]
     pub output: OutputOptions,
+
+    /// If provided, outputs the completion file for the given shell.
+    #[clap(long, name = "SHELL", arg_enum)]
+    pub generate_completion: Option<Shell>,
 }
 
 /// Options that configure the behaviour of input deserialization.

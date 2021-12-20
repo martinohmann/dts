@@ -31,7 +31,7 @@ pub enum Encoding {
     /// Plaintext document
     #[clap(alias = "txt")]
     Text,
-    /// Gron <https://github.com/TomNomNom/gron>
+    /// Gron
     Gron,
     /// HCL
     Hcl,

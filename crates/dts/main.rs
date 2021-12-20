@@ -6,7 +6,8 @@ mod args;
 
 use anyhow::{anyhow, Context, Result};
 use args::{InputOptions, Options, OutputOptions, TransformOptions};
-use clap::Parser;
+use clap::{App, IntoApp, Parser};
+use clap_generate::{generate, Shell};
 use dts_core::{de::Deserializer, ser::Serializer};
 use dts_core::{transform, Encoding, Error, Sink, Source, Value};
 use rayon::prelude::*;
@@ -102,8 +103,18 @@ fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Re
         .try_for_each(|(file, value)| serialize(file, value, opts))
 }
 
+fn print_completions(app: &mut App, shell: Shell) {
+    generate(shell, app, app.get_name().to_string(), &mut io::stdout());
+}
+
 fn main() -> Result<()> {
     let opts = Options::parse();
+
+    if let Some(shell) = opts.generate_completion {
+        let mut app = Options::into_app();
+        print_completions(&mut app, shell);
+        std::process::exit(0);
+    }
 
     let mut sources = Vec::with_capacity(opts.sources.len());
 

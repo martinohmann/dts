@@ -189,6 +189,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_generate"
+version = "3.0.0-rc.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdf3ee47de9ce0e5bfb686d0cf84eb9a2d4ee8e6fa78f97267ac0d37e060b9bd"
+dependencies = [
+ "clap 3.0.0-rc.4",
+]
+
+[[package]]
 name = "criterion"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -341,6 +350,7 @@ dependencies = [
  "assert_cmd",
  "atty",
  "clap 3.0.0-rc.4",
+ "clap_generate",
  "criterion",
  "dts-core",
  "hcl",
