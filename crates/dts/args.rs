@@ -6,7 +6,6 @@ use clap_generate::Shell;
 use dts_core::{de::DeserializeOptions, ser::SerializeOptions};
 use dts_core::{transform::Transformation, Encoding, Sink, Source};
 use regex::Regex;
-use std::str::FromStr;
 use unescape::unescape;
 
 /// Simple tool to transcode between different encodings.
@@ -29,7 +28,7 @@ pub struct Options {
     /// many also be remote URLs. Data may also be provided on stdin. If stdin is used in
     /// combination with one or more input files, the data from stdin will be read into the first
     /// element of the resulting array.
-    #[clap(name = "SOURCE")]
+    #[clap(name = "SOURCE", value_hint = ValueHint::AnyPath)]
     pub sources: Vec<Source>,
 
     /// Output sink. Can be specified multiple times. Defaults to stdout if omitted.
@@ -226,7 +225,7 @@ pub struct TransformOptions {
     /// visited and sorted. A `max-depth` of 0 means that only the top level is sorted. If
     /// `max-depth` is omitted, the sorter will recursively visit all child collections and sort
     /// them.
-    #[clap(short = 't', long, parse(try_from_str = Transformation::from_str))]
+    #[clap(short = 't', long)]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
     pub transform: Vec<Transformation>,
 }

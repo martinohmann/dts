@@ -29,7 +29,7 @@ impl ValueExt for Value {
                 rhs.iter_mut().for_each(|(key, value)| {
                     lhs.entry(key)
                         .and_modify(|lhs| lhs.deep_merge(value))
-                        .or_insert_with(|| std::mem::replace(value, Value::Null));
+                        .or_insert_with(|| value.take());
                 });
             }
             (Value::Array(lhs), Value::Array(rhs)) => {
@@ -40,7 +40,7 @@ impl ValueExt for Value {
                     .for_each(|(i, rhs)| lhs[i].deep_merge(rhs));
             }
             (_, Value::Null) => (),
-            (lhs, rhs) => *lhs = std::mem::replace(rhs, Value::Null),
+            (lhs, rhs) => *lhs = rhs.take(),
         }
     }
 
