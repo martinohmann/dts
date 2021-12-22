@@ -1,5 +1,4 @@
-//! dts is a simple command line tool to transcode between different input and output encodings.
-
+#![doc = include_str!("../../README.md")]
 #![deny(missing_docs)]
 
 mod args;
