@@ -147,28 +147,25 @@ pub struct TransformOptions {
     ///
     /// Option: `j=<query>` or `jsonpath=<query>`.
     ///
-    /// Select data from the decoded input via jsonpath query. Can be specified multiple times to
+    /// Selects data from the decoded input via jsonpath query. Can be specified multiple times to
     /// allow starting the filtering from the root element again.
     ///
     /// See <https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators> for supported
     /// operators.
     ///
     /// When using a jsonpath query, the result will always be shaped like an array with zero or
-    /// more elements. See --flatten-arrays if you want to remove one level of nesting on single
-    /// element filter results.
+    /// more elements. See --flatten if you want to remove one level of nesting on single element
+    /// filter results.
     ///
-    /// ## Flatten arrays
+    /// ## Flatten
     ///
-    /// Option: `f` or `flatten-arrays`.
+    /// Option: `f` or `flatten`.
     ///
-    /// Remove one level of nesting if the data is shaped like an array. Can be specified multiple
-    /// times.
+    /// Removes one level of nesting if the data is shaped like an array or one-elemented object.
+    /// Can be specified multiple times.
     ///
-    /// If the has only one element the array will be removed
-    /// entirely, leaving the single element as output.
-    ///
-    /// This is applied as the last transformation before serializing into the output encoding. Can
-    /// be used in combination with --jsonpath to flatten single element filter results.
+    /// If the input is a one-elemented array it will be removed entirely, leaving the single
+    /// element as output.
     ///
     /// ## Flatten keys
     ///

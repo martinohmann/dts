@@ -22,8 +22,8 @@ use std::str::FromStr;
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum Transformation {
-    /// Remove one level of nesting if the data is shaped like an array.
-    FlattenArrays,
+    /// Remove one level of nesting if the data is shaped like an array or one-elemented object.
+    Flatten,
     /// Flattens value to an object with flat keys.
     FlattenKeys(Option<String>),
     /// Filter value according to a jsonpath query.
@@ -54,7 +54,7 @@ impl Transformation {
     /// returns a `TransformError`.
     pub fn apply(&self, value: Value) -> Result<Value, TransformError> {
         let value = match self {
-            Self::FlattenArrays => flatten_arrays(value),
+            Self::Flatten => flatten(value),
             Self::FlattenKeys(prefix) => {
                 flatten_keys(value, prefix.as_ref().unwrap_or(&String::from("data")))
             }
@@ -90,7 +90,7 @@ impl FromStr for Transformation {
             };
 
             match key {
-                "f" | "flatten-arrays" => Self::FlattenArrays,
+                "f" | "flatten" => Self::Flatten,
                 "F" | "flatten-keys" => Self::FlattenKeys(value.map(|v| v.to_string())),
                 "j" | "jsonpath" => value
                     .map(|query| Self::JsonPath(query.to_string()))
@@ -244,18 +244,18 @@ pub fn remove_empty_values(value: Value) -> Value {
     }
 }
 
-/// Remove one level of nesting if the data is shaped like an array.
+/// Removes one level of nesting if the data is shaped like an array or one-elemented object.
 ///
 /// ## Examples
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts_core::transform::flatten_arrays;
+/// use dts_core::transform::flatten;
 /// use serde_json::json;
 ///
 /// let value = json!([["foo"], ["bar"], [["baz"], "qux"]]);
 ///
-/// assert_eq!(flatten_arrays(value), json!(["foo", "bar", ["baz"], "qux"]));
+/// assert_eq!(flatten(value), json!(["foo", "bar", ["baz"], "qux"]));
 /// ```
 ///
 /// If the has only one element the array will be removed entirely, leaving the single element as
@@ -263,29 +263,44 @@ pub fn remove_empty_values(value: Value) -> Value {
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts_core::transform::flatten_arrays;
+/// use dts_core::transform::flatten;
 /// use serde_json::json;
 ///
 /// let value = json!(["foo"]);
 ///
-/// assert_eq!(flatten_arrays(value), json!("foo"));
+/// assert_eq!(flatten(value), json!("foo"));
 /// ```
 ///
-/// Non-array values will be left untouched.
+/// One-element objects will be flattened to their value.
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts_core::transform::flatten_arrays;
+/// use dts_core::transform::flatten;
 /// use serde_json::json;
 ///
 /// let value = json!({"foo": "bar"});
 ///
-/// assert_eq!(flatten_arrays(value), json!({"foo": "bar"}));
+/// assert_eq!(flatten(value), json!("bar"));
 /// ```
-pub fn flatten_arrays(value: Value) -> Value {
+///
+/// Objects with more that one key will be left untouched.
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts_core::transform::flatten;
+/// use serde_json::json;
+///
+/// let value = json!({"foo": "bar", "baz": "qux"});
+///
+/// assert_eq!(flatten(value), json!({"foo": "bar", "baz": "qux"}));
+/// ```
+pub fn flatten(value: Value) -> Value {
     match value {
         Value::Array(array) if array.len() == 1 => array[0].clone(),
         Value::Array(array) => Value::Array(array.iter().flat_map(ValueExt::to_array).collect()),
+        Value::Object(object) if object.len() == 1 => {
+            object.into_iter().next().map(|(_, v)| v).unwrap()
+        }
         value => value,
     }
 }
@@ -514,10 +529,7 @@ mod tests {
             Transformation::from_str("j=$[*]").unwrap(),
             JsonPath("$[*]".into())
         );
-        assert_eq!(
-            Transformation::from_str("flatten-arrays").unwrap(),
-            FlattenArrays
-        );
+        assert_eq!(Transformation::from_str("flatten").unwrap(), Flatten);
         assert_eq!(Transformation::from_str("F").unwrap(), FlattenKeys(None));
         assert_eq!(
             Transformation::from_str("flatten-keys").unwrap(),
@@ -543,11 +555,11 @@ mod tests {
         use Transformation::*;
 
         assert_eq!(
-            Transformation::from_str("F=prefix,r,flatten-arrays,r,jsonpath=$").unwrap(),
+            Transformation::from_str("F=prefix,r,flatten,r,jsonpath=$").unwrap(),
             Transformation::Chain(vec![
                 FlattenKeys(Some("prefix".into())),
                 RemoveEmptyValues,
-                FlattenArrays,
+                Flatten,
                 RemoveEmptyValues,
                 JsonPath("$".into()),
             ])
@@ -569,7 +581,7 @@ mod tests {
             FlattenKeys(None),
             RemoveEmptyValues,
             JsonPath("$['data[2].bar']".into()),
-            FlattenArrays,
+            Flatten,
         ];
 
         assert_eq!(
