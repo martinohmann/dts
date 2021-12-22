@@ -139,3 +139,32 @@ fn deep_merge_json() {
         .success()
         .stdout(read("tests/fixtures/example.merged.json").unwrap());
 }
+
+#[test]
+fn continue_on_error() {
+    // Test for the failure first without the --continue-on-error flag to catch potential
+    // regressions.
+    Command::cargo_bin("dts")
+        .unwrap()
+        .arg("tests/fixtures/example.js")
+        .arg("tests/fixtures/example.json")
+        .args(&["-i", "json", "-t", "j=[*].users,f,m", "-n"])
+        .assert()
+        .failure();
+
+    Command::cargo_bin("dts")
+        .unwrap()
+        .arg("tests/fixtures/example.js")
+        .arg("tests/fixtures/example.json")
+        .args(&[
+            "-i",
+            "json",
+            "-t",
+            "j=[*].users,f,m",
+            "-n",
+            "--continue-on-error",
+        ])
+        .assert()
+        .success()
+        .stdout(read("tests/fixtures/example.merged.json").unwrap());
+}

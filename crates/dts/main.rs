@@ -30,10 +30,23 @@ fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
 }
 
 fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
-    let results = sources
-        .par_iter()
-        .map(|src| deserialize(src, opts).map(|val| (src, val)))
-        .collect::<Result<Vec<_>>>()?;
+    let results = if opts.continue_on_error {
+        sources
+            .par_iter()
+            .filter_map(|src| match deserialize(src, opts) {
+                Ok(val) => Some((src, val)),
+                Err(_) => {
+                    eprintln!("Warning: Source `{}` skipped due to errors", src);
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+    } else {
+        sources
+            .par_iter()
+            .map(|src| deserialize(src, opts).map(|val| (src, val)))
+            .collect::<Result<Vec<_>>>()?
+    };
 
     if opts.file_paths {
         Ok(Value::Object(

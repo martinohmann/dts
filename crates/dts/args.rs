@@ -104,6 +104,16 @@ pub struct InputOptions {
     /// option is ignored.
     #[clap(short = 'P', long)]
     pub file_paths: bool,
+
+    /// Continue on errors that occur while reading or deserializing input data.
+    ///
+    /// If the flag is provided, `dts` will continue to read and deserialize the remaining input
+    /// sources. For example, this is useful if you want to deserialize files using a glob pattern
+    /// and one of the files is malformed. In this case a warning is logged to stderr and the
+    /// source is skipped. This flag is ignored if input is read only from a single source that is
+    /// not a directory.
+    #[clap(short = 'C', long)]
+    pub continue_on_error: bool,
 }
 
 impl From<&InputOptions> for DeserializeOptions {
