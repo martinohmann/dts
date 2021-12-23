@@ -80,10 +80,24 @@ pub fn themes() -> Vec<String> {
 pub fn print_highlighted(buf: &[u8], encoding: Encoding, theme: Option<&str>) -> Result<()> {
     // The pseudo filename will determine the syntax highlighting used by the PrettyPrinter.
     let filename = Path::new("out").with_extension(encoding.as_str());
+    let input = Input::from_bytes(buf).name(filename);
 
-    PrettyPrinter::new()
-        .input(Input::from_bytes(buf).name(filename))
-        .theme(theme.unwrap_or("base16"))
+    let mut printer = PrettyPrinter::new();
+
+    // Check if the printer knows the requested theme, otherwise fall back to the `base16` as
+    // default.
+    let theme = theme
+        .and_then(|requested| {
+            printer
+                .themes()
+                .find(|known| known == &requested)
+                .and(Some(requested))
+        })
+        .unwrap_or("base16");
+
+    printer
+        .input(input)
+        .theme(theme)
         .print()
         .map(|_| ())
         .map_err(|err| anyhow!("{}", err))
