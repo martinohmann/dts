@@ -41,7 +41,7 @@ pub struct Options {
     /// there are more elements than files.
     ///
     /// Passing '-' as filename or providing no output files will write the data to stdout instead.
-    #[clap(short = 'O', long = "sink", name = "SINK", value_hint = ValueHint::FilePath)]
+    #[clap(short = 'O', long = "sink", value_name = "SINK", value_hint = ValueHint::FilePath)]
     #[clap(multiple_occurrences = true)]
     pub sinks: Vec<Sink>,
 
@@ -59,7 +59,7 @@ pub struct Options {
     pub output: OutputOptions,
 
     /// If provided, outputs the completion file for the given shell.
-    #[clap(long, name = "SHELL", arg_enum)]
+    #[clap(arg_enum, long, value_name = "SHELL")]
     pub generate_completion: Option<Shell>,
 }
 
@@ -261,7 +261,7 @@ pub struct OutputOptions {
     ///
     /// Use color `always` to enforce coloring.
     #[cfg(feature = "color")]
-    #[clap(arg_enum, long, name = "WHEN")]
+    #[clap(arg_enum, long, value_name = "WHEN")]
     #[clap(default_value = "auto", env = "DTS_COLOR")]
     pub color: ColorChoice,
 
@@ -274,7 +274,7 @@ pub struct OutputOptions {
 
     /// List available color themes and exit.
     #[cfg(feature = "color")]
-    #[clap(long)]
+    #[clap(long, conflicts_with = "generate-completion")]
     pub list_themes: bool,
 
     /// Emit output data in a compact format.
