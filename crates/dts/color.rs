@@ -1,9 +1,8 @@
+use anyhow::{anyhow, Result};
+use bat::{assets::HighlightingAssets, Input, PrettyPrinter};
 use clap::ArgEnum;
-use std::env;
-use std::fmt;
-
-// Re-exports
-pub use bat::{assets::HighlightingAssets, Input, PrettyPrinter};
+use dts_core::Encoding;
+use std::{env, fmt, path::Path};
 
 /// ColorChoice represents the color preference of a user.
 #[derive(ArgEnum, Debug, PartialEq, Clone)]
@@ -66,4 +65,26 @@ impl fmt::Display for ColorChoice {
             ColorChoice::Never => f.write_str("never"),
         }
     }
+}
+
+/// Returns the names of the themes available for syntax highlighting.
+pub fn themes() -> Vec<String> {
+    HighlightingAssets::from_binary()
+        .themes()
+        .map(|theme| theme.to_string())
+        .collect()
+}
+
+/// Applies syntax highlighting to the contents of `buf` based on the `Encoding` and theme and
+/// prints the result to stdout.
+pub fn print_highlighted(buf: &[u8], encoding: Encoding, theme: Option<&str>) -> Result<()> {
+    // The pseudo filename will determine the syntax highlighting used by the PrettyPrinter.
+    let filename = Path::new("out").with_extension(encoding.as_str());
+
+    PrettyPrinter::new()
+        .input(Input::from_bytes(buf).name(filename))
+        .theme(theme.unwrap_or("base16"))
+        .print()
+        .map(|_| ())
+        .map_err(|err| anyhow!("{}", err))
 }
