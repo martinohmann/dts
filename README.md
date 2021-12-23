@@ -78,6 +78,19 @@ Right now `dts` supports the following encodings:
 - Gron
 - HCL _(deserialize only)_
 
+## Cargo features
+
+Support for colored output is provided by the `color` feature which is enabled
+by default. The feature increases binary size and may be disabled via:
+
+```sh
+cargo build --no-default-features --release
+```
+
+If you just want to disable colors by default with the option to enable them
+conditionally, you can also set the [`NO_COLOR`](https://no-color.org/)
+environment variable or set `DTS_COLOR=never`.
+
 ## License
 
 The source code of dts is released under the MIT License. See the bundled

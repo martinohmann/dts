@@ -8,6 +8,9 @@ use dts_core::{transform::Transformation, Encoding, Sink, Source};
 use regex::Regex;
 use unescape::unescape;
 
+#[cfg(feature = "color")]
+use crate::color::ColorChoice;
+
 /// Simple tool to transcode between different encodings.
 ///
 /// The tool first deserializes data from the input data into an internal representation which
@@ -247,6 +250,29 @@ pub struct OutputOptions {
     /// extension (or the output is stdout), the fallback is to encode output as JSON.
     #[clap(arg_enum, short = 'o', long, setting = ArgSettings::HidePossibleValues)]
     pub output_encoding: Option<Encoding>,
+
+    /// Controls when to use colors.
+    ///
+    /// The default setting is `auto`, which means dts will try to guess when to use colors. For
+    /// example, if dts is printing to a terminal, then it will use colors, but if it is redirected
+    /// to a file or a pipe, then it will suppress color output. Output is also not colored if the
+    /// TERM environment variable isn't set or the terminal is `dumb`.
+    #[cfg(feature = "color")]
+    #[clap(arg_enum, long, name = "WHEN")]
+    #[clap(default_value = "auto", env = "DTS_COLOR")]
+    pub color: ColorChoice,
+
+    /// Controls the color theme to use.
+    ///
+    /// See --list-themes for available color themes.
+    #[cfg(feature = "color")]
+    #[clap(long, env = "DTS_THEME")]
+    pub theme: Option<String>,
+
+    /// List available color themes and exit.
+    #[cfg(feature = "color")]
+    #[clap(long)]
+    pub list_themes: bool,
 
     /// Emit output data in a compact format.
     ///

@@ -5,12 +5,18 @@ mod args;
 
 use anyhow::{anyhow, Context, Result};
 use args::{InputOptions, Options, OutputOptions, TransformOptions};
+
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
 use dts_core::{de::Deserializer, ser::Serializer};
 use dts_core::{transform, Encoding, Error, Sink, Source, Value};
 use rayon::prelude::*;
 use std::io::{self, BufReader, BufWriter};
+
+#[cfg(feature = "color")]
+mod color;
+#[cfg(feature = "color")]
+use std::path::Path;
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let encoding = opts
@@ -63,6 +69,67 @@ fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
     transform::apply_chain(&opts.transform, value).context("Failed to transform value")
 }
 
+fn serialize_writer<W>(
+    writer: W,
+    encoding: Encoding,
+    value: &Value,
+    opts: &OutputOptions,
+) -> Result<()>
+where
+    W: io::Write,
+{
+    let mut ser = Serializer::with_options(BufWriter::new(writer), opts.into());
+
+    match ser.serialize(encoding, value) {
+        Ok(()) => Ok(()),
+        Err(Error::Io(err)) if err.kind() == io::ErrorKind::BrokenPipe => Ok(()),
+        Err(err) => Err(err.into()),
+    }
+}
+
+#[cfg(feature = "color")]
+fn serialize_colored(encoding: Encoding, value: &Value, opts: &OutputOptions) -> Result<()> {
+    let mut buf = Vec::with_capacity(256);
+
+    serialize_writer(&mut buf, encoding, value, opts)?;
+
+    // Pseudo filename which will determine the syntax highlighting used by the PrettyPrinter.
+    let filename = Path::new("out").with_extension(encoding.as_str());
+
+    // The PrettyPrinter will always write to io::Stdout.
+    let mut printer = color::PrettyPrinter::new();
+
+    printer
+        .input(color::Input::from_bytes(&buf).name(filename))
+        .theme(opts.theme.as_deref().unwrap_or("base16"))
+        .print()
+        .map(|_| ())
+        .map_err(|err| anyhow!("{}", err))
+}
+
+#[cfg(feature = "color")]
+fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
+    let encoding = opts
+        .output_encoding
+        .or_else(|| sink.encoding())
+        .unwrap_or(Encoding::Json);
+
+    let res = if sink == &Sink::Stdout && opts.color.should_colorize() {
+        // Slow colorful path.
+        serialize_colored(encoding, value, opts)
+    } else {
+        // Fast path.
+        let writer = sink
+            .to_writer()
+            .with_context(|| format!("Failed to create writer for sink `{}`", sink))?;
+
+        serialize_writer(writer, encoding, value, opts)
+    };
+
+    res.with_context(|| format!("Failed to serialize `{}` to `{}`", encoding, sink))
+}
+
+#[cfg(not(feature = "color"))]
 fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
     let encoding = opts
         .output_encoding
@@ -73,14 +140,8 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
         .to_writer()
         .with_context(|| format!("Failed to create writer for sink `{}`", sink))?;
 
-    let mut ser = Serializer::with_options(BufWriter::new(writer), opts.into());
-
-    match ser.serialize(encoding, value) {
-        Ok(()) => Ok(()),
-        Err(Error::Io(err)) if err.kind() == io::ErrorKind::BrokenPipe => Ok(()),
-        Err(err) => Err(err),
-    }
-    .with_context(|| format!("Failed to serialize `{}` to `{}`", encoding, sink))
+    serialize_writer(writer, encoding, value, opts)
+        .with_context(|| format!("Failed to serialize `{}` to `{}`", encoding, sink))
 }
 
 fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Result<()> {
@@ -125,6 +186,13 @@ fn main() -> Result<()> {
     if let Some(shell) = opts.generate_completion {
         let mut app = Options::into_app();
         print_completions(&mut app, shell);
+        std::process::exit(0);
+    }
+
+    #[cfg(feature = "color")]
+    if opts.output.list_themes {
+        let assets = color::HighlightingAssets::from_binary();
+        assets.themes().for_each(|theme| println!("{}", theme));
         std::process::exit(0);
     }
 
