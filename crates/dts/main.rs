@@ -5,13 +5,13 @@ mod args;
 
 use anyhow::{anyhow, Context, Result};
 use args::{InputOptions, Options, OutputOptions, TransformOptions};
-
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
 use dts_core::{de::Deserializer, ser::Serializer};
 use dts_core::{transform, Encoding, Error, Sink, Source, Value};
 use rayon::prelude::*;
-use std::io::{self, BufReader, BufWriter, Write};
+use std::fs::File;
+use std::io::{self, BufReader, BufWriter};
 
 #[cfg(feature = "color")]
 mod color;
@@ -73,70 +73,35 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
         .or_else(|| sink.encoding())
         .unwrap_or(Encoding::Json);
 
-    serialize_impl(sink, encoding, value, opts)
-        .with_context(|| format!("Failed to serialize `{}` to `{}`", encoding, sink))
-}
-
-#[cfg(feature = "color")]
-fn serialize_impl(
-    sink: &Sink,
-    encoding: Encoding,
-    value: &Value,
-    opts: &OutputOptions,
-) -> Result<()> {
-    let mut writer = sink
-        .to_writer()
-        .with_context(|| format!("Failed to create writer for sink `{}`", sink))?;
-
-    if sink == &Sink::Stdout && opts.color.should_colorize() {
-        // Slow colorful path.
-        let mut buf = Vec::with_capacity(256);
-
-        serialize_writer(&mut buf, encoding, value, opts)?;
-
-        // Only highlight if the buffer is <= 1MB or the user specified to always use colors.
-        // Syntax highlighting of multiple thousand lines is slow.
-        if opts.color == color::ColorChoice::Always || buf.len() <= 1_048_576 {
-            color::print_highlighted(&buf, encoding, opts.theme.as_deref())
-        } else {
-            Ok(writer.write_all(&buf)?)
+    let writer: Box<dyn io::Write> = match sink {
+        Sink::Stdout => {
+            #[cfg(feature = "color")]
+            {
+                Box::new(color::StdoutWriter::new(
+                    opts.color,
+                    encoding,
+                    opts.theme.as_deref(),
+                ))
+            }
+            #[cfg(not(feature = "color"))]
+            {
+                Box::new(io::stdout())
+            }
         }
-    } else {
-        // Fast path.
-        serialize_writer(writer, encoding, value, opts)
-    }
-}
+        Sink::Path(path) => Box::new(
+            File::create(path)
+                .with_context(|| format!("Failed to create writer for sink `{}`", sink))?,
+        ),
+    };
 
-#[cfg(not(feature = "color"))]
-fn serialize_impl(
-    sink: &Sink,
-    encoding: Encoding,
-    value: &Value,
-    opts: &OutputOptions,
-) -> Result<()> {
-    let writer = sink
-        .to_writer()
-        .with_context(|| format!("Failed to create writer for sink `{}`", sink))?;
-
-    serialize_writer(writer, encoding, value, opts)
-}
-
-fn serialize_writer<W>(
-    writer: W,
-    encoding: Encoding,
-    value: &Value,
-    opts: &OutputOptions,
-) -> Result<()>
-where
-    W: io::Write,
-{
     let mut ser = Serializer::with_options(BufWriter::new(writer), opts.into());
 
     match ser.serialize(encoding, value) {
         Ok(()) => Ok(()),
         Err(Error::Io(err)) if err.kind() == io::ErrorKind::BrokenPipe => Ok(()),
-        Err(err) => Err(err.into()),
+        Err(err) => Err(err),
     }
+    .with_context(|| format!("Failed to serialize `{}` to `{}`", encoding, sink))
 }
 
 fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Result<()> {
