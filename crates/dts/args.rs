@@ -1,5 +1,8 @@
 //! Command line arguments for dts.
 
+#[cfg(feature = "color")]
+use crate::color::ColorChoice;
+use crate::paging::PagingChoice;
 use anyhow::{anyhow, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};
 use clap_generate::Shell;
@@ -7,9 +10,6 @@ use dts_core::{de::DeserializeOptions, ser::SerializeOptions};
 use dts_core::{transform::Transformation, Encoding, Sink, Source};
 use regex::Regex;
 use unescape::unescape;
-
-#[cfg(feature = "color")]
-use crate::color::ColorChoice;
 
 /// Simple tool to transcode between different encodings.
 ///
@@ -256,8 +256,7 @@ pub struct OutputOptions {
     /// The default setting is `auto`, which means dts will try to guess when to use colors. For
     /// example, if dts is printing to a terminal, then it will use colors, but if it is redirected
     /// to a file or a pipe, then it will suppress color output. Output is also not colored if the
-    /// TERM environment variable isn't set or the terminal is `dumb` or if the buffer to be colored
-    /// is larger than 1MB.
+    /// TERM environment variable isn't set or the terminal is `dumb`.
     ///
     /// Use color `always` to enforce coloring.
     #[cfg(feature = "color")]
@@ -276,6 +275,24 @@ pub struct OutputOptions {
     #[cfg(feature = "color")]
     #[clap(long, conflicts_with = "generate-completion")]
     pub list_themes: bool,
+
+    /// Controls when to page output.
+    ///
+    /// The default setting is `auto`, which means dts will try to guess when to page output. For
+    /// example, if the output does fit onto the screen it may not be paged depending on the pager
+    /// in use.
+    ///
+    /// Use paging `always` to enforce paging even if the output fits onto the screen.
+    #[clap(arg_enum, long, value_name = "WHEN")]
+    #[clap(default_value = "auto", env = "DTS_PAGING")]
+    pub paging: PagingChoice,
+
+    /// Controls the output pager to use.
+    ///
+    /// By default the pager configured via the `PAGER` environment variable will be used. The
+    /// fallback is `less`.
+    #[clap(long, env = "DTS_PAGER")]
+    pub pager: Option<String>,
 
     /// Emit output data in a compact format.
     ///

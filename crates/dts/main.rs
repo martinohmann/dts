@@ -4,15 +4,19 @@
 mod args;
 #[cfg(feature = "color")]
 mod color;
+mod no_color;
+mod paging;
 
 use anyhow::{anyhow, Context, Result};
 use args::{InputOptions, Options, OutputOptions, TransformOptions};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
 #[cfg(feature = "color")]
-use color::{ColorConfig, StdoutWriter};
+use color::ColoredStdoutWriter;
 use dts_core::{de::Deserializer, ser::Serializer};
 use dts_core::{transform, Encoding, Error, Sink, Source, Value};
+use no_color::StdoutWriter;
+use paging::PagingConfig;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
@@ -74,18 +78,23 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
         .or_else(|| sink.encoding())
         .unwrap_or(Encoding::Json);
 
+    let paging_config = PagingConfig::new(opts.paging, opts.pager.as_deref());
+
     let writer: Box<dyn io::Write> = match sink {
+        #[cfg(feature = "color")]
         Sink::Stdout => {
-            #[cfg(feature = "color")]
-            {
-                let color_config = ColorConfig::new(opts.color, opts.theme.as_deref());
-                Box::new(StdoutWriter::new(encoding, color_config))
-            }
-            #[cfg(not(feature = "color"))]
-            {
-                Box::new(io::stdout())
+            if opts.color.should_colorize() {
+                Box::new(ColoredStdoutWriter::new(
+                    encoding,
+                    opts.theme.as_deref(),
+                    paging_config,
+                ))
+            } else {
+                Box::new(StdoutWriter::new(paging_config))
             }
         }
+        #[cfg(not(feature = "color"))]
+        Sink::Stdout => Box::new(StdoutWriter::new(paging_config)),
         Sink::Path(path) => Box::new(
             File::create(path)
                 .with_context(|| format!("Failed to create writer for sink `{}`", sink))?,

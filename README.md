@@ -15,7 +15,7 @@ This is the only install option available right now.
 Clone the repository and run:
 
 ```sh
-cargo install --path .
+cargo install --locked --path .
 ```
 
 ## Usage

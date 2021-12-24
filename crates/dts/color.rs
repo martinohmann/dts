@@ -1,6 +1,7 @@
 //! Utilities to facilitate colorful output.
 
-use bat::{assets::HighlightingAssets, Input, PrettyPrinter};
+use crate::paging::{PagingChoice, PagingConfig};
+use bat::{assets::HighlightingAssets, Input, PagingMode, PrettyPrinter};
 use clap::ArgEnum;
 use dts_core::Encoding;
 use std::io::{self, Write};
@@ -58,21 +59,46 @@ impl ColorChoice {
     }
 }
 
-/// ColorConfig holds configuration related to output coloring.
-pub struct ColorConfig<'a> {
-    choice: ColorChoice,
-    theme: Option<&'a str>,
+/// Returns the names of the themes available for syntax highlighting.
+pub fn themes() -> Vec<String> {
+    HighlightingAssets::from_binary()
+        .themes()
+        .map(|theme| theme.to_string())
+        .collect()
 }
 
-impl<'a> ColorConfig<'a> {
-    /// Creates a new `ColorConfig` with given `ColorChoice` and an optional theme.
-    pub fn new(choice: ColorChoice, theme: Option<&'a str>) -> Self {
-        ColorConfig { choice, theme }
+/// ColoredStdoutWriter writes data to stdout and may or may not colorize it.
+pub struct ColoredStdoutWriter<'a> {
+    encoding: Encoding,
+    theme: Option<&'a str>,
+    buf: Option<Vec<u8>>,
+    paging_config: PagingConfig<'a>,
+}
+
+impl<'a> ColoredStdoutWriter<'a> {
+    /// Creates a new `ColoredStdoutWriter` which may colorize output using the provided `Encoding` hint
+    /// based on the `ColorConfig`.
+    pub fn new(
+        encoding: Encoding,
+        theme: Option<&'a str>,
+        paging_config: PagingConfig<'a>,
+    ) -> Self {
+        ColoredStdoutWriter {
+            encoding,
+            theme,
+            buf: Some(Vec::with_capacity(256)),
+            paging_config,
+        }
     }
 
-    /// Returns the color theme that should be used to color the output. Checks if the
-    /// `PrettyPrinter` knows the requested theme, otherwise fall back to `base16` as default.
-    pub fn theme(&self, printer: &PrettyPrinter) -> &str {
+    // The pseudo filename will determine the syntax highlighting used by the PrettyPrinter.
+    fn pseudo_filename(&self) -> PathBuf {
+        Path::new("out").with_extension(self.encoding.as_str())
+    }
+
+    // Returns the color theme that should be used to color the output. Checks if the
+    // `PrettyPrinter` knows the requested theme, otherwise fall back to `base16` as default.
+    fn theme(&self, printer: &PrettyPrinter) -> &str {
         self.theme
             .and_then(|requested| {
                 printer
@@ -83,55 +109,25 @@ impl<'a> ColorConfig<'a> {
             .unwrap_or("base16")
     }
 
-    /// Returns a reference to the `ColorChoice`.
-    pub fn color_choice(&self) -> &ColorChoice {
-        &self.choice
-    }
-}
+    // Returns a suitable output pager. Since we are using the `bat` pretty printer we have to
+    // ensure that the pager is not `bat` itself. In this case we'll just fall back to using the
+    // default pager.
+    fn pager(&self) -> String {
+        let pager = self.paging_config.pager();
 
-/// Returns the names of the themes available for syntax highlighting.
-pub fn themes() -> Vec<String> {
-    HighlightingAssets::from_binary()
-        .themes()
-        .map(|theme| theme.to_string())
-        .collect()
-}
-
-/// StdoutWriter writes data to stdout and may or may not colorize it.
-pub struct StdoutWriter<'a> {
-    color_config: ColorConfig<'a>,
-    encoding: Encoding,
-    buf: Option<Vec<u8>>,
-}
-
-impl<'a> StdoutWriter<'a> {
-    /// Creates a new `StdoutWriter` which may colorize output using the provided `Encoding` hint
-    /// based on the `ColorConfig`.
-    pub fn new(encoding: Encoding, color_config: ColorConfig<'a>) -> Self {
-        StdoutWriter {
-            color_config,
-            encoding,
-            buf: Some(Vec::with_capacity(256)),
-        }
-    }
-
-    // The pseudo filename will determine the syntax highlighting used by the PrettyPrinter.
-    fn pseudo_filename(&self) -> PathBuf {
-        Path::new("out").with_extension(self.encoding.as_str())
-    }
-
-    fn should_colorize(&self, buf: &[u8]) -> bool {
-        let choice = self.color_config.color_choice();
-
-        match choice {
-            ColorChoice::Always => true,
-            ColorChoice::Never => false,
-            ColorChoice::Auto => {
-                // Only highlight if the buffer is <= 1MB by default.
-                // Syntax highlighting of multiple thousand lines is slow.
-                choice.should_colorize() && buf.len() <= 1_048_576
+        if let Ok(parts) = shell_words::split(&pager) {
+            if let Some((cmd, _)) = parts.split_first() {
+                if !Path::new(cmd).ends_with("bat") {
+                    return pager;
+                }
             }
         }
+
+        self.paging_config.default_pager()
+    }
+
+    fn paging_mode(&self) -> PagingMode {
+        self.paging_config.paging_choice().into()
     }
 
     fn flush_buf(&self, buf: &[u8]) -> io::Result<()> {
@@ -139,26 +135,29 @@ impl<'a> StdoutWriter<'a> {
             return Ok(());
         }
 
-        if !self.should_colorize(buf) {
-            return io::stdout().write_all(buf);
-        }
-
         let mut printer = PrettyPrinter::new();
-        let theme = self.color_config.theme(&printer);
+
+        let theme = self.theme(&printer);
         let input = Input::from_bytes(buf).name(self.pseudo_filename());
 
-        match printer.input(input).theme(theme).print() {
+        match printer
+            .paging_mode(self.paging_mode())
+            .pager(&self.pager())
+            .input(input)
+            .theme(theme)
+            .print()
+        {
             Ok(_) => Ok(()),
             Err(err) => Err(io::Error::new(io::ErrorKind::Other, err.to_string())),
         }
     }
 }
 
-impl<'a> io::Write for StdoutWriter<'a> {
+impl<'a> io::Write for ColoredStdoutWriter<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.buf.as_mut() {
             Some(w) => w.write(buf),
-            None => panic!("StdoutWriter was already flushed"),
+            None => panic!("ColoredStdoutWriter was already flushed"),
         }
     }
 
@@ -170,8 +169,18 @@ impl<'a> io::Write for StdoutWriter<'a> {
     }
 }
 
-impl<'a> Drop for StdoutWriter<'a> {
+impl<'a> Drop for ColoredStdoutWriter<'a> {
     fn drop(&mut self) {
         let _ = self.flush();
+    }
+}
+
+impl From<PagingChoice> for PagingMode {
+    fn from(choice: PagingChoice) -> Self {
+        match choice {
+            PagingChoice::Always => PagingMode::Always,
+            PagingChoice::Auto => PagingMode::QuitIfOneScreen,
+            PagingChoice::Never => PagingMode::Never,
+        }
     }
 }
