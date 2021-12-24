@@ -2,19 +2,20 @@
 #![deny(missing_docs)]
 
 mod args;
+#[cfg(feature = "color")]
+mod color;
 
 use anyhow::{anyhow, Context, Result};
 use args::{InputOptions, Options, OutputOptions, TransformOptions};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
+#[cfg(feature = "color")]
+use color::{ColorConfig, StdoutWriter};
 use dts_core::{de::Deserializer, ser::Serializer};
 use dts_core::{transform, Encoding, Error, Sink, Source, Value};
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
-
-#[cfg(feature = "color")]
-mod color;
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let encoding = opts
@@ -77,11 +78,8 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
         Sink::Stdout => {
             #[cfg(feature = "color")]
             {
-                Box::new(color::StdoutWriter::new(
-                    opts.color,
-                    encoding,
-                    opts.theme.as_deref(),
-                ))
+                let color_config = ColorConfig::new(opts.color, opts.theme.as_deref());
+                Box::new(StdoutWriter::new(encoding, color_config))
             }
             #[cfg(not(feature = "color"))]
             {

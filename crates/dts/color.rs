@@ -58,42 +58,21 @@ impl ColorChoice {
     }
 }
 
-/// Returns the names of the themes available for syntax highlighting.
-pub fn themes() -> Vec<String> {
-    HighlightingAssets::from_binary()
-        .themes()
-        .map(|theme| theme.to_string())
-        .collect()
-}
-
-/// StdoutWriter writes data to stdout and may or may not colorize it.
-pub struct StdoutWriter<'a> {
-    color_choice: ColorChoice,
-    encoding: Encoding,
+/// ColorConfig holds configuration related to output coloring.
+pub struct ColorConfig<'a> {
+    choice: ColorChoice,
     theme: Option<&'a str>,
-    buf: Option<Vec<u8>>,
 }
 
-impl<'a> StdoutWriter<'a> {
-    /// Creates a new `StdoutWriter` which may colorize output using the provided theme and
-    /// `Encoding` hint based on the `ColorChoice`.
-    pub fn new(color_choice: ColorChoice, encoding: Encoding, theme: Option<&'a str>) -> Self {
-        StdoutWriter {
-            color_choice,
-            encoding,
-            theme,
-            buf: Some(Vec::with_capacity(256)),
-        }
+impl<'a> ColorConfig<'a> {
+    /// Creates a new `ColorConfig` with given `ColorChoice` and an optional theme.
+    pub fn new(choice: ColorChoice, theme: Option<&'a str>) -> Self {
+        ColorConfig { choice, theme }
     }
 
-    // The pseudo filename will determine the syntax highlighting used by the PrettyPrinter.
-    fn pseudo_filename(&self) -> PathBuf {
-        Path::new("out").with_extension(self.encoding.as_str())
-    }
-
-    // Checks if the `PrettyPrinter` knows the requested theme, otherwise fall back to `base16` as
-    // default.
-    fn theme(&self, printer: &PrettyPrinter) -> &str {
+    /// Returns the color theme that should be used to color the output. Checks if the
+    /// `PrettyPrinter` knows the requested theme, otherwise fall back to `base16` as default.
+    pub fn theme(&self, printer: &PrettyPrinter) -> &str {
         self.theme
             .and_then(|requested| {
                 printer
@@ -104,14 +83,53 @@ impl<'a> StdoutWriter<'a> {
             .unwrap_or("base16")
     }
 
+    /// Returns a reference to the `ColorChoice`.
+    pub fn color_choice(&self) -> &ColorChoice {
+        &self.choice
+    }
+}
+
+/// Returns the names of the themes available for syntax highlighting.
+pub fn themes() -> Vec<String> {
+    HighlightingAssets::from_binary()
+        .themes()
+        .map(|theme| theme.to_string())
+        .collect()
+}
+
+/// StdoutWriter writes data to stdout and may or may not colorize it.
+pub struct StdoutWriter<'a> {
+    color_config: ColorConfig<'a>,
+    encoding: Encoding,
+    buf: Option<Vec<u8>>,
+}
+
+impl<'a> StdoutWriter<'a> {
+    /// Creates a new `StdoutWriter` which may colorize output using the provided `Encoding` hint
+    /// based on the `ColorConfig`.
+    pub fn new(encoding: Encoding, color_config: ColorConfig<'a>) -> Self {
+        StdoutWriter {
+            color_config,
+            encoding,
+            buf: Some(Vec::with_capacity(256)),
+        }
+    }
+
+    // The pseudo filename will determine the syntax highlighting used by the PrettyPrinter.
+    fn pseudo_filename(&self) -> PathBuf {
+        Path::new("out").with_extension(self.encoding.as_str())
+    }
+
     fn should_colorize(&self, buf: &[u8]) -> bool {
-        match self.color_choice {
+        let choice = self.color_config.color_choice();
+
+        match choice {
             ColorChoice::Always => true,
             ColorChoice::Never => false,
             ColorChoice::Auto => {
                 // Only highlight if the buffer is <= 1MB by default.
                 // Syntax highlighting of multiple thousand lines is slow.
-                self.color_choice.should_colorize() && buf.len() <= 1_048_576
+                choice.should_colorize() && buf.len() <= 1_048_576
             }
         }
     }
@@ -126,7 +144,7 @@ impl<'a> StdoutWriter<'a> {
         }
 
         let mut printer = PrettyPrinter::new();
-        let theme = self.theme(&printer);
+        let theme = self.color_config.theme(&printer);
         let input = Input::from_bytes(buf).name(self.pseudo_filename());
 
         match printer.input(input).theme(theme).print() {
