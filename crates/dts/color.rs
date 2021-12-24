@@ -122,17 +122,17 @@ impl<'a> StdoutWriter<'a> {
             return Ok(());
         }
 
-        if self.should_colorize(buf) {
-            let mut printer = PrettyPrinter::new();
-            let theme = self.theme(&printer);
-            let input = Input::from_bytes(buf).name(self.pseudo_filename());
+        if !self.should_colorize(buf) {
+            return io::stdout().write_all(buf);
+        }
 
-            match printer.input(input).theme(theme).print() {
-                Ok(_) => Ok(()),
-                Err(err) => Err(io::Error::new(io::ErrorKind::Other, err.to_string())),
-            }
-        } else {
-            io::stdout().write_all(buf)
+        let mut printer = PrettyPrinter::new();
+        let theme = self.theme(&printer);
+        let input = Input::from_bytes(buf).name(self.pseudo_filename());
+
+        match printer.input(input).theme(theme).print() {
+            Ok(_) => Ok(()),
+            Err(err) => Err(io::Error::new(io::ErrorKind::Other, err.to_string())),
         }
     }
 }
