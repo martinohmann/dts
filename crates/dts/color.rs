@@ -1,3 +1,5 @@
+//! Utilities to facilitate colorful output.
+
 use bat::{assets::HighlightingAssets, Input, PrettyPrinter};
 use clap::ArgEnum;
 use dts_core::Encoding;
