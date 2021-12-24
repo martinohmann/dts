@@ -95,7 +95,6 @@ impl<'a> StdoutWriter<'a> {
     // default.
     fn theme(&self, printer: &PrettyPrinter) -> &str {
         self.theme
-            .as_deref()
             .and_then(|requested| {
                 printer
                     .themes()
