@@ -23,7 +23,8 @@ pest_derive = "2.1.0"
 rayon = "1.5.1"
 
 [dependencies.clap]
-features = ["derive"]
+default-features = false
+features = ["std", "derive"]
 version = "= 3.0.0-rc.7"
 
 [dependencies.indexmap]
