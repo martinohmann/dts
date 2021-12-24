@@ -63,6 +63,23 @@ Read data from stdin:
 echo '{"foo": {"bar": "baz"}}' | dts -i json -tF,r -o yaml
 ```
 
+## Output colors and themes
+
+`dts` supports output coloring and syntax highlighting. The coloring behaviour
+can be controlled via the `--color` flag or `DTS_COLOR` environment variable.
+
+If the default theme used for syntax highlighting does not suit you, you can
+change it via the `--theme` flag or `DTS_THEME` environment variable.
+
+Available themes can be listed via:
+
+```sh
+dts --list-themes
+```
+
+**Hint**: The `color` feature can be disabled at compile time if you don't want
+to have colors at all. See the [Cargo feature](#cargo-features) section below.
+
 ## Supported Encodings
 
 Right now `dts` supports the following encodings:
