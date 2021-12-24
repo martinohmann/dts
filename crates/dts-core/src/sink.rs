@@ -1,7 +1,5 @@
 use crate::{Encoding, PathExt, Result};
 use std::fmt;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -22,20 +20,6 @@ impl Sink {
             Self::Stdout => None,
             Self::Path(path) => Encoding::from_path(path),
         }
-    }
-
-    /// Returns a writer to write to the sink.
-    ///
-    /// ## Errors
-    ///
-    /// May return an error if the sink is `Sink::File` and the file cannot be created.
-    pub fn to_writer(&self) -> Result<impl io::Write> {
-        let writer: Box<dyn io::Write> = match self {
-            Self::Stdout => Box::new(io::stdout()),
-            Self::Path(path) => Box::new(fs::File::create(path)?),
-        };
-
-        Ok(writer)
     }
 }
 
