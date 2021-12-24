@@ -8,6 +8,9 @@ use dts_core::{transform::Transformation, Encoding, Sink, Source};
 use regex::Regex;
 use unescape::unescape;
 
+#[cfg(feature = "color")]
+use crate::color::ColorChoice;
+
 /// Simple tool to transcode between different encodings.
 ///
 /// The tool first deserializes data from the input data into an internal representation which
@@ -38,7 +41,7 @@ pub struct Options {
     /// there are more elements than files.
     ///
     /// Passing '-' as filename or providing no output files will write the data to stdout instead.
-    #[clap(short = 'O', long = "sink", name = "SINK", value_hint = ValueHint::FilePath)]
+    #[clap(short = 'O', long = "sink", value_name = "SINK", value_hint = ValueHint::FilePath)]
     #[clap(multiple_occurrences = true)]
     pub sinks: Vec<Sink>,
 
@@ -56,7 +59,7 @@ pub struct Options {
     pub output: OutputOptions,
 
     /// If provided, outputs the completion file for the given shell.
-    #[clap(long, name = "SHELL", arg_enum)]
+    #[clap(arg_enum, long, value_name = "SHELL")]
     pub generate_completion: Option<Shell>,
 }
 
@@ -247,6 +250,32 @@ pub struct OutputOptions {
     /// extension (or the output is stdout), the fallback is to encode output as JSON.
     #[clap(arg_enum, short = 'o', long, setting = ArgSettings::HidePossibleValues)]
     pub output_encoding: Option<Encoding>,
+
+    /// Controls when to use colors.
+    ///
+    /// The default setting is `auto`, which means dts will try to guess when to use colors. For
+    /// example, if dts is printing to a terminal, then it will use colors, but if it is redirected
+    /// to a file or a pipe, then it will suppress color output. Output is also not colored if the
+    /// TERM environment variable isn't set or the terminal is `dumb` or if the buffer to be colored
+    /// is larger than 1MB.
+    ///
+    /// Use color `always` to enforce coloring.
+    #[cfg(feature = "color")]
+    #[clap(arg_enum, long, value_name = "WHEN")]
+    #[clap(default_value = "auto", env = "DTS_COLOR")]
+    pub color: ColorChoice,
+
+    /// Controls the color theme to use.
+    ///
+    /// See --list-themes for available color themes.
+    #[cfg(feature = "color")]
+    #[clap(long, env = "DTS_THEME")]
+    pub theme: Option<String>,
+
+    /// List available color themes and exit.
+    #[cfg(feature = "color")]
+    #[clap(long, conflicts_with = "generate-completion")]
+    pub list_themes: bool,
 
     /// Emit output data in a compact format.
     ///

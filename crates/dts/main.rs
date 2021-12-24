@@ -10,7 +10,11 @@ use clap_generate::{generate, Shell};
 use dts_core::{de::Deserializer, ser::Serializer};
 use dts_core::{transform, Encoding, Error, Sink, Source, Value};
 use rayon::prelude::*;
+use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
+
+#[cfg(feature = "color")]
+mod color;
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let encoding = opts
@@ -69,9 +73,26 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
         .or_else(|| sink.encoding())
         .unwrap_or(Encoding::Json);
 
-    let writer = sink
-        .to_writer()
-        .with_context(|| format!("Failed to create writer for sink `{}`", sink))?;
+    let writer: Box<dyn io::Write> = match sink {
+        Sink::Stdout => {
+            #[cfg(feature = "color")]
+            {
+                Box::new(color::StdoutWriter::new(
+                    opts.color,
+                    encoding,
+                    opts.theme.as_deref(),
+                ))
+            }
+            #[cfg(not(feature = "color"))]
+            {
+                Box::new(io::stdout())
+            }
+        }
+        Sink::Path(path) => Box::new(
+            File::create(path)
+                .with_context(|| format!("Failed to create writer for sink `{}`", sink))?,
+        ),
+    };
 
     let mut ser = Serializer::with_options(BufWriter::new(writer), opts.into());
 
@@ -125,6 +146,14 @@ fn main() -> Result<()> {
     if let Some(shell) = opts.generate_completion {
         let mut app = Options::into_app();
         print_completions(&mut app, shell);
+        std::process::exit(0);
+    }
+
+    #[cfg(feature = "color")]
+    if opts.output.list_themes {
+        for theme in color::themes() {
+            println!("{}", theme)
+        }
         std::process::exit(0);
     }
 
