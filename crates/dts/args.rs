@@ -235,6 +235,12 @@ pub struct TransformOptions {
     /// visited and sorted. A `max-depth` of 0 means that only the top level is sorted. If
     /// `max-depth` is omitted, the sorter will recursively visit all child collections and sort
     /// them.
+    ///
+    /// # Arrays to objects
+    ///
+    /// Option: `ato` or `arrays-to-objects`.
+    ///
+    /// Recursively transforms all arrays into objects with the array index as key.
     #[clap(short = 't', long)]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
     pub transform: Vec<Transformation>,

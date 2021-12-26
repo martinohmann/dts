@@ -43,6 +43,8 @@ pub enum Transformation {
     DeleteKeys(String),
     /// Sort objects and arrays.
     Sort(ValueSorter),
+    /// Convert all arrays into objects.
+    ArraysToObjects,
 }
 
 impl Transformation {
@@ -66,6 +68,7 @@ impl Transformation {
             Self::Keys => keys(value),
             Self::DeleteKeys(pattern) => delete_keys(value, pattern)?,
             Self::Sort(sorter) => sort(sorter, value),
+            Self::ArraysToObjects => arrays_to_objects(value),
         };
 
         Ok(value)
@@ -110,6 +113,7 @@ impl FromStr for Transformation {
 
                     Self::Sort(sorter)
                 }
+                "ato" | "arrays-to-objects" => Self::ArraysToObjects,
                 key => return Err(TransformError::unknown_transformation(key)),
             }
         };
@@ -511,6 +515,26 @@ pub fn sort(sorter: &ValueSorter, mut value: Value) -> Value {
     value
 }
 
+/// Recursively transforms all arrays into objects with the array index as key.
+pub fn arrays_to_objects(value: Value) -> Value {
+    match value {
+        Value::Array(array) => Value::Object(
+            array
+                .into_iter()
+                .enumerate()
+                .map(|(i, v)| (i.to_string(), arrays_to_objects(v)))
+                .collect(),
+        ),
+        Value::Object(object) => Value::Object(
+            object
+                .into_iter()
+                .map(|(k, v)| (k, arrays_to_objects(v)))
+                .collect(),
+        ),
+        value => value,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -628,6 +652,14 @@ mod tests {
         assert_eq!(
             expand_keys(value),
             json!({"data": {"foo": {"bar": ["baz", "qux"]}}})
+        );
+    }
+
+    #[test]
+    fn test_arrays_to_objects() {
+        assert_eq!(
+            arrays_to_objects(json!([{"foo": "bar"},{"bar": [1], "qux": null}])),
+            json!({"0": {"foo": "bar"}, "1": {"bar": {"0": 1}, "qux": null}})
         );
     }
 }
