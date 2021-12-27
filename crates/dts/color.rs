@@ -1,11 +1,16 @@
 //! Utilities to facilitate colorful output.
 
 use crate::paging::{PagingChoice, PagingConfig};
-use bat::{assets::HighlightingAssets, Input, PagingMode, PrettyPrinter};
+use bat::{assets::HighlightingAssets, config::Config, controller::Controller, Input, PagingMode};
 use clap::ArgEnum;
 use dts_core::Encoding;
+use once_cell::sync::Lazy;
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+
+/// Lazyloaded instance of `HighlightingAssets`. For performance reasons this should only be done
+/// once as it's a very heavy operation.
+static HIGHLIGHTING_ASSETS: Lazy<HighlightingAssets> = Lazy::new(HighlightingAssets::from_binary);
 
 /// ColorChoice represents the color preference of a user.
 #[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
@@ -18,6 +23,12 @@ pub enum ColorChoice {
     Auto,
     /// Never color output.
     Never,
+}
+
+impl Default for ColorChoice {
+    fn default() -> Self {
+        ColorChoice::Never
+    }
 }
 
 impl ColorChoice {
@@ -59,75 +70,30 @@ impl ColorChoice {
     }
 }
 
-/// Returns the names of the themes available for syntax highlighting.
-pub fn themes() -> Vec<String> {
-    HighlightingAssets::from_binary()
-        .themes()
-        .map(|theme| theme.to_string())
-        .collect()
+/// Returns the `HighlightingAssets` used for syntax highlighting.
+///
+/// This is a lazy operation, the assets are only loaded once on the first invocation. Returns a
+/// reference to the globally loaded assets thereafter.
+pub fn highlighting_assets() -> &'static HighlightingAssets {
+    &HIGHLIGHTING_ASSETS
 }
 
 /// ColoredStdoutWriter writes data to stdout and may or may not colorize it.
 pub struct ColoredStdoutWriter<'a> {
     encoding: Encoding,
-    theme: Option<&'a str>,
+    config: HighlightingConfig<'a>,
     buf: Option<Vec<u8>>,
-    paging_config: PagingConfig<'a>,
 }
 
 impl<'a> ColoredStdoutWriter<'a> {
-    /// Creates a new `ColoredStdoutWriter` which may colorize output using the provided `Encoding` hint
-    /// based on the `ColorConfig`.
-    pub fn new(
-        encoding: Encoding,
-        theme: Option<&'a str>,
-        paging_config: PagingConfig<'a>,
-    ) -> Self {
+    /// Creates a new `ColoredStdoutWriter` which colorizes output based on the provided `Encoding`
+    /// and `HighlightingConfig`.
+    pub fn new(encoding: Encoding, config: HighlightingConfig<'a>) -> Self {
         ColoredStdoutWriter {
             encoding,
-            theme,
+            config,
             buf: Some(Vec::with_capacity(256)),
-            paging_config,
         }
-    }
-
-    // The pseudo filename will determine the syntax highlighting used by the PrettyPrinter.
-    fn pseudo_filename(&self) -> PathBuf {
-        Path::new("out").with_extension(self.encoding.as_str())
-    }
-
-    // Returns the color theme that should be used to color the output. Checks if the
-    // `PrettyPrinter` knows the requested theme, otherwise fall back to `base16` as default.
-    fn theme(&self, printer: &PrettyPrinter) -> &str {
-        self.theme
-            .and_then(|requested| {
-                printer
-                    .themes()
-                    .find(|known| known == &requested)
-                    .and(Some(requested))
-            })
-            .unwrap_or("base16")
-    }
-
-    // Returns a suitable output pager. Since we are using the `bat` pretty printer we have to
-    // ensure that the pager is not `bat` itself. In this case we'll just fall back to using the
-    // default pager.
-    fn pager(&self) -> String {
-        let pager = self.paging_config.pager();
-
-        if let Ok(parts) = shell_words::split(&pager) {
-            if let Some((cmd, _)) = parts.split_first() {
-                if !Path::new(cmd).ends_with("bat") {
-                    return pager;
-                }
-            }
-        }
-
-        self.paging_config.default_pager()
-    }
-
-    fn paging_mode(&self) -> PagingMode {
-        self.paging_config.paging_choice().into()
     }
 
     fn flush_buf(&self, buf: &[u8]) -> io::Result<()> {
@@ -135,21 +101,9 @@ impl<'a> ColoredStdoutWriter<'a> {
             return Ok(());
         }
 
-        let mut printer = PrettyPrinter::new();
+        let highlighter = SyntaxHighlighter::new(&self.config);
 
-        let theme = self.theme(&printer);
-        let input = Input::from_bytes(buf).name(self.pseudo_filename());
-
-        match printer
-            .paging_mode(self.paging_mode())
-            .pager(&self.pager())
-            .input(input)
-            .theme(theme)
-            .print()
-        {
-            Ok(_) => Ok(()),
-            Err(err) => Err(io::Error::new(io::ErrorKind::Other, err.to_string())),
-        }
+        highlighter.print(self.encoding, buf)
     }
 }
 
@@ -181,6 +135,100 @@ impl From<PagingChoice> for PagingMode {
             PagingChoice::Always => PagingMode::Always,
             PagingChoice::Auto => PagingMode::QuitIfOneScreen,
             PagingChoice::Never => PagingMode::Never,
+        }
+    }
+}
+
+/// Configuration for the `SyntaxHighlighter`.
+#[derive(Default)]
+pub struct HighlightingConfig<'a> {
+    paging_config: PagingConfig<'a>,
+    theme: Option<&'a str>,
+}
+
+impl<'a> HighlightingConfig<'a> {
+    /// Creates a new `HighlightingConfig`.
+    pub fn new(paging_config: PagingConfig<'a>, theme: Option<&'a str>) -> Self {
+        HighlightingConfig {
+            paging_config,
+            theme,
+        }
+    }
+
+    /// Returns the default theme.
+    pub fn default_theme(&self) -> String {
+        String::from("base16")
+    }
+
+    /// Returns the color theme that should be used to color the output. Checks if the requested
+    /// theme is available, otherwise fall back to `base16` as default.
+    pub fn theme(&self) -> String {
+        self.theme
+            .and_then(|requested| {
+                let requested = requested.to_lowercase();
+                highlighting_assets()
+                    .themes()
+                    .find(|known| known.to_lowercase() == requested)
+                    .map(|theme| theme.to_owned())
+            })
+            .unwrap_or_else(|| self.default_theme())
+    }
+
+    /// Returns a suitable output pager.
+    pub fn pager(&self) -> String {
+        // Since we are using `bat` to do the syntax highlighting for us we have to ensure that the
+        // pager is not `bat` itself. In this case we'll just fall back to using the default pager.
+        let pager = self.paging_config.pager();
+
+        if let Ok(parts) = shell_words::split(&pager) {
+            if let Some((cmd, _)) = parts.split_first() {
+                if !Path::new(cmd).ends_with("bat") {
+                    return pager;
+                }
+            }
+        }
+
+        self.paging_config.default_pager()
+    }
+
+    /// Returns the configured `PagingChoice`.
+    pub fn paging_choice(&self) -> PagingChoice {
+        self.paging_config.paging_choice()
+    }
+}
+
+/// A syntax highlighter which can highlight a buffer and then print the result to stdout.
+pub struct SyntaxHighlighter<'a> {
+    config: &'a HighlightingConfig<'a>,
+}
+
+impl<'a> SyntaxHighlighter<'a> {
+    /// Creates a new `SyntaxHighlighter` with the provided `HighlightingConfig`.
+    pub fn new(config: &'a HighlightingConfig<'a>) -> Self {
+        SyntaxHighlighter { config }
+    }
+
+    /// Hightlights `buf` using the given `Encoding` hint and prints the result to stdout.
+    pub fn print(&self, encoding: Encoding, buf: &[u8]) -> io::Result<()> {
+        let pager = self.config.pager();
+
+        let config = Config {
+            colored_output: true,
+            true_color: true,
+            pager: Some(&pager),
+            paging_mode: self.config.paging_choice().into(),
+            theme: self.config.theme(),
+            ..Default::default()
+        };
+
+        let pseudo_filename = Path::new("out").with_extension(encoding.as_str());
+        let input = Input::from_bytes(buf).name(pseudo_filename).into();
+
+        let ctrl = Controller::new(&config, highlighting_assets());
+
+        match ctrl.run(vec![input]) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(io::Error::new(io::ErrorKind::Other, err.to_string())),
         }
     }
 }

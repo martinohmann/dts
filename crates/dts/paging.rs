@@ -14,7 +14,14 @@ pub enum PagingChoice {
     Never,
 }
 
+impl Default for PagingChoice {
+    fn default() -> Self {
+        PagingChoice::Never
+    }
+}
+
 /// PagingConfig holds configuration related to output paging.
+#[derive(Default, Clone)]
 pub struct PagingConfig<'a> {
     choice: PagingChoice,
     pager: Option<&'a str>,
@@ -35,15 +42,12 @@ impl<'a> PagingConfig<'a> {
     /// the contents of the `PAGER` environment variable or c) the default pager which is `less`.
     pub fn pager(&self) -> String {
         match self.pager {
-            Some(cmd) if !cmd.is_empty() => cmd.to_owned(),
-            _ => match std::env::var("PAGER").ok() {
-                Some(cmd) if !cmd.is_empty() => cmd,
-                _ => self.default_pager(),
-            },
+            Some(cmd) => cmd.to_owned(),
+            None => std::env::var("PAGER").unwrap_or_else(|_| self.default_pager()),
         }
     }
 
-    /// Returns a reference to the configured `PagingChoice`.
+    /// Returns the configured `PagingChoice`.
     pub fn paging_choice(&self) -> PagingChoice {
         self.choice
     }
@@ -61,16 +65,9 @@ mod test {
         let config = PagingConfig::new(PagingChoice::Auto, None);
         assert_eq!(&config.pager(), &config.default_pager());
 
-        let config = PagingConfig::new(PagingChoice::Auto, Some(""));
-        assert_eq!(&config.pager(), &config.default_pager());
-
         let config = PagingConfig::new(PagingChoice::Auto, None);
         temp_env::with_var("PAGER", Some("more"), || {
             assert_eq!(&config.pager(), "more")
-        });
-
-        temp_env::with_var("PAGER", Some(""), || {
-            assert_eq!(&config.pager(), &config.default_pager())
         });
 
         temp_env::with_var("PAGER", None::<&str>, || {

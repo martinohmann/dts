@@ -12,7 +12,7 @@ use args::{InputOptions, Options, OutputOptions, TransformOptions};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
 #[cfg(feature = "color")]
-use color::ColoredStdoutWriter;
+use color::{ColoredStdoutWriter, HighlightingConfig};
 use dts_core::{de::Deserializer, ser::Serializer};
 use dts_core::{transform, Encoding, Error, Sink, Source, Value};
 use no_color::StdoutWriter;
@@ -84,11 +84,8 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
         #[cfg(feature = "color")]
         Sink::Stdout => {
             if opts.color.should_colorize() {
-                Box::new(ColoredStdoutWriter::new(
-                    encoding,
-                    opts.theme.as_deref(),
-                    paging_config,
-                ))
+                let config = HighlightingConfig::new(paging_config, opts.theme.as_deref());
+                Box::new(ColoredStdoutWriter::new(encoding, config))
             } else {
                 Box::new(StdoutWriter::new(paging_config))
             }
@@ -158,7 +155,7 @@ fn main() -> Result<()> {
 
     #[cfg(feature = "color")]
     if opts.output.list_themes {
-        for theme in color::themes() {
+        for theme in color::highlighting_assets().themes() {
             println!("{}", theme)
         }
         std::process::exit(0);
