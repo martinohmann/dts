@@ -115,7 +115,12 @@ impl<'a> io::Write for ColoredStdoutWriter<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.buf.as_mut() {
             Some(w) => w.write(buf),
-            None => panic!("ColoredStdoutWriter was already flushed"),
+            None => {
+                let mut vec = Vec::with_capacity(256);
+                let n = vec.write(buf)?;
+                self.buf = Some(vec);
+                Ok(n)
+            }
         }
     }
 
