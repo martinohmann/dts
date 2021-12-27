@@ -454,6 +454,7 @@ dependencies = [
  "criterion",
  "dts-core",
  "hcl",
+ "once_cell",
  "predicates",
  "pretty_assertions",
  "rayon",
