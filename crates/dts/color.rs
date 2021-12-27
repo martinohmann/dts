@@ -7,6 +7,7 @@ use dts_core::Encoding;
 use once_cell::sync::Lazy;
 use std::io::{self, Write};
 use std::path::Path;
+use termcolor::{ColorSpec, StandardStream, WriteColor};
 
 /// Lazyloaded instance of `HighlightingAssets`. For performance reasons this should only be done
 /// once as it's a very heavy operation.
@@ -68,14 +69,6 @@ impl ColorChoice {
 
         std::env::var_os("NO_COLOR").is_none()
     }
-}
-
-/// Returns the `HighlightingAssets` used for syntax highlighting.
-///
-/// This is a lazy operation, the assets are only loaded once on the first invocation. Returns a
-/// reference to the globally loaded assets thereafter.
-pub fn highlighting_assets() -> &'static HighlightingAssets {
-    &HIGHLIGHTING_ASSETS
 }
 
 /// ColoredStdoutWriter writes data to stdout and may or may not colorize it.
@@ -231,4 +224,35 @@ impl<'a> SyntaxHighlighter<'a> {
             Err(err) => Err(io::Error::new(io::ErrorKind::Other, err.to_string())),
         }
     }
+}
+
+/// Returns the `HighlightingAssets` used for syntax highlighting.
+///
+/// This is a lazy operation, the assets are only loaded once on the first invocation. Returns a
+/// reference to the globally loaded assets thereafter.
+pub fn highlighting_assets() -> &'static HighlightingAssets {
+    &HIGHLIGHTING_ASSETS
+}
+
+/// Prints available themes to stdout.
+pub fn print_themes() -> io::Result<()> {
+    let example = include_bytes!("assets/example.json");
+
+    let assets = highlighting_assets();
+    let max_len = assets.themes().map(|t| t.len()).max().unwrap_or(30);
+
+    let mut stdout = StandardStream::stdout(termcolor::ColorChoice::Always);
+
+    for theme in assets.themes() {
+        let config = HighlightingConfig::new(PagingConfig::default(), Some(theme));
+        let highlighter = SyntaxHighlighter::new(&config);
+
+        stdout.set_color(ColorSpec::new().set_bold(true))?;
+        write!(&mut stdout, "{:1$}", theme, max_len + 2)?;
+        stdout.reset()?;
+
+        highlighter.print(Encoding::Json, example)?;
+    }
+
+    Ok(())
 }

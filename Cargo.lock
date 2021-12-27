@@ -462,6 +462,7 @@ dependencies = [
  "serde_json",
  "shell-words",
  "temp-env",
+ "termcolor",
  "unescape",
 ]
 

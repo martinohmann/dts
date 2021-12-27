@@ -11,7 +11,7 @@ members = [
 
 [features]
 default = ["color"]
-color = ["bat", "bat/paging", "clap/color", "once_cell"]
+color = ["bat", "bat/paging", "clap/color", "once_cell", "termcolor"]
 
 [dependencies]
 anyhow = "1.0.44"
@@ -37,6 +37,10 @@ version = "= 3.0.0-rc.7"
 [dependencies.once_cell]
 optional = true
 version = "1.9.0"
+
+[dependencies.termcolor]
+optional = true
+version = "1.1.2"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"

@@ -12,7 +12,7 @@ use args::{InputOptions, Options, OutputOptions, TransformOptions};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
 #[cfg(feature = "color")]
-use color::{ColoredStdoutWriter, HighlightingConfig};
+use color::{print_themes, ColoredStdoutWriter, HighlightingConfig};
 use dts_core::{de::Deserializer, ser::Serializer};
 use dts_core::{transform, Encoding, Error, Sink, Source, Value};
 use no_color::StdoutWriter;
@@ -155,9 +155,7 @@ fn main() -> Result<()> {
 
     #[cfg(feature = "color")]
     if opts.output.list_themes {
-        for theme in color::highlighting_assets().themes() {
-            println!("{}", theme)
-        }
+        print_themes()?;
         std::process::exit(0);
     }
 
