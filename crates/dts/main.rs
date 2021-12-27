@@ -156,7 +156,7 @@ fn main() -> Result<()> {
 
     #[cfg(feature = "color")]
     if opts.output.list_themes {
-        print_themes()?;
+        print_themes(opts.output.color)?;
         std::process::exit(0);
     }
 

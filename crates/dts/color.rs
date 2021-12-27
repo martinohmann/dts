@@ -33,6 +33,16 @@ impl Default for ColorChoice {
     }
 }
 
+impl From<ColorChoice> for termcolor::ColorChoice {
+    fn from(cc: ColorChoice) -> Self {
+        match cc {
+            ColorChoice::Always => termcolor::ColorChoice::Always,
+            ColorChoice::Auto => termcolor::ColorChoice::Auto,
+            ColorChoice::Never => termcolor::ColorChoice::Never,
+        }
+    }
+}
+
 impl ColorChoice {
     /// Returns true if the `ColorChoice` indicates that coloring is enabled.
     pub fn should_colorize(&self) -> bool {
@@ -234,23 +244,29 @@ pub fn highlighting_assets() -> &'static HighlightingAssets {
 }
 
 /// Prints available themes to stdout.
-pub fn print_themes() -> io::Result<()> {
+pub fn print_themes(color_choice: ColorChoice) -> io::Result<()> {
     let example = include_bytes!("assets/example.json");
-
     let assets = highlighting_assets();
-    let max_len = assets.themes().map(|t| t.len()).max().unwrap_or(30);
 
-    let mut stdout = StandardStream::stdout(termcolor::ColorChoice::Always);
+    if color_choice.should_colorize() {
+        let max_len = assets.themes().map(str::len).max().unwrap_or(0);
 
-    for theme in assets.themes() {
-        let config = HighlightingConfig::new(PagingConfig::default(), Some(theme));
-        let highlighter = SyntaxHighlighter::new(&config);
+        let mut stdout = StandardStream::stdout(color_choice.into());
 
-        stdout.set_color(ColorSpec::new().set_bold(true))?;
-        write!(&mut stdout, "{:1$}", theme, max_len + 2)?;
-        stdout.reset()?;
+        for theme in assets.themes() {
+            let config = HighlightingConfig::new(PagingConfig::default(), Some(theme));
+            let highlighter = SyntaxHighlighter::new(&config);
 
-        highlighter.print(Encoding::Json, example)?;
+            stdout.set_color(ColorSpec::new().set_bold(true))?;
+            write!(&mut stdout, "{:1$}", theme, max_len + 2)?;
+            stdout.reset()?;
+
+            highlighter.print(Encoding::Json, example)?;
+        }
+    } else {
+        for theme in assets.themes() {
+            println!("{}", theme);
+        }
     }
 
     Ok(())
