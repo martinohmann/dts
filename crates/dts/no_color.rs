@@ -1,6 +1,7 @@
 //! Contains an `io::Write` implementation that is capable to pipe output through a pager.
 
 use crate::paging::{PagingChoice, PagingConfig};
+use crate::utils::resolve_cmd;
 use std::io::{self, Stdout};
 use std::process::{Child, Command, Stdio};
 
@@ -22,33 +23,30 @@ impl StdoutWriter {
 
     /// Tries to launch the pager. Falls back to `io::Stdout` in case of errors.
     fn pager(config: PagingConfig<'_>) -> Self {
-        match shell_words::split(&config.pager()) {
-            Err(_) => StdoutWriter::stdout(),
-            Ok(parts) => match parts.split_first() {
-                Some((pager, args)) => {
-                    let mut cmd = Command::new(&pager);
+        match resolve_cmd(config.pager()) {
+            Some((pager_bin, args)) => {
+                let mut cmd = Command::new(&pager_bin);
 
-                    if pager == "less" {
-                        if args.is_empty() {
-                            if let PagingChoice::Auto = config.paging_choice() {
-                                cmd.arg("--quit-if-one-screen");
-                            }
-                        } else {
-                            cmd.args(args);
+                if pager_bin.ends_with("less") || pager_bin.ends_with("less.exe") {
+                    if args.is_empty() {
+                        if let PagingChoice::Auto = config.paging_choice() {
+                            cmd.arg("--quit-if-one-screen");
                         }
-
-                        cmd.env("LESSCHARSET", "UTF-8");
                     } else {
                         cmd.args(args);
                     }
 
-                    cmd.stdin(Stdio::piped())
-                        .spawn()
-                        .map(StdoutWriter::Pager)
-                        .unwrap_or_else(|_| StdoutWriter::stdout())
+                    cmd.env("LESSCHARSET", "UTF-8");
+                } else {
+                    cmd.args(args);
                 }
-                None => StdoutWriter::stdout(),
-            },
+
+                cmd.stdin(Stdio::piped())
+                    .spawn()
+                    .map(StdoutWriter::Pager)
+                    .unwrap_or_else(|_| StdoutWriter::stdout())
+            }
+            None => StdoutWriter::stdout(),
         }
     }
 

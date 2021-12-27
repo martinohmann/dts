@@ -6,6 +6,7 @@ mod args;
 mod color;
 mod no_color;
 mod paging;
+mod utils;
 
 use anyhow::{anyhow, Context, Result};
 use args::{InputOptions, Options, OutputOptions, TransformOptions};

@@ -1,6 +1,7 @@
 //! Utilities to facilitate colorful output.
 
 use crate::paging::{PagingChoice, PagingConfig};
+use crate::utils::resolve_cmd;
 use bat::{assets::HighlightingAssets, config::Config, controller::Controller, Input, PagingMode};
 use clap::ArgEnum;
 use dts_core::Encoding;
@@ -173,11 +174,9 @@ impl<'a> HighlightingConfig<'a> {
         // pager is not `bat` itself. In this case we'll just fall back to using the default pager.
         let pager = self.paging_config.pager();
 
-        if let Ok(parts) = shell_words::split(&pager) {
-            if let Some((cmd, _)) = parts.split_first() {
-                if !Path::new(cmd).ends_with("bat") {
-                    return pager;
-                }
+        if let Some((pager_bin, _)) = resolve_cmd(&pager) {
+            if !pager_bin.ends_with("bat") && !pager_bin.ends_with("bat.exe") {
+                return pager;
             }
         }
 

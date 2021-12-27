@@ -453,6 +453,7 @@ dependencies = [
  "clap_generate",
  "criterion",
  "dts-core",
+ "grep-cli",
  "hcl",
  "once_cell",
  "predicates",

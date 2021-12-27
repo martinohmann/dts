@@ -18,6 +18,7 @@ anyhow = "1.0.44"
 atty = "0.2.14"
 clap_generate = "= 3.0.0-rc.7"
 dts-core = { path = "crates/dts-core" }
+grep-cli = "0.1.6"
 rayon = "1.5.1"
 regex = "1.5.4"
 shell-words = "1.0.0"
