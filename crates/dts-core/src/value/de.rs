@@ -1,12 +1,12 @@
-use super::{Map, Value};
+use super::{Map, Number, Value};
 use serde::de::{self, Visitor};
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 use std::fmt;
 
 impl<'de> Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Value, D::Error>
     where
-        D: Deserializer<'de>,
+        D: de::Deserializer<'de>,
     {
         struct ValueVisitor;
 
@@ -30,7 +30,7 @@ impl<'de> Deserialize<'de> for Value {
             }
 
             fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
-                Ok(Value::Number(value.into()))
+                Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Value, E>

@@ -1,12 +1,12 @@
 use super::{to_value, Map, Number, Value};
 use crate::{Error, Result};
-use serde::ser::{Impossible, Serialize};
+use serde::ser::{self, Impossible, Serialize};
 use std::fmt;
 
 impl Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: ser::Serializer,
     {
         match *self {
             Value::Null => serializer.serialize_unit(),
@@ -21,7 +21,7 @@ impl Serialize for Value {
 
 pub struct Serializer;
 
-impl serde::Serializer for Serializer {
+impl ser::Serializer for Serializer {
     type Ok = Value;
     type Error = Error;
 
@@ -224,7 +224,7 @@ pub struct SerializeStructVariant {
     map: Map<String, Value>,
 }
 
-impl serde::ser::SerializeSeq for SerializeVec {
+impl ser::SerializeSeq for SerializeVec {
     type Ok = Value;
     type Error = Error;
 
@@ -241,7 +241,7 @@ impl serde::ser::SerializeSeq for SerializeVec {
     }
 }
 
-impl serde::ser::SerializeTuple for SerializeVec {
+impl ser::SerializeTuple for SerializeVec {
     type Ok = Value;
     type Error = Error;
 
@@ -249,15 +249,15 @@ impl serde::ser::SerializeTuple for SerializeVec {
     where
         T: ?Sized + Serialize,
     {
-        serde::ser::SerializeSeq::serialize_element(self, value)
+        ser::SerializeSeq::serialize_element(self, value)
     }
 
     fn end(self) -> Result<Value> {
-        serde::ser::SerializeSeq::end(self)
+        ser::SerializeSeq::end(self)
     }
 }
 
-impl serde::ser::SerializeTupleStruct for SerializeVec {
+impl ser::SerializeTupleStruct for SerializeVec {
     type Ok = Value;
     type Error = Error;
 
@@ -265,15 +265,15 @@ impl serde::ser::SerializeTupleStruct for SerializeVec {
     where
         T: ?Sized + Serialize,
     {
-        serde::ser::SerializeSeq::serialize_element(self, value)
+        ser::SerializeSeq::serialize_element(self, value)
     }
 
     fn end(self) -> Result<Value> {
-        serde::ser::SerializeSeq::end(self)
+        ser::SerializeSeq::end(self)
     }
 }
 
-impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
+impl ser::SerializeTupleVariant for SerializeTupleVariant {
     type Ok = Value;
     type Error = Error;
 
@@ -287,14 +287,12 @@ impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
 
     fn end(self) -> Result<Value> {
         let mut object = Map::new();
-
         object.insert(self.name, Value::Array(self.vec));
-
         Ok(Value::Object(object))
     }
 }
 
-impl serde::ser::SerializeMap for SerializeMap {
+impl ser::SerializeMap for SerializeMap {
     type Ok = Value;
     type Error = Error;
 
@@ -311,8 +309,6 @@ impl serde::ser::SerializeMap for SerializeMap {
         T: ?Sized + Serialize,
     {
         let key = self.next_key.take();
-        // Panic because this indicates a bug in the program rather than an
-        // expected failure.
         let key = key.expect("serialize_value called before serialize_key");
         self.map.insert(key, to_value(&value)?);
         Ok(())
@@ -323,9 +319,44 @@ impl serde::ser::SerializeMap for SerializeMap {
     }
 }
 
+impl ser::SerializeStruct for SerializeMap {
+    type Ok = Value;
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        ser::SerializeMap::serialize_entry(self, key, value)
+    }
+
+    fn end(self) -> Result<Value> {
+        ser::SerializeMap::end(self)
+    }
+}
+
+impl ser::SerializeStructVariant for SerializeStructVariant {
+    type Ok = Value;
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        self.map.insert(String::from(key), to_value(&value)?);
+        Ok(())
+    }
+
+    fn end(self) -> Result<Value> {
+        let mut object = Map::new();
+        object.insert(self.name, Value::Object(self.map));
+        Ok(Value::Object(object))
+    }
+}
+
 struct MapKeySerializer;
 
-impl serde::Serializer for MapKeySerializer {
+impl ser::Serializer for MapKeySerializer {
     type Ok = String;
     type Error = Error;
 
@@ -490,42 +521,5 @@ impl serde::Serializer for MapKeySerializer {
         T: fmt::Display,
     {
         Ok(value.to_string())
-    }
-}
-
-impl serde::ser::SerializeStruct for SerializeMap {
-    type Ok = Value;
-    type Error = Error;
-
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
-    where
-        T: ?Sized + Serialize,
-    {
-        serde::ser::SerializeMap::serialize_entry(self, key, value)
-    }
-
-    fn end(self) -> Result<Value> {
-        serde::ser::SerializeMap::end(self)
-    }
-}
-
-impl serde::ser::SerializeStructVariant for SerializeStructVariant {
-    type Ok = Value;
-    type Error = Error;
-
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
-    where
-        T: ?Sized + Serialize,
-    {
-        self.map.insert(String::from(key), to_value(&value)?);
-        Ok(())
-    }
-
-    fn end(self) -> Result<Value> {
-        let mut object = Map::new();
-
-        object.insert(self.name, Value::Object(self.map));
-
-        Ok(Value::Object(object))
     }
 }

@@ -1,5 +1,8 @@
 use crate::{Error, Result};
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 use serde_json::Number as JsonNumber;
 use std::fmt::{self, Display};
 
@@ -18,32 +21,32 @@ impl Number {
     /// Represents the `Number` as f64 if possible. Returns None otherwise.
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
-            Self::PosInt(n) => Some(n as f64),
-            Self::NegInt(n) => Some(n as f64),
-            Self::Float(n) => Some(n),
+            Number::PosInt(n) => Some(n as f64),
+            Number::NegInt(n) => Some(n as f64),
+            Number::Float(n) => Some(n),
         }
     }
 
     /// If the `Number` is an integer, represent it as i64 if possible. Returns None otherwise.
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
-            Self::PosInt(n) => {
+            Number::PosInt(n) => {
                 if n <= i64::max_value() as u64 {
                     Some(n as i64)
                 } else {
                     None
                 }
             }
-            Self::NegInt(n) => Some(n),
-            Self::Float(_) => None,
+            Number::NegInt(n) => Some(n),
+            Number::Float(_) => None,
         }
     }
 
     /// If the `Number` is an integer, represent it as u64 if possible. Returns None otherwise.
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
-            Self::PosInt(n) => Some(n),
-            Self::NegInt(_) | Self::Float(_) => None,
+            Number::PosInt(n) => Some(n),
+            Number::NegInt(_) | Number::Float(_) => None,
         }
     }
 
@@ -53,8 +56,8 @@ impl Number {
     /// float value.
     pub fn is_f64(&self) -> bool {
         match self {
-            Self::Float(_) => true,
-            Self::PosInt(_) | Self::NegInt(_) => false,
+            Number::Float(_) => true,
+            Number::PosInt(_) | Number::NegInt(_) => false,
         }
     }
 
@@ -64,9 +67,9 @@ impl Number {
     /// integer value.
     pub fn is_i64(&self) -> bool {
         match *self {
-            Self::PosInt(v) => v <= i64::max_value() as u64,
-            Self::NegInt(_) => true,
-            Self::Float(_) => false,
+            Number::PosInt(v) => v <= i64::max_value() as u64,
+            Number::NegInt(_) => true,
+            Number::Float(_) => false,
         }
     }
 
@@ -76,8 +79,8 @@ impl Number {
     /// integer value.
     pub fn is_u64(&self) -> bool {
         match self {
-            Self::PosInt(_) => true,
-            Self::NegInt(_) | Self::Float(_) => false,
+            Number::PosInt(_) => true,
+            Number::NegInt(_) | Number::Float(_) => false,
         }
     }
 
@@ -97,7 +100,7 @@ macro_rules! impl_from_unsigned {
         $(
             impl From<$ty> for Number {
                 fn from(u: $ty) -> Self {
-                    Self::PosInt(u as u64)
+                    Number::PosInt(u as u64)
                 }
             }
         )*
@@ -110,9 +113,9 @@ macro_rules! impl_from_signed {
             impl From<$ty> for Number {
                 fn from(i: $ty) -> Self {
                     if i < 0 {
-                        Self::NegInt(i as i64)
+                        Number::NegInt(i as i64)
                     } else {
-                        Self::PosInt(i as u64)
+                        Number::PosInt(i as u64)
                     }
                 }
             }
@@ -122,18 +125,6 @@ macro_rules! impl_from_signed {
 
 impl_from_unsigned!(u8, u16, u32, u64, usize);
 impl_from_signed!(i8, i16, i32, i64, isize);
-
-impl From<f32> for Number {
-    fn from(f: f32) -> Self {
-        Self::Float(f as f64)
-    }
-}
-
-impl From<f64> for Number {
-    fn from(f: f64) -> Self {
-        Self::Float(f)
-    }
-}
 
 impl From<JsonNumber> for Number {
     fn from(n: JsonNumber) -> Self {
@@ -163,9 +154,9 @@ impl TryFrom<Number> for JsonNumber {
 impl Display for Number {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::PosInt(i) => Display::fmt(&i, formatter),
-            Self::NegInt(i) => Display::fmt(&i, formatter),
-            Self::Float(f) => Display::fmt(&f, formatter),
+            Number::PosInt(i) => Display::fmt(&i, formatter),
+            Number::NegInt(i) => Display::fmt(&i, formatter),
+            Number::Float(f) => Display::fmt(&f, formatter),
         }
     }
 }
@@ -176,9 +167,9 @@ impl Serialize for Number {
         S: Serializer,
     {
         match *self {
-            Self::PosInt(i) => serializer.serialize_u64(i),
-            Self::NegInt(i) => serializer.serialize_i64(i),
-            Self::Float(f) => serializer.serialize_f64(f),
+            Number::PosInt(i) => serializer.serialize_u64(i),
+            Number::NegInt(i) => serializer.serialize_i64(i),
+            Number::Float(f) => serializer.serialize_f64(f),
         }
     }
 }
@@ -205,8 +196,11 @@ impl<'de> Deserialize<'de> for Number {
                 Ok(value.into())
             }
 
-            fn visit_f64<E>(self, value: f64) -> Result<Number, E> {
-                Ok(value.into())
+            fn visit_f64<E>(self, value: f64) -> Result<Number, E>
+            where
+                E: de::Error,
+            {
+                Number::from_f64(value).ok_or_else(|| de::Error::custom("Infinite or NaN float"))
             }
         }
 

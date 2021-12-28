@@ -1,4 +1,4 @@
-use super::{Map, Value};
+use super::{Map, Number, Value};
 use serde_json::{Number as JsonNumber, Value as JsonValue};
 use std::borrow::Cow;
 
@@ -7,7 +7,7 @@ macro_rules! impl_from_integer {
         $(
             impl From<$ty> for Value {
                 fn from(n: $ty) -> Self {
-                    Self::Number(n.into())
+                    Value::Number(n.into())
                 }
             }
         )*
@@ -19,67 +19,67 @@ impl_from_integer!(u8, u16, u32, u64, usize);
 
 impl From<f32> for Value {
     fn from(f: f32) -> Self {
-        Self::Number(f.into())
+        From::from(f as f64)
     }
 }
 
 impl From<f64> for Value {
     fn from(f: f64) -> Self {
-        Self::Number(f.into())
+        Number::from_f64(f).map_or(Value::Null, Value::Number)
     }
 }
 
 impl From<bool> for Value {
     fn from(b: bool) -> Self {
-        Self::Bool(b)
+        Value::Bool(b)
     }
 }
 
 impl From<String> for Value {
     fn from(s: String) -> Self {
-        Self::String(s)
+        Value::String(s)
     }
 }
 
 impl From<&str> for Value {
     fn from(s: &str) -> Self {
-        Self::String(s.to_string())
+        Value::String(s.to_string())
     }
 }
 
 impl<'a> From<Cow<'a, str>> for Value {
     fn from(s: Cow<'a, str>) -> Self {
-        Self::String(s.into_owned())
+        Value::String(s.into_owned())
     }
 }
 
 impl From<Map<String, Value>> for Value {
     fn from(f: Map<String, Value>) -> Self {
-        Self::Object(f)
+        Value::Object(f)
     }
 }
 
 impl<T: Into<Value>> From<Vec<T>> for Value {
     fn from(f: Vec<T>) -> Self {
-        Self::Array(f.into_iter().map(Into::into).collect())
+        Value::Array(f.into_iter().map(Into::into).collect())
     }
 }
 
 impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     fn from(f: &'a [T]) -> Self {
-        Self::Array(f.iter().cloned().map(Into::into).collect())
+        Value::Array(f.iter().cloned().map(Into::into).collect())
     }
 }
 
 impl<T: Into<Value>> FromIterator<T> for Value {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Self::Array(iter.into_iter().map(Into::into).collect())
+        Value::Array(iter.into_iter().map(Into::into).collect())
     }
 }
 
 impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
-        Self::Object(
+        Value::Object(
             iter.into_iter()
                 .map(|(k, v)| (k.into(), v.into()))
                 .collect(),
@@ -89,7 +89,7 @@ impl<K: Into<String>, V: Into<Value>> FromIterator<(K, V)> for Value {
 
 impl From<()> for Value {
     fn from((): ()) -> Self {
-        Self::Null
+        Value::Null
     }
 }
 

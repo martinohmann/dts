@@ -22,7 +22,6 @@ mod source;
 pub mod transform;
 #[cfg(feature = "custom_value")]
 mod value;
-mod value_ext;
 
 #[macro_use]
 mod macros;

@@ -1,6 +1,7 @@
 //! The Value enum, a loosely typed way of representing any valid value.
 
 mod de;
+mod ext;
 mod from;
 mod ser;
 

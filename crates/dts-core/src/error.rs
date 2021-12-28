@@ -1,7 +1,7 @@
 //! Defines the `Error` and `Result` types used by this crate.
 
 use crate::{parsers::ParseError, transform::TransformError, Encoding};
-use serde::ser;
+use serde::{de, ser};
 use std::error::Error as StdError;
 use std::fmt::Display;
 use std::io;
@@ -90,6 +90,15 @@ impl Error {
             pattern: pattern.to_string(),
             source,
         }
+    }
+}
+
+impl de::Error for Error {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
+    {
+        Error::new(msg)
     }
 }
 
