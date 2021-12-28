@@ -10,7 +10,7 @@ members = [
 ]
 
 [features]
-default = ["color"]
+default = ["color", "custom_value"]
 color = ["bat", "bat/paging", "clap/color", "once_cell", "termcolor"]
 custom_value = ["dts-core/custom_value"]
 

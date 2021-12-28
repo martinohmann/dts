@@ -1,4 +1,4 @@
-//! The Value enum, a loosely typed way of representing any valid HCL value.
+//! The Value enum, a loosely typed way of representing any valid value.
 
 mod de;
 mod from;
@@ -13,23 +13,23 @@ use std::str;
 
 pub use crate::number::Number;
 
-/// The map type used for HCL objects.
+/// The map type used for objects.
 pub type Map<K, V> = indexmap::IndexMap<K, V>;
 
-/// Represents any valid HCL value.
+/// Represents any valid value.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
-    /// Represents a HCL null value.
+    /// Represents a null value.
     Null,
-    /// Represents a HCL boolean.
+    /// Represents a boolean.
     Bool(bool),
-    /// Represents a HCL number, either integer or float.
+    /// Represents a number, either integer or float.
     Number(Number),
-    /// Represents a HCL string.
+    /// Represents a string.
     String(String),
-    /// Represents a HCL array.
+    /// Represents a array.
     Array(Vec<Value>),
-    /// Represents a HCL object.
+    /// Represents a object.
     Object(Map<String, Value>),
 }
 

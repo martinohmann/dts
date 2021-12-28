@@ -1,7 +1,7 @@
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::{self, Display};
 
-/// Represents a HCL number.
+/// Represents a number.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Number {
     /// Represents a positive integer.
@@ -179,7 +179,7 @@ impl<'de> Deserialize<'de> for Number {
             type Value = Number;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a HCL number")
+                formatter.write_str("a number")
             }
 
             fn visit_i64<E>(self, value: i64) -> Result<Number, E> {
