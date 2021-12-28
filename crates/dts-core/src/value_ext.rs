@@ -1,12 +1,6 @@
 //! Provides the value type that is used internally.
 
-use crate::ValueExt;
-
-/// The type this crate uses internally to represent arbitrary data.
-///
-/// This is just a type alias for `serde_json::Value` as it has most of the features necessary for
-/// internal data transformation.
-pub type Value = serde_json::Value;
+use crate::{Value, ValueExt};
 
 impl ValueExt for Value {
     fn to_array(&self) -> Vec<Value> {
@@ -27,6 +21,11 @@ impl ValueExt for Value {
         match (self, other) {
             (Value::Object(lhs), Value::Object(rhs)) => {
                 rhs.iter_mut().for_each(|(key, value)| {
+                    #[cfg(feature = "custom_value")]
+                    lhs.entry(key.to_string())
+                        .and_modify(|lhs| lhs.deep_merge(value))
+                        .or_insert_with(|| value.take());
+                    #[cfg(not(feature = "custom_value"))]
                     lhs.entry(key)
                         .and_modify(|lhs| lhs.deep_merge(value))
                         .or_insert_with(|| value.take());
@@ -57,8 +56,8 @@ impl ValueExt for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::json;
     use pretty_assertions::assert_eq;
-    use serde_json::json;
 
     #[test]
     fn test_to_array() {

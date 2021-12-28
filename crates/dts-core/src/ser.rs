@@ -1,8 +1,7 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{Encoding, Error, Result, Value, ValueExt};
-use serde_json::Map;
+use crate::{Encoding, Error, Map, Result, Value, ValueExt};
 use std::iter;
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
@@ -127,8 +126,7 @@ where
     /// ## Example
     ///
     /// ```
-    /// use dts_core::{ser::SerializerBuilder, Encoding};
-    /// use serde_json::json;
+    /// use dts_core::{json, ser::SerializerBuilder, Encoding};
     /// # use std::error::Error;
     /// #
     /// # fn main() -> Result<(), Box<dyn Error>> {
@@ -278,8 +276,8 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::json;
     use pretty_assertions::assert_eq;
-    use serde_json::json;
 
     #[test]
     fn test_serialize_json() {

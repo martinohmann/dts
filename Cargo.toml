@@ -12,6 +12,7 @@ members = [
 [features]
 default = ["color"]
 color = ["bat", "bat/paging", "clap/color", "once_cell", "termcolor"]
+custom_value = ["dts-core/custom_value"]
 
 [dependencies]
 anyhow = "1.0.44"
@@ -50,10 +51,6 @@ hcl = { path = "crates/hcl" }
 pretty_assertions = "1.0.0"
 predicates = "2.0.3"
 temp-env = "0.2.0"
-
-[dev-dependencies.serde_json]
-features = ["preserve_order"]
-version = "1.0.68"
 
 [[bench]]
 name = "benchmark"

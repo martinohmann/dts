@@ -9,17 +9,28 @@ pub use encoding::*;
 pub use error::*;
 pub use sink::Sink;
 pub use source::Source;
-pub use value::*;
 
 pub mod de;
 mod encoding;
 mod error;
+#[cfg(feature = "custom_value")]
+mod number;
 mod parsers;
 pub mod ser;
 mod sink;
 mod source;
 pub mod transform;
+#[cfg(feature = "custom_value")]
 mod value;
+mod value_ext;
+
+#[macro_use]
+mod macros;
+
+#[cfg(not(feature = "custom_value"))]
+pub use serde_json::{to_value, Map, Number, Value};
+#[cfg(feature = "custom_value")]
+pub use value::{to_value, Map, Number, Value};
 
 trait PathExt {
     fn relative_to<P>(&self, path: P) -> Option<PathBuf>

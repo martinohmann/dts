@@ -1,6 +1,5 @@
 use super::TransformError;
-use crate::Value;
-use serde_json::{Map, Number};
+use crate::{Map, Number, Value};
 use std::cmp::{self, Ordering};
 use std::str::FromStr;
 
@@ -216,8 +215,9 @@ fn cmp_numbers(lhs: &Number, rhs: &Number) -> Ordering {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::json;
     use pretty_assertions::assert_eq;
-    use serde_json::{json, to_string_pretty};
+    use serde_json::to_string_pretty;
 
     #[track_caller]
     fn assert_eq_sorted(order: Order, max_depth: Option<u64>, mut given: Value, expected: Value) {

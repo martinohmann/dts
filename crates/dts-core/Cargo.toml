@@ -3,6 +3,9 @@ name = "dts-core"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+custom_value = []
+
 [dependencies]
 csv = "1.1.6"
 glob = "0.3.0"
