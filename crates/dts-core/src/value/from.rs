@@ -1,4 +1,5 @@
 use super::{Map, Value};
+use serde_json::{Number as JsonNumber, Value as JsonValue};
 use std::borrow::Cow;
 
 macro_rules! impl_from_integer {
@@ -92,28 +93,28 @@ impl From<()> for Value {
     }
 }
 
-impl From<serde_json::Value> for Value {
-    fn from(v: serde_json::Value) -> Self {
+impl From<JsonValue> for Value {
+    fn from(v: JsonValue) -> Self {
         match v {
-            serde_json::Value::Null => Value::Null,
-            serde_json::Value::Bool(b) => Value::Bool(b),
-            serde_json::Value::Number(n) => Value::Number(n.into()),
-            serde_json::Value::String(s) => Value::String(s),
-            serde_json::Value::Array(a) => Value::from_iter(a),
-            serde_json::Value::Object(o) => Value::from_iter(o),
+            JsonValue::Null => Value::Null,
+            JsonValue::Bool(b) => Value::Bool(b),
+            JsonValue::Number(n) => Value::Number(n.into()),
+            JsonValue::String(s) => Value::String(s),
+            JsonValue::Array(a) => Value::from_iter(a),
+            JsonValue::Object(o) => Value::from_iter(o),
         }
     }
 }
 
-impl From<Value> for serde_json::Value {
+impl From<Value> for JsonValue {
     fn from(v: Value) -> Self {
         match v {
-            Value::Null => serde_json::Value::Null,
-            Value::Bool(b) => serde_json::Value::Bool(b),
-            Value::Number(n) => serde_json::Value::Number(n.into()),
-            Value::String(s) => serde_json::Value::String(s),
-            Value::Array(a) => serde_json::Value::from_iter(a),
-            Value::Object(o) => serde_json::Value::from_iter(o),
+            Value::Null => JsonValue::Null,
+            Value::Bool(b) => JsonValue::Bool(b),
+            Value::Number(n) => JsonNumber::try_from(n).map_or(JsonValue::Null, JsonValue::Number),
+            Value::String(s) => JsonValue::String(s),
+            Value::Array(a) => JsonValue::from_iter(a),
+            Value::Object(o) => JsonValue::from_iter(o),
         }
     }
 }

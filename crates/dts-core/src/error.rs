@@ -1,6 +1,7 @@
 //! Defines the `Error` and `Result` types used by this crate.
 
 use crate::{parsers::ParseError, transform::TransformError, Encoding};
+use serde::ser;
 use std::error::Error as StdError;
 use std::fmt::Display;
 use std::io;
@@ -53,6 +54,10 @@ pub enum Error {
     /// Represents errors emitted by serializers and deserializers.
     #[error(transparent)]
     Serde(Box<dyn StdError + Send + Sync>),
+
+    /// Error emitted when serializing map keys that cannot be converted into a string.
+    #[error("key must be a string")]
+    KeyMustBeAString,
 }
 
 impl Error {
@@ -85,6 +90,15 @@ impl Error {
             pattern: pattern.to_string(),
             source,
         }
+    }
+}
+
+impl ser::Error for Error {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
+    {
+        Error::new(msg)
     }
 }
 

@@ -205,7 +205,7 @@ where
                 None => Value::Array(Vec::new()),
             }
         } else {
-            Value::Array(iter.map(|v| Ok(to_value(v?)?)).collect::<Result<_>>()?)
+            Value::Array(iter.map(|v| to_value(v?)).collect::<Result<_>>()?)
         };
 
         Ok(value)
@@ -234,7 +234,7 @@ where
             pattern
                 .split(&s)
                 .filter(|m| !m.is_empty())
-                .map(|m| Ok(to_value(m)?))
+                .map(to_value)
                 .collect::<Result<_>>()?,
         ))
     }

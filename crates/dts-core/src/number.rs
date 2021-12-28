@@ -1,4 +1,6 @@
+use crate::{Error, Result};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde_json::Number as JsonNumber;
 use std::fmt::{self, Display};
 
 /// Represents a number.
@@ -78,6 +80,16 @@ impl Number {
             Self::NegInt(_) | Self::Float(_) => false,
         }
     }
+
+    /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not JSON
+    /// numbers.
+    pub fn from_f64(f: f64) -> Option<Number> {
+        if f.is_finite() {
+            Some(Number::Float(f))
+        } else {
+            None
+        }
+    }
 }
 
 macro_rules! impl_from_unsigned {
@@ -123,24 +135,27 @@ impl From<f64> for Number {
     }
 }
 
-impl From<serde_json::Number> for Number {
-    fn from(n: serde_json::Number) -> Self {
-        if n.is_u64() {
-            Number::PosInt(n.as_u64().unwrap())
-        } else if n.is_i64() {
-            Number::NegInt(n.as_i64().unwrap())
+impl From<JsonNumber> for Number {
+    fn from(n: JsonNumber) -> Self {
+        if let Some(pos) = n.as_u64() {
+            Number::PosInt(pos)
+        } else if let Some(neg) = n.as_i64() {
+            Number::NegInt(neg)
         } else {
             Number::Float(n.as_f64().unwrap())
         }
     }
 }
 
-impl From<Number> for serde_json::Number {
-    fn from(n: Number) -> Self {
+impl TryFrom<Number> for JsonNumber {
+    type Error = Error;
+    fn try_from(n: Number) -> Result<Self, Self::Error> {
         match n {
-            Number::PosInt(i) => i.into(),
-            Number::NegInt(i) => i.into(),
-            Number::Float(f) => serde_json::Number::from_f64(f).unwrap(),
+            Number::PosInt(i) => Ok(i.into()),
+            Number::NegInt(i) => Ok(i.into()),
+            Number::Float(f) => {
+                JsonNumber::from_f64(f).ok_or_else(|| Error::new("Infinite or NaN float"))
+            }
         }
     }
 }

@@ -13,6 +13,7 @@ use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
 use rayon::prelude::*;
 use regex::Regex;
+use serde_json::Value as JsonValue;
 use sort::ValueSorter;
 use std::iter;
 use std::str::FromStr;
@@ -185,7 +186,7 @@ where
 
     #[cfg(feature = "custom_value")]
     {
-        serde_json::Value::from(value)
+        JsonValue::from(value)
             .path(query.as_ref())
             .map(Into::into)
             .map_err(TransformError::JSONPathParseError)

@@ -1,5 +1,5 @@
-/// These macros were copied mostly unchanged from [`serde_json`][serde-json-macros]. Copyright
-/// belongs to the original authors.
+/// These macros were copied from [`serde_json`][serde-json-macros] and adjusted to the
+/// `dts_core::Value` type. Copyright belongs to the original authors.
 ///
 /// [serde-json-macros]: https://github.com/serde-rs/json/blob/9357569b1c56b12025c83f4840805bcbc678becd/src/macros.rs
 ///

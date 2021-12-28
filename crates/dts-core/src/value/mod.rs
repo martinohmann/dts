@@ -4,9 +4,9 @@ mod de;
 mod from;
 mod ser;
 
+use crate::value::ser::Serializer;
+use crate::Result;
 use serde::ser::Serialize;
-use serde_json::error::Error;
-use serde_json::value::Serializer;
 use std::fmt;
 use std::io;
 use std::str;
@@ -315,19 +315,15 @@ impl fmt::Display for Value {
 /// ```
 /// use std::collections::BTreeMap;
 ///
-/// fn main() {
-///     // The keys in this map are vectors, not strings.
-///     let mut map = BTreeMap::new();
-///     map.insert(vec![32, 64], "x86");
+/// // The keys in this map are vectors, not strings.
+/// let mut map = BTreeMap::new();
+/// map.insert(vec![32, 64], "x86");
 ///
-///     println!("{}", dts_core::to_value(map).unwrap_err());
-/// }
+/// println!("{}", dts_core::to_value(map).unwrap_err());
 /// ```
-// Taking by value is more friendly to iterator adapters, option and result
-// consumers, etc. See https://github.com/serde-rs/json/pull/149.
-pub fn to_value<T>(value: T) -> Result<Value, Error>
+pub fn to_value<T>(value: T) -> Result<Value>
 where
     T: Serialize,
 {
-    value.serialize(Serializer).map(Into::into)
+    value.serialize(Serializer)
 }
