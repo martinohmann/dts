@@ -51,7 +51,7 @@ impl Ord for Value {
                 _ => Ordering::Greater,
             },
             Value::Array(x) => match other {
-                Value::Array(y) => cmp_arrays(x, y),
+                Value::Array(y) => x.cmp(y),
                 _ => Ordering::Greater,
             },
         }
@@ -67,23 +67,6 @@ fn cmp_maps(lhs: &Map<String, Value>, rhs: &Map<String, Value>) -> Ordering {
         Ordering::Equal => {
             for (lhs, rhs) in lhs.iter().zip(rhs.iter()) {
                 match lhs.cmp(&rhs) {
-                    Ordering::Equal => (),
-                    non_eq => return non_eq,
-                }
-            }
-
-            Ordering::Equal
-        }
-        non_eq => non_eq,
-    }
-}
-
-// Compares two arrays.
-fn cmp_arrays(lhs: &[Value], rhs: &[Value]) -> Ordering {
-    match lhs.len().cmp(&rhs.len()) {
-        Ordering::Equal => {
-            for i in 0..lhs.len() {
-                match lhs[i].cmp(&rhs[i]) {
                     Ordering::Equal => (),
                     non_eq => return non_eq,
                 }
