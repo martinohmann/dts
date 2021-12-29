@@ -98,7 +98,7 @@ impl From<JsonValue> for Value {
         match v {
             JsonValue::Null => Value::Null,
             JsonValue::Bool(b) => Value::Bool(b),
-            JsonValue::Number(n) => Value::Number(n.into()),
+            JsonValue::Number(n) => Number::try_from(n).map_or(Value::Null, Value::Number),
             JsonValue::String(s) => Value::String(s),
             JsonValue::Array(a) => Value::from_iter(a),
             JsonValue::Object(o) => Value::from_iter(o),
