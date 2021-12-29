@@ -1,3 +1,4 @@
+use assert_cmd::Command;
 use criterion::{criterion_group, criterion_main, Criterion};
 use dts_core::transform::*;
 use dts_json::json;
@@ -74,6 +75,17 @@ fn benchmark_transform(c: &mut Criterion) {
         b.iter(|| {
             let value: hcl::Value = hcl::from_str(&fixture).unwrap();
             value
+        })
+    });
+
+    c.bench_function("dts", |b| {
+        b.iter(|| {
+            Command::cargo_bin("dts")
+                .unwrap()
+                .arg("tests/fixtures")
+                .args(&["--glob", "*", "-C", "-t", "F,e,j=.data,f"])
+                .assert()
+                .success()
         })
     });
 }
