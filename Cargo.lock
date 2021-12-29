@@ -453,6 +453,7 @@ dependencies = [
  "clap_generate",
  "criterion",
  "dts-core",
+ "dts-json",
  "grep-cli",
  "hcl",
  "once_cell",
@@ -460,7 +461,6 @@ dependencies = [
  "pretty_assertions",
  "rayon",
  "regex",
- "serde_json",
  "shell-words",
  "temp-env",
  "termcolor",
@@ -473,9 +473,9 @@ version = "0.1.0"
 dependencies = [
  "clap 3.0.0-rc.7",
  "csv",
+ "dts-json",
  "glob",
  "hcl",
- "indexmap",
  "json5",
  "jsonpath-rust",
  "pathdiff",
@@ -493,6 +493,17 @@ dependencies = [
  "toml",
  "ureq",
  "url",
+]
+
+[[package]]
+name = "dts-json"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

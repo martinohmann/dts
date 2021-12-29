@@ -15,7 +15,8 @@ use clap_generate::{generate, Shell};
 #[cfg(feature = "color")]
 use color::{print_themes, ColoredStdoutWriter, HighlightingConfig};
 use dts_core::{de::Deserializer, ser::Serializer};
-use dts_core::{transform, Encoding, Error, Sink, Source, Value};
+use dts_core::{transform, Encoding, Error, Sink, Source};
+use dts_json::Value;
 use no_color::StdoutWriter;
 use paging::PagingConfig;
 use rayon::prelude::*;

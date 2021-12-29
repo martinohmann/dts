@@ -1,0 +1,22 @@
+[package]
+name = "dts-json"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = "1.0.30"
+
+[dependencies.indexmap]
+features = ["rayon"]
+version = "1.7.0"
+
+[dependencies.serde]
+features = ["derive"]
+version = "1.0.130"
+
+[dependencies.serde_json]
+features = ["preserve_order"]
+version = "1.0.68"
+
+[dev-dependencies]
+pretty_assertions = "1.0.0"

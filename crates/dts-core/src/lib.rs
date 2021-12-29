@@ -9,7 +9,6 @@ pub use encoding::*;
 pub use error::*;
 pub use sink::Sink;
 pub use source::Source;
-pub use value::*;
 
 pub mod de;
 mod encoding;
@@ -19,7 +18,6 @@ pub mod ser;
 mod sink;
 mod source;
 pub mod transform;
-mod value;
 
 trait PathExt {
     fn relative_to<P>(&self, path: P) -> Option<PathBuf>
@@ -58,21 +56,4 @@ where
             })
             .collect()
     }
-}
-
-trait ValueExt {
-    /// Converts value into an array. If the value is of variant `Value::Array`, the wrapped value
-    /// will be returned. Otherwise the result is a `Vec` which contains the `Value`.
-    fn to_array(&self) -> Vec<Value>;
-
-    /// Converts the value to its string representation but ensures that the resulting string is
-    /// not quoted.
-    fn to_string_unquoted(&self) -> String;
-
-    /// Deep merges `other` into `self`, replacing all values in `other` that were merged into
-    /// `self` with `Value::Null`.
-    fn deep_merge(&mut self, other: &mut Value);
-
-    /// Returns true if `self` is `Value::Null` or an empty array or map.
-    fn is_empty(&self) -> bool;
 }
