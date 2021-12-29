@@ -1,3 +1,5 @@
+//! Extension methods for `Value` which may not be too useful outside of `dts`.
+
 use super::Value;
 
 impl Value {

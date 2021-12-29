@@ -7,14 +7,13 @@ mod hash;
 mod ord;
 mod ser;
 
+use crate::number::Number;
 use crate::value::ser::Serializer;
 use crate::Result;
 use serde::ser::Serialize;
 use std::fmt::{self, Debug, Display};
 use std::io;
 use std::str;
-
-pub use crate::number::Number;
 
 /// The map type used for objects.
 pub type Map<K, V> = indexmap::IndexMap<K, V>;

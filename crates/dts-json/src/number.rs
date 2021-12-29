@@ -1,8 +1,6 @@
 use crate::{Error, Result};
-use serde::{
-    de::{self, Visitor},
-    Deserialize, Deserializer, Serialize, Serializer,
-};
+use serde::de::{self, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Number as JsonNumber;
 use std::cmp::Ordering;
 use std::fmt::{self, Debug, Display};

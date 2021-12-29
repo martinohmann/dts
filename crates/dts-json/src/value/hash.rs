@@ -1,4 +1,4 @@
-use crate::Value;
+use super::Value;
 use std::hash::{Hash, Hasher};
 
 impl Hash for Value {

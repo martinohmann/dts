@@ -9,4 +9,5 @@ mod value;
 mod macros;
 
 pub use error::*;
-pub use value::{to_value, Map, Number, Value};
+pub use number::Number;
+pub use value::{to_value, Map, Value};

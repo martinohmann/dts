@@ -1,4 +1,4 @@
-use crate::{Map, Value};
+use super::{Map, Value};
 use std::cmp::Ordering;
 
 impl PartialEq for Value {
