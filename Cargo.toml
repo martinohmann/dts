@@ -11,15 +11,15 @@ members = [
 ]
 
 [features]
-default = ["color", "custom_value"]
+default = ["color"]
 color = ["bat", "bat/paging", "clap/color", "once_cell", "termcolor"]
-custom_value = ["dts-core/custom_value"]
 
 [dependencies]
 anyhow = "1.0.44"
 atty = "0.2.14"
 clap_generate = "= 3.0.0-rc.7"
 dts-core = { path = "crates/dts-core" }
+dts-json = { path = "crates/dts-json" }
 grep-cli = "0.1.6"
 rayon = "1.5.1"
 regex = "1.5.4"

@@ -1,5 +1,5 @@
 use super::TransformError;
-use crate::{Map, Value};
+use dts_json::{Map, Value};
 use std::cmp::Ordering;
 use std::str::FromStr;
 
@@ -117,7 +117,7 @@ impl FromStr for ValueSorter {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::json;
+    use dts_json::json;
     use pretty_assertions::assert_eq;
     use serde_json::to_string_pretty;
 

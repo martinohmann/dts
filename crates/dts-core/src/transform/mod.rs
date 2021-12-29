@@ -7,8 +7,8 @@ pub(crate) mod sort;
 pub use error::*;
 
 use crate::parsers::flat_key::{self, KeyPart, KeyParts};
-use crate::{Map, Result, Value, ValueExt};
-use indexmap::IndexMap;
+use crate::Result;
+use dts_json::{Map, Value};
 use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
 use rayon::prelude::*;
@@ -143,7 +143,7 @@ where
 ///
 /// ```
 /// use dts_core::transform::filter_jsonpath;
-/// use dts_core::json;
+/// use dts_json::json;
 /// # use pretty_assertions::assert_eq;
 /// # use std::error::Error;
 /// #
@@ -168,7 +168,7 @@ where
 ///
 /// ```
 /// use dts_core::transform::filter_jsonpath;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!([]);
 /// assert!(filter_jsonpath(value, "$[").is_err());
@@ -177,20 +177,10 @@ pub fn filter_jsonpath<Q>(value: Value, query: Q) -> Result<Value, TransformErro
 where
     Q: AsRef<str>,
 {
-    #[cfg(not(feature = "custom_value"))]
-    {
-        value
-            .path(query.as_ref())
-            .map_err(TransformError::JSONPathParseError)
-    }
-
-    #[cfg(feature = "custom_value")]
-    {
-        JsonValue::from(value)
-            .path(query.as_ref())
-            .map(Into::into)
-            .map_err(TransformError::JSONPathParseError)
-    }
+    JsonValue::from(value)
+        .path(query.as_ref())
+        .map(Into::into)
+        .map_err(TransformError::JSONPathParseError)
 }
 
 /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
@@ -201,8 +191,7 @@ where
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::remove_empty_values;
-/// use dts_core::Value;
-/// use dts_core::json;
+/// use dts_json::{json, Value};
 ///
 /// let value = Value::Null;
 ///
@@ -212,8 +201,7 @@ where
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::remove_empty_values;
-/// use dts_core::Value;
-/// use dts_core::json;
+/// use dts_json::{json, Value};
 ///
 /// let mut value = json!({});
 ///
@@ -223,7 +211,7 @@ where
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::remove_empty_values;
-/// use dts_core::json;
+/// use dts_json::{json, Value};
 ///
 /// let value = json!(["foo", null, "bar"]);
 ///
@@ -233,7 +221,7 @@ where
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::remove_empty_values;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!({"foo": ["bar", null, {}, "baz"], "qux": {"adf": {}}});
 ///
@@ -266,7 +254,7 @@ pub fn remove_empty_values(value: Value) -> Value {
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::flatten;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!([["foo"], ["bar"], [["baz"], "qux"]]);
 ///
@@ -279,7 +267,7 @@ pub fn remove_empty_values(value: Value) -> Value {
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::flatten;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!(["foo"]);
 ///
@@ -291,7 +279,7 @@ pub fn remove_empty_values(value: Value) -> Value {
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::flatten;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!({"foo": "bar"});
 ///
@@ -303,7 +291,7 @@ pub fn remove_empty_values(value: Value) -> Value {
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::flatten;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!({"foo": "bar", "baz": "qux"});
 ///
@@ -312,7 +300,7 @@ pub fn remove_empty_values(value: Value) -> Value {
 pub fn flatten(value: Value) -> Value {
     match value {
         Value::Array(array) if array.len() == 1 => array[0].clone(),
-        Value::Array(array) => Value::Array(array.iter().flat_map(ValueExt::to_array).collect()),
+        Value::Array(array) => Value::Array(array.iter().flat_map(Value::to_array).collect()),
         Value::Object(object) if object.len() == 1 => {
             object.into_iter().next().map(|(_, v)| v).unwrap()
         }
@@ -329,7 +317,7 @@ pub fn flatten(value: Value) -> Value {
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::flatten_keys;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!({"foo": {"bar": ["baz", "qux"]}});
 ///
@@ -352,7 +340,7 @@ pub fn flatten(value: Value) -> Value {
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::flatten_keys;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!(["foo", "bar", "baz"]);
 ///
@@ -374,7 +362,7 @@ pub fn flatten(value: Value) -> Value {
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::flatten_keys;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!("foo");
 ///
@@ -393,7 +381,7 @@ where
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::expand_keys;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!([{"foo.bar": 1, "foo[\"bar-baz\"]": 2}]);
 /// let expected = json!([{"foo": {"bar": 1, "bar-baz": 2}}]);
@@ -403,8 +391,6 @@ where
 pub fn expand_keys(value: Value) -> Value {
     match value {
         Value::Object(object) => object
-            .into_iter()
-            .collect::<IndexMap<String, Value>>()
             .into_par_iter()
             .map(|(key, value)| match flat_key::parse(&key).ok() {
                 Some(mut parts) => {
@@ -465,7 +451,7 @@ pub fn deep_merge(value: Value) -> Value {
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::transform::keys;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// let value = json!({"foo": "bar", "baz": "qux"});
 ///
@@ -484,7 +470,7 @@ pub fn keys(value: Value) -> Value {
 ///
 /// ```
 /// use dts_core::transform::delete_keys;
-/// use dts_core::json;
+/// use dts_json::json;
 /// use regex::Regex;
 /// # use pretty_assertions::assert_eq;
 /// # use std::error::Error;
@@ -549,7 +535,7 @@ pub fn arrays_to_objects(value: Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::json;
+    use dts_json::json;
     use pretty_assertions::assert_eq;
 
     #[test]

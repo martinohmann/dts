@@ -1,32 +1,31 @@
-//! Provides the value type that is used internally.
+use super::Value;
 
-use crate::{Value, ValueExt};
-
-impl ValueExt for Value {
-    fn to_array(&self) -> Vec<Value> {
+impl Value {
+    /// Converts value into an array. If the value is of variant `Value::Array`, the wrapped value
+    /// will be returned. Otherwise the result is a `Vec` which contains the `Value`.
+    pub fn to_array(&self) -> Vec<Value> {
         match self {
             Value::Array(array) => array.clone(),
             value => vec![value.clone()],
         }
     }
 
-    fn to_string_unquoted(&self) -> String {
+    /// Converts the value to its string representation but ensures that the resulting string is
+    /// not quoted.
+    pub fn to_string_unquoted(&self) -> String {
         match self {
             Value::String(s) => s.clone(),
             value => value.to_string(),
         }
     }
 
-    fn deep_merge(&mut self, other: &mut Value) {
+    /// Deep merges `other` into `self`, replacing all values in `other` that were merged into
+    /// `self` with `Value::Null`.
+    pub fn deep_merge(&mut self, other: &mut Value) {
         match (self, other) {
             (Value::Object(lhs), Value::Object(rhs)) => {
                 rhs.iter_mut().for_each(|(key, value)| {
-                    #[cfg(feature = "custom_value")]
                     lhs.entry(key.to_string())
-                        .and_modify(|lhs| lhs.deep_merge(value))
-                        .or_insert_with(|| value.take());
-                    #[cfg(not(feature = "custom_value"))]
-                    lhs.entry(key)
                         .and_modify(|lhs| lhs.deep_merge(value))
                         .or_insert_with(|| value.take());
                 });
@@ -43,7 +42,8 @@ impl ValueExt for Value {
         }
     }
 
-    fn is_empty(&self) -> bool {
+    /// Returns true if `self` is `Value::Null` or an empty array or map.
+    pub fn is_empty(&self) -> bool {
         match self {
             Value::Null => true,
             Value::Array(array) if array.is_empty() => true,

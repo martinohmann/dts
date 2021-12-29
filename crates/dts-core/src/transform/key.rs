@@ -1,5 +1,5 @@
 use crate::parsers::flat_key::StringKeyParts;
-use crate::{Map, Value};
+use dts_json::{Map, Value};
 use std::collections::BTreeMap;
 
 pub struct KeyFlattener<'a> {
@@ -55,7 +55,7 @@ impl<'a> KeyFlattener<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::json;
+    use dts_json::json;
     use pretty_assertions::assert_eq;
 
     #[test]

@@ -1,12 +1,12 @@
 /// These macros were copied from [`serde_json`][serde-json-macros] and adjusted to the
-/// `dts_core::Value` type. Copyright belongs to the original authors.
+/// `dts_json::Value` type. Copyright belongs to the original authors.
 ///
 /// [serde-json-macros]: https://github.com/serde-rs/json/blob/9357569b1c56b12025c83f4840805bcbc678becd/src/macros.rs
 ///
-/// Construct a `dts_core::Value` from a JSON literal.
+/// Construct a `dts_json::Value` from a JSON literal.
 ///
 /// ```
-/// # use dts_core::json;
+/// # use dts_json::json;
 /// #
 /// let value = json!({
 ///     "code": 200,
@@ -28,7 +28,7 @@
 /// map with non-string keys, the `json!` macro will panic.
 ///
 /// ```
-/// # use dts_core::json;
+/// # use dts_json::json;
 /// #
 /// let code = 200;
 /// let features = vec!["serde", "json"];
@@ -45,7 +45,7 @@
 /// Trailing commas are allowed inside both arrays and objects.
 ///
 /// ```
-/// # use dts_core::json;
+/// # use dts_json::json;
 /// #
 /// let value = json!([
 ///     "notice",

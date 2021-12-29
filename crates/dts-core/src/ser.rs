@@ -1,7 +1,8 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{Encoding, Error, Map, Result, Value, ValueExt};
+use crate::{Encoding, Error, Result};
+use dts_json::{Map, Value};
 use std::iter;
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
@@ -126,7 +127,8 @@ where
     /// ## Example
     ///
     /// ```
-    /// use dts_core::{json, ser::SerializerBuilder, Encoding};
+    /// use dts_core::{ser::SerializerBuilder, Encoding};
+    /// use dts_json::json;
     /// # use std::error::Error;
     /// #
     /// # fn main() -> Result<(), Box<dyn Error>> {
@@ -202,7 +204,7 @@ where
                     row.as_array()
                         .ok_or_else(|| Error::CsvRowError(i, "array expected".into()))?
                         .iter()
-                        .map(ValueExt::to_string_unquoted)
+                        .map(Value::to_string_unquoted)
                         .collect::<Vec<_>>()
                 } else {
                     let row = row
@@ -221,7 +223,7 @@ where
                         .unwrap()
                         .iter()
                         .map(|&header| row.get(header).unwrap_or(&empty_value))
-                        .map(ValueExt::to_string_unquoted)
+                        .map(Value::to_string_unquoted)
                         .collect::<Vec<_>>()
                 };
 
@@ -250,7 +252,7 @@ where
         let text = value
             .to_array()
             .iter()
-            .map(ValueExt::to_string_unquoted)
+            .map(Value::to_string_unquoted)
             .collect::<Vec<String>>()
             .join(&sep);
 
@@ -276,7 +278,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::json;
+    use dts_json::json;
     use pretty_assertions::assert_eq;
 
     #[test]

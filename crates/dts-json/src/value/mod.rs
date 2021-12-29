@@ -235,7 +235,7 @@ impl Display for Value {
     /// Display a JSON value as a string.
     ///
     /// ```
-    /// # use dts_core::json;
+    /// # use dts_json::json;
     /// #
     /// let json = json!({ "city": "London", "street": "10 Downing Street" });
     ///
@@ -293,14 +293,14 @@ impl Display for Value {
     }
 }
 
-/// Convert a `T` into `dts_core::Value` which is an enum that can represent
+/// Convert a `T` into `dts_json::Value` which is an enum that can represent
 /// any valid JSON data.
 ///
 /// # Example
 ///
 /// ```
 /// use serde::Serialize;
-/// use dts_core::json;
+/// use dts_json::json;
 ///
 /// use std::error::Error;
 ///
@@ -316,13 +316,13 @@ impl Display for Value {
 ///         location: "Menlo Park, CA".to_owned(),
 ///     };
 ///
-///     // The type of `expected` is `dts_core::Value`
+///     // The type of `expected` is `dts_json::Value`
 ///     let expected = json!({
 ///         "fingerprint": "0xF9BA143B95FF6D82",
 ///         "location": "Menlo Park, CA",
 ///     });
 ///
-///     let v = dts_core::to_value(u).unwrap();
+///     let v = dts_json::to_value(u).unwrap();
 ///     assert_eq!(v, expected);
 ///
 ///     Ok(())
@@ -343,7 +343,7 @@ impl Display for Value {
 /// let mut map = BTreeMap::new();
 /// map.insert(vec![32, 64], "x86");
 ///
-/// println!("{}", dts_core::to_value(map).unwrap_err());
+/// println!("{}", dts_json::to_value(map).unwrap_err());
 /// ```
 pub fn to_value<T>(value: T) -> Result<Value>
 where

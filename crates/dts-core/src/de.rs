@@ -2,7 +2,8 @@
 //! encodings into a `Value`.
 
 use crate::parsers::gron;
-use crate::{to_value, Encoding, Map, Result, Value, ValueExt};
+use crate::{Encoding, Result};
+use dts_json::{Map, Value};
 use regex::Regex;
 use serde::Deserialize;
 
@@ -117,7 +118,7 @@ where
     ///
     /// ```
     /// use dts_core::{de::DeserializerBuilder, Encoding};
-    /// use dts_core::json;
+    /// use dts_json::json;
     /// # use std::error::Error;
     /// #
     /// # fn main() -> Result<(), Box<dyn Error>> {
@@ -205,7 +206,10 @@ where
                 None => Value::Array(Vec::new()),
             }
         } else {
-            Value::Array(iter.map(|v| to_value(v?)).collect::<Result<_>>()?)
+            Value::Array(
+                iter.map(|v| Ok(dts_json::to_value(v?)?))
+                    .collect::<Result<_>>()?,
+            )
         };
 
         Ok(value)
@@ -234,7 +238,7 @@ where
             pattern
                 .split(&s)
                 .filter(|m| !m.is_empty())
-                .map(to_value)
+                .map(|v| Ok(dts_json::to_value(v)?))
                 .collect::<Result<_>>()?,
         ))
     }
@@ -264,7 +268,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::json;
+    use dts_json::json;
     use pretty_assertions::assert_eq;
 
     #[test]

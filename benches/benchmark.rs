@@ -1,5 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use dts_core::{json, transform::*};
+use dts_core::transform::*;
+use dts_json::json;
 
 fn benchmark_transform(c: &mut Criterion) {
     c.bench_function("expand_keys", |b| {

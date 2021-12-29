@@ -107,6 +107,12 @@ impl ser::Error for Error {
     }
 }
 
+impl From<dts_json::Error> for Error {
+    fn from(err: dts_json::Error) -> Self {
+        Error::serde(err)
+    }
+}
+
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Self {
         if err.is_io() {
