@@ -54,10 +54,6 @@ pub enum Error {
     /// Represents errors emitted by serializers and deserializers.
     #[error(transparent)]
     Serde(Box<dyn StdError + Send + Sync>),
-
-    /// Error emitted when serializing map keys that cannot be converted into a string.
-    #[error("key must be a string")]
-    KeyMustBeAString,
 }
 
 impl Error {
