@@ -1,8 +1,3 @@
-/// These macros were copied from [`serde_json`][serde-json-macros] and adjusted to the
-/// `dts_json::Value` type. Copyright belongs to the original authors.
-///
-/// [serde-json-macros]: https://github.com/serde-rs/json/blob/9357569b1c56b12025c83f4840805bcbc678becd/src/macros.rs
-///
 /// Construct a `dts_json::Value` from a JSON literal.
 ///
 /// ```
@@ -54,6 +49,11 @@
 ///     "comma -->",
 /// ]);
 /// ```
+///
+/// **Note**: This macro as copied from [`serde_json`][serde-json-macros] unchanged. Copyright
+/// belongs to the original authors.
+///
+/// [serde-json-macros]: https://github.com/serde-rs/json/blob/9357569b1c56b12025c83f4840805bcbc678becd/src/macros.rs
 #[macro_export(local_inner_macros)]
 macro_rules! json {
     // Hide distracting implementation details from the generated rustdoc.
