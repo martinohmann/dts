@@ -7,9 +7,22 @@ use std::fmt::{self, Debug, Display};
 use std::hash::{Hash, Hasher};
 
 /// Represents a JSON number.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+#[derive(PartialEq, Eq, Clone, Hash)]
 pub struct Number {
     n: N,
+}
+
+impl PartialOrd for Number {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.as_f64()
+            .and_then(|a| other.as_f64().and_then(|b| a.partial_cmp(&b)))
+    }
+}
+
+impl Ord for Number {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -34,28 +47,6 @@ impl PartialEq for N {
 }
 
 impl Eq for N {}
-
-impl PartialOrd for N {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (*self, *other) {
-            (N::PosInt(a), N::PosInt(b)) => a.partial_cmp(&b),
-            (N::PosInt(_), N::NegInt(_)) => Some(Ordering::Greater),
-            (N::PosInt(a), N::Float(b)) => (a as f64).partial_cmp(&b),
-            (N::NegInt(a), N::NegInt(b)) => a.partial_cmp(&b),
-            (N::NegInt(_), N::PosInt(_)) => Some(Ordering::Less),
-            (N::NegInt(a), N::Float(b)) => (a as f64).partial_cmp(&b),
-            (N::Float(a), N::PosInt(b)) => a.partial_cmp(&(b as f64)),
-            (N::Float(a), N::NegInt(b)) => a.partial_cmp(&(b as f64)),
-            (N::Float(a), N::Float(b)) => a.partial_cmp(&b),
-        }
-    }
-}
-
-impl Ord for N {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap_or(Ordering::Equal)
-    }
-}
 
 impl Hash for N {
     fn hash<H: Hasher>(&self, h: &mut H) {
