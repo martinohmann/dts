@@ -50,8 +50,9 @@
 /// ]);
 /// ```
 ///
-/// **Note**: This macro as copied from [`serde_json`][serde-json-macros] unchanged. Copyright
-/// belongs to the original authors.
+/// **Note**: This macro was copied from [`serde_json`][serde-json-macros] unchanged. Copyright
+/// belongs to the original authors. This was necessary to be able to construct `dts_json::Value`
+/// rather than `serde_json::Value` using the `json!` macro.
 ///
 /// [serde-json-macros]: https://github.com/serde-rs/json/blob/9357569b1c56b12025c83f4840805bcbc678becd/src/macros.rs
 #[macro_export(local_inner_macros)]
