@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use std::fmt::{self, Debug, Display};
 use std::hash::{Hash, Hasher};
 
-/// Represents a number.
+/// Represents a JSON number.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct Number {
     n: N,

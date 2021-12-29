@@ -14,7 +14,7 @@ impl<'de> Deserialize<'de> for Value {
             type Value = Value;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("any valid value")
+                formatter.write_str("any valid JSON value")
             }
 
             fn visit_bool<E>(self, value: bool) -> Result<Value, E> {

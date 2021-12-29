@@ -1,4 +1,4 @@
-//! The Value enum, a loosely typed way of representing any valid value.
+//! The Value enum, a loosely typed way of representing any valid  JSON value.
 
 mod de;
 mod ext;
@@ -18,7 +18,7 @@ use std::str;
 /// The map type used for objects.
 pub type Map<K, V> = indexmap::IndexMap<K, V>;
 
-/// Represents any valid value.
+/// Represents any valid JSON value.
 #[derive(Clone)]
 pub enum Value {
     /// Represents a null value.
