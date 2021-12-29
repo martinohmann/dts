@@ -1,4 +1,3 @@
-use crate::{Error, Result};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Number as JsonNumber;
@@ -178,32 +177,28 @@ macro_rules! impl_from_signed {
 impl_from_unsigned!(u8, u16, u32, u64, usize);
 impl_from_signed!(i8, i16, i32, i64, isize);
 
-impl TryFrom<JsonNumber> for Number {
-    type Error = Error;
-
-    fn try_from(num: JsonNumber) -> Result<Self, Self::Error> {
+impl From<JsonNumber> for Number {
+    fn from(num: JsonNumber) -> Self {
         if let Some(pos) = num.as_u64() {
-            Ok(pos.into())
+            pos.into()
         } else if let Some(neg) = num.as_i64() {
-            Ok(neg.into())
+            neg.into()
         } else {
+            // This conversion can never fail as the number is guaranteed to be a finite float.
             num.as_f64()
                 .and_then(Number::from_f64)
-                .ok_or_else(|| Error::new("Infinite or NaN float"))
+                .expect("encountered infinite or NaN float")
         }
     }
 }
 
-impl TryFrom<Number> for JsonNumber {
-    type Error = Error;
-
-    fn try_from(num: Number) -> Result<Self, Self::Error> {
+impl From<Number> for JsonNumber {
+    fn from(num: Number) -> Self {
         match num.n {
-            N::PosInt(i) => Ok(i.into()),
-            N::NegInt(i) => Ok(i.into()),
-            N::Float(f) => {
-                JsonNumber::from_f64(f).ok_or_else(|| Error::new("Infinite or NaN float"))
-            }
+            N::PosInt(i) => i.into(),
+            N::NegInt(i) => i.into(),
+            // This conversion can never fail as the float guaranteed to be finite.
+            N::Float(f) => JsonNumber::from_f64(f).expect("encountered infinite or NaN float"),
         }
     }
 }

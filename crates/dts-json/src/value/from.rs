@@ -1,5 +1,5 @@
 use super::{Map, Number, Value};
-use serde_json::{Number as JsonNumber, Value as JsonValue};
+use serde_json::Value as JsonValue;
 use std::borrow::Cow;
 
 macro_rules! impl_from_integer {
@@ -98,7 +98,7 @@ impl From<JsonValue> for Value {
         match v {
             JsonValue::Null => Value::Null,
             JsonValue::Bool(b) => Value::Bool(b),
-            JsonValue::Number(n) => Number::try_from(n).map_or(Value::Null, Value::Number),
+            JsonValue::Number(n) => Value::Number(n.into()),
             JsonValue::String(s) => Value::String(s),
             JsonValue::Array(a) => Value::from_iter(a),
             JsonValue::Object(o) => Value::from_iter(o),
@@ -111,7 +111,7 @@ impl From<Value> for JsonValue {
         match v {
             Value::Null => JsonValue::Null,
             Value::Bool(b) => JsonValue::Bool(b),
-            Value::Number(n) => JsonNumber::try_from(n).map_or(JsonValue::Null, JsonValue::Number),
+            Value::Number(n) => JsonValue::Number(n.into()),
             Value::String(s) => JsonValue::String(s),
             Value::Array(a) => JsonValue::from_iter(a),
             Value::Object(o) => JsonValue::from_iter(o),
