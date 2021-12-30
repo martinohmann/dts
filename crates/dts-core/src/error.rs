@@ -46,10 +46,6 @@ pub enum Error {
     #[error("Unable to fetch remote data source")]
     RequestError(#[from] ureq::Error),
 
-    /// Indicates an error at a specific row of input or output data.
-    #[error("Error at row index {0}: {1}")]
-    CsvRowError(usize, String),
-
     /// Represents errors emitted by serializers and deserializers.
     #[error(transparent)]
     Serde(Box<dyn StdError + Send + Sync>),

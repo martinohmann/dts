@@ -195,25 +195,21 @@ where
                 .delimiter(self.opts.csv_delimiter.unwrap_or(b','))
                 .from_writer(&mut buf);
 
-            let mut headers: Option<Vec<&String>> = None;
+            let mut headers: Option<Vec<String>> = None;
             let empty_value = Value::String("".into());
 
-            for (i, row) in value.into_array().iter().enumerate() {
+            for row in value.into_array().into_iter() {
                 let row_data = if !self.opts.keys_as_csv_headers {
-                    row.as_array()
-                        .ok_or_else(|| Error::CsvRowError(i, "array expected".into()))?
-                        .iter()
-                        .cloned()
+                    row.into_array()
+                        .into_iter()
                         .map(Value::into_string)
                         .collect::<Vec<_>>()
                 } else {
-                    let row = row
-                        .as_object()
-                        .ok_or_else(|| Error::CsvRowError(i, "object expected".into()))?;
+                    let row = row.into_object("csv");
 
                     // The first row dictates the header fields.
                     if headers.is_none() {
-                        let header_data = row.keys().collect();
+                        let header_data = row.keys().cloned().collect();
                         csv_writer.serialize(&header_data)?;
                         headers = Some(header_data);
                     }
@@ -222,7 +218,7 @@ where
                         .as_ref()
                         .unwrap()
                         .iter()
-                        .map(|&header| row.get(header).unwrap_or(&empty_value))
+                        .map(|header| row.get(header).unwrap_or(&empty_value))
                         .cloned()
                         .map(Value::into_string)
                         .collect::<Vec<_>>()
@@ -328,23 +324,34 @@ mod test {
         ser.serialize(Encoding::Csv, json!({"one": "val1", "two": "val2"}))
             .unwrap();
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "one,two\nval1,val2\n");
-    }
 
-    #[test]
-    fn test_serialize_csv_errors() {
-        let mut buf = Vec::new();
+        buf.clear();
+
         let mut ser = Serializer::new(&mut buf);
-        assert!(ser.serialize(Encoding::Csv, json!("non-array")).is_err());
-        assert!(ser
-            .serialize(Encoding::Csv, json!([{"non-array": "row"}]))
-            .is_err());
+        ser.serialize(Encoding::Csv, json!("non-array")).unwrap();
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), "non-array\n");
+
+        buf.clear();
+
+        let mut ser = Serializer::new(&mut buf);
+        ser.serialize(Encoding::Csv, json!([{"non-array": "row"}]))
+            .unwrap();
+        assert_eq!(
+            std::str::from_utf8(&buf).unwrap(),
+            "\"{\"\"non-array\"\":\"\"row\"\"}\"\n"
+        );
+
+        buf.clear();
 
         let mut ser = SerializerBuilder::new()
             .keys_as_csv_headers(true)
             .build(&mut buf);
-        assert!(ser
-            .serialize(Encoding::Csv, json!([["non-object-row"]]))
-            .is_err());
+        ser.serialize(Encoding::Csv, json!([["non-object-row"]]))
+            .unwrap();
+        assert_eq!(
+            std::str::from_utf8(&buf).unwrap(),
+            "csv\n\"[\"\"non-object-row\"\"]\"\n"
+        );
     }
 
     #[test]
