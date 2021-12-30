@@ -147,14 +147,14 @@ where
     }
 
     fn deserialize_yaml(&mut self) -> Result<Value> {
-        let values = serde_yaml::Deserializer::from_reader(&mut self.reader)
+        let mut values = serde_yaml::Deserializer::from_reader(&mut self.reader)
             .map(Value::deserialize)
             .collect::<Result<Vec<_>, _>>()?;
 
         // If this was not multi-document YAML, just take the first document's value without
         // wrapping it into an array.
         if values.len() == 1 {
-            Ok(values[0].clone())
+            Ok(values.swap_remove(0))
         } else {
             Ok(Value::Array(values))
         }
