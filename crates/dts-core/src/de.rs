@@ -308,7 +308,7 @@ mod test {
             json!([["row1col1", "row1col2"], ["row2col1", "row2col2"]]),
         );
         assert_builder_deserializes_to(
-            &mut DeserializerBuilder::new().csv_without_headers(true),
+            &mut DeserializerBuilder::new().csv_headers_as_keys(true),
             Encoding::Csv,
             "header1,header2\nrow1col1,row1col2\nrow2col1,row2col2",
             json!([{"header1":"row1col1", "header2":"row1col2"}, {"header1":"row2col1", "header2":"row2col2"}]),
