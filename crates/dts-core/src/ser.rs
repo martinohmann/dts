@@ -272,106 +272,87 @@ mod test {
     use super::*;
     use dts_json::json;
     use pretty_assertions::assert_eq;
+    use std::str;
+
+    #[track_caller]
+    fn assert_serializes_to(encoding: Encoding, value: Value, expected: &str) {
+        assert_builder_serializes_to(&mut SerializerBuilder::new(), encoding, value, expected)
+    }
+
+    #[track_caller]
+    fn assert_builder_serializes_to(
+        builder: &mut SerializerBuilder,
+        encoding: Encoding,
+        value: Value,
+        expected: &str,
+    ) {
+        let mut buf = Vec::new();
+        let mut ser = builder.build(&mut buf);
+
+        ser.serialize(encoding, value).unwrap();
+        assert_eq!(str::from_utf8(&buf).unwrap(), expected);
+    }
 
     #[test]
     fn test_serialize_json() {
-        let mut buf = Vec::new();
-        let mut ser = SerializerBuilder::new().compact(true).build(&mut buf);
-        ser.serialize(Encoding::Json, json!(["one", "two"]))
-            .unwrap();
-        assert_eq!(&buf, "[\"one\",\"two\"]".as_bytes());
-
-        buf.clear();
-
-        let mut ser = SerializerBuilder::new().build(&mut buf);
-        ser.serialize(Encoding::Json, json!(["one", "two"]))
-            .unwrap();
-        assert_eq!(&buf, "[\n  \"one\",\n  \"two\"\n]".as_bytes());
+        assert_builder_serializes_to(
+            &mut SerializerBuilder::new().compact(true),
+            Encoding::Json,
+            json!(["one", "two"]),
+            "[\"one\",\"two\"]",
+        );
+        assert_serializes_to(
+            Encoding::Json,
+            json!(["one", "two"]),
+            "[\n  \"one\",\n  \"two\"\n]",
+        );
     }
 
     #[test]
     fn test_serialize_csv() {
-        let mut buf = Vec::new();
-        let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Csv, json!([["one", "two"], ["three", "four"]]))
-            .unwrap();
-        assert_eq!(std::str::from_utf8(&buf).unwrap(), "one,two\nthree,four\n");
-
-        buf.clear();
-
-        let mut ser = SerializerBuilder::new()
-            .keys_as_csv_headers(true)
-            .build(&mut buf);
-        ser.serialize(
+        assert_serializes_to(
+            Encoding::Csv,
+            json!([["one", "two"], ["three", "four"]]),
+            "one,two\nthree,four\n",
+        );
+        assert_builder_serializes_to(
+            &mut SerializerBuilder::new().keys_as_csv_headers(true),
             Encoding::Csv,
             json!([
                 {"one": "val1", "two": "val2"},
                 {"one": "val3", "three": "val4"},
                 {"two": "val5"}
             ]),
-        )
-        .unwrap();
-        assert_eq!(
-            std::str::from_utf8(&buf).unwrap(),
-            "one,two\nval1,val2\nval3,\n,val5\n"
+            "one,two\nval1,val2\nval3,\n,val5\n",
         );
-
-        buf.clear();
-
-        let mut ser = SerializerBuilder::new()
-            .keys_as_csv_headers(true)
-            .build(&mut buf);
-        ser.serialize(Encoding::Csv, json!({"one": "val1", "two": "val2"}))
-            .unwrap();
-        assert_eq!(std::str::from_utf8(&buf).unwrap(), "one,two\nval1,val2\n");
-
-        buf.clear();
-
-        let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Csv, json!("non-array")).unwrap();
-        assert_eq!(std::str::from_utf8(&buf).unwrap(), "non-array\n");
-
-        buf.clear();
-
-        let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Csv, json!([{"non-array": "row"}]))
-            .unwrap();
-        assert_eq!(
-            std::str::from_utf8(&buf).unwrap(),
-            "\"{\"\"non-array\"\":\"\"row\"\"}\"\n"
+        assert_builder_serializes_to(
+            &mut SerializerBuilder::new().keys_as_csv_headers(true),
+            Encoding::Csv,
+            json!({"one": "val1", "two": "val2"}),
+            "one,two\nval1,val2\n",
         );
-
-        buf.clear();
-
-        let mut ser = SerializerBuilder::new()
-            .keys_as_csv_headers(true)
-            .build(&mut buf);
-        ser.serialize(Encoding::Csv, json!([["non-object-row"]]))
-            .unwrap();
-        assert_eq!(
-            std::str::from_utf8(&buf).unwrap(),
-            "csv\n\"[\"\"non-object-row\"\"]\"\n"
+        assert_serializes_to(Encoding::Csv, json!("non-array"), "non-array\n");
+        assert_serializes_to(
+            Encoding::Csv,
+            json!([{"non-array": "row"}]),
+            "\"{\"\"non-array\"\":\"\"row\"\"}\"\n",
+        );
+        assert_builder_serializes_to(
+            &mut SerializerBuilder::new().keys_as_csv_headers(true),
+            Encoding::Csv,
+            json!([["non-object-row"]]),
+            "csv\n\"[\"\"non-object-row\"\"]\"\n",
         );
     }
 
     #[test]
     fn test_serialize_text() {
-        let mut buf = Vec::new();
-        let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Text, json!(["one", "two"]))
-            .unwrap();
-        assert_eq!(&buf, "one\ntwo".as_bytes());
-
-        let mut buf = Vec::new();
-        let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Text, json!([{"foo": "bar"}, "baz"]))
-            .unwrap();
-        assert_eq!(&buf, "{\"foo\":\"bar\"}\nbaz".as_bytes());
-
-        let mut buf = Vec::new();
-        let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Text, json!({"foo": "bar"}))
-            .unwrap();
-        assert_eq!(&buf, "{\"foo\":\"bar\"}".as_bytes());
+        assert_serializes_to(Encoding::Text, json!(["one", "two"]), "one\ntwo");
+        assert_serializes_to(
+            Encoding::Text,
+            json!([{"foo": "bar"}, "baz"]),
+            "{\"foo\":\"bar\"}\nbaz",
+        );
+        assert_serializes_to(Encoding::Text, json!({"foo": "bar"}), "{\"foo\":\"bar\"}");
     }
 }

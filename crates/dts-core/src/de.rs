@@ -267,67 +267,67 @@ mod test {
     use dts_json::json;
     use pretty_assertions::assert_eq;
 
-    #[test]
-    fn test_deserialize_yaml() {
-        let mut de = Deserializer::new("---\nfoo: bar".as_bytes());
-        assert_eq!(
-            de.deserialize(Encoding::Yaml).unwrap(),
-            json!({"foo": "bar"})
-        );
+    #[track_caller]
+    fn assert_builder_deserializes_to(
+        builder: &mut DeserializerBuilder,
+        encoding: Encoding,
+        input: &str,
+        expected: Value,
+    ) {
+        let mut de = builder.build(input.as_bytes());
+        let value = de.deserialize(encoding).unwrap();
+        assert_eq!(value, expected);
+    }
+
+    #[track_caller]
+    fn assert_deserializes_to(encoding: Encoding, input: &str, expected: Value) {
+        assert_builder_deserializes_to(&mut DeserializerBuilder::new(), encoding, input, expected);
     }
 
     #[test]
-    fn test_deserialize_yaml_multi() {
-        let mut de = Deserializer::new("---\nfoo: bar\n---\nbaz: qux".as_bytes());
-        assert_eq!(
-            de.deserialize(Encoding::Yaml).unwrap(),
-            json!([{"foo": "bar"}, {"baz": "qux"}])
+    fn test_deserialize_yaml() {
+        assert_deserializes_to(Encoding::Yaml, "---\nfoo: bar", json!({"foo": "bar"}));
+        assert_deserializes_to(
+            Encoding::Yaml,
+            "---\nfoo: bar\n---\nbaz: qux",
+            json!([{"foo": "bar"}, {"baz": "qux"}]),
         );
     }
 
     #[test]
     fn test_deserialize_csv() {
-        let mut de = Deserializer::new("header1,header2\ncol1,col2".as_bytes());
-        assert_eq!(
-            de.deserialize(Encoding::Csv).unwrap(),
-            json!([["col1", "col2"]])
+        assert_deserializes_to(
+            Encoding::Csv,
+            "header1,header2\ncol1,col2",
+            json!([["col1", "col2"]]),
         );
-
-        let mut de = DeserializerBuilder::new()
-            .csv_without_headers(true)
-            .build("row1col1,row1col2\nrow2col1,row2col2".as_bytes());
-        assert_eq!(
-            de.deserialize(Encoding::Csv).unwrap(),
-            json!([["row1col1", "row1col2"], ["row2col1", "row2col2"]])
+        assert_builder_deserializes_to(
+            &mut DeserializerBuilder::new().csv_without_headers(true),
+            Encoding::Csv,
+            "row1col1,row1col2\nrow2col1,row2col2",
+            json!([["row1col1", "row1col2"], ["row2col1", "row2col2"]]),
         );
-
-        let mut de = DeserializerBuilder::new()
-            .csv_headers_as_keys(true)
-            .build("header1,header2\nrow1col1,row1col2\nrow2col1,row2col2".as_bytes());
-        assert_eq!(
-            de.deserialize(Encoding::Csv).unwrap(),
-            json!([{"header1":"row1col1", "header2":"row1col2"}, {"header1":"row2col1", "header2":"row2col2"}])
+        assert_builder_deserializes_to(
+            &mut DeserializerBuilder::new().csv_without_headers(true),
+            Encoding::Csv,
+            "header1,header2\nrow1col1,row1col2\nrow2col1,row2col2",
+            json!([{"header1":"row1col1", "header2":"row1col2"}, {"header1":"row2col1", "header2":"row2col2"}]),
         );
-
-        let mut de = DeserializerBuilder::new()
-            .csv_delimiter(b'|')
-            .build("header1|header2\ncol1|col2".as_bytes());
-        assert_eq!(
-            de.deserialize(Encoding::Csv).unwrap(),
-            json!([["col1", "col2"]])
+        assert_builder_deserializes_to(
+            &mut DeserializerBuilder::new().csv_delimiter(b'|'),
+            Encoding::Csv,
+            "header1|header2\ncol1|col2",
+            json!([["col1", "col2"]]),
         );
     }
 
     #[test]
     fn test_deserialize_text() {
-        let mut de = Deserializer::new("one\ntwo\nthree\n".as_bytes());
-        assert_eq!(
-            de.deserialize(Encoding::Text).unwrap(),
-            json!(["one", "two", "three"])
+        assert_deserializes_to(
+            Encoding::Text,
+            "one\ntwo\nthree\n",
+            json!(["one", "two", "three"]),
         );
-
-        let buf: &[u8] = &[];
-        let mut de = Deserializer::new(buf);
-        assert_eq!(de.deserialize(Encoding::Text).unwrap(), json!([]));
+        assert_deserializes_to(Encoding::Text, "", json!([]));
     }
 }
