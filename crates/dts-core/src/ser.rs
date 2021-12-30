@@ -2,8 +2,7 @@
 //! encodings.
 
 use crate::{Encoding, Error, Result};
-use dts_json::{Map, Value};
-use std::iter;
+use dts_json::Value;
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
@@ -134,13 +133,13 @@ where
     /// # fn main() -> Result<(), Box<dyn Error>> {
     /// let mut buf = Vec::new();
     /// let mut ser = SerializerBuilder::new().compact(true).build(&mut buf);
-    /// ser.serialize(Encoding::Json, &json!(["foo"]))?;
+    /// ser.serialize(Encoding::Json, json!(["foo"]))?;
     ///
     /// assert_eq!(&buf, r#"["foo"]"#.as_bytes());
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn serialize(&mut self, encoding: Encoding, value: &Value) -> Result<()> {
+    pub fn serialize(&mut self, encoding: Encoding, value: Value) -> Result<()> {
         match encoding {
             Encoding::Yaml => self.serialize_yaml(value)?,
             Encoding::Json => self.serialize_json(value)?,
@@ -160,21 +159,21 @@ where
         Ok(())
     }
 
-    fn serialize_yaml(&mut self, value: &Value) -> Result<()> {
-        Ok(serde_yaml::to_writer(&mut self.writer, value)?)
+    fn serialize_yaml(&mut self, value: Value) -> Result<()> {
+        Ok(serde_yaml::to_writer(&mut self.writer, &value)?)
     }
 
-    fn serialize_json(&mut self, value: &Value) -> Result<()> {
+    fn serialize_json(&mut self, value: Value) -> Result<()> {
         if self.opts.compact {
-            serde_json::to_writer(&mut self.writer, value)?
+            serde_json::to_writer(&mut self.writer, &value)?
         } else {
-            serde_json::to_writer_pretty(&mut self.writer, value)?
+            serde_json::to_writer_pretty(&mut self.writer, &value)?
         }
 
         Ok(())
     }
 
-    fn serialize_toml(&mut self, value: &Value) -> Result<()> {
+    fn serialize_toml(&mut self, value: Value) -> Result<()> {
         let value = toml::Value::try_from(value)?;
 
         let s = if self.opts.compact {
@@ -186,7 +185,7 @@ where
         Ok(self.writer.write_all(s.as_bytes())?)
     }
 
-    fn serialize_csv(&mut self, value: &Value) -> Result<()> {
+    fn serialize_csv(&mut self, value: Value) -> Result<()> {
         // Because individual row items may produce errors during serialization because they are of
         // unexpected type, write into a buffer first and only flush out to the writer only if
         // serialization of all rows succeeded. This avoids writing out partial data.
@@ -199,12 +198,13 @@ where
             let mut headers: Option<Vec<&String>> = None;
             let empty_value = Value::String("".into());
 
-            for (i, row) in value.to_array().iter().enumerate() {
+            for (i, row) in value.into_array().iter().enumerate() {
                 let row_data = if !self.opts.keys_as_csv_headers {
                     row.as_array()
                         .ok_or_else(|| Error::CsvRowError(i, "array expected".into()))?
                         .iter()
-                        .map(Value::to_string_unquoted)
+                        .cloned()
+                        .map(Value::into_string)
                         .collect::<Vec<_>>()
                 } else {
                     let row = row
@@ -223,7 +223,8 @@ where
                         .unwrap()
                         .iter()
                         .map(|&header| row.get(header).unwrap_or(&empty_value))
-                        .map(Value::to_string_unquoted)
+                        .cloned()
+                        .map(Value::into_string)
                         .collect::<Vec<_>>()
                 };
 
@@ -234,15 +235,15 @@ where
         Ok(self.writer.write_all(&buf)?)
     }
 
-    fn serialize_query_string(&mut self, value: &Value) -> Result<()> {
-        Ok(serde_qs::to_writer(value, &mut self.writer)?)
+    fn serialize_query_string(&mut self, value: Value) -> Result<()> {
+        Ok(serde_qs::to_writer(&value, &mut self.writer)?)
     }
 
-    fn serialize_xml(&mut self, value: &Value) -> Result<()> {
-        Ok(serde_xml_rs::to_writer(&mut self.writer, value)?)
+    fn serialize_xml(&mut self, value: Value) -> Result<()> {
+        Ok(serde_xml_rs::to_writer(&mut self.writer, &value)?)
     }
 
-    fn serialize_text(&mut self, value: &Value) -> Result<()> {
+    fn serialize_text(&mut self, value: Value) -> Result<()> {
         let sep = self
             .opts
             .text_join_separator
@@ -250,24 +251,19 @@ where
             .unwrap_or_else(|| String::from('\n'));
 
         let text = value
-            .to_array()
-            .iter()
-            .map(Value::to_string_unquoted)
+            .into_array()
+            .into_iter()
+            .map(Value::into_string)
             .collect::<Vec<String>>()
             .join(&sep);
 
         Ok(self.writer.write_all(text.as_bytes())?)
     }
 
-    fn serialize_gron(&mut self, value: &Value) -> Result<()> {
-        // Wrap value into a map with `json` as key if it isn't already an object.
-        let object = match value.as_object() {
-            Some(object) => object.clone(),
-            None => Map::from_iter(iter::once(("json".into(), value.clone()))),
-        };
-
-        let output = object
-            .iter()
+    fn serialize_gron(&mut self, value: Value) -> Result<()> {
+        let output = value
+            .into_object("json")
+            .into_iter()
             .map(|(k, v)| format!("{} = {};\n", k, v))
             .collect::<String>();
 
@@ -285,14 +281,14 @@ mod test {
     fn test_serialize_json() {
         let mut buf = Vec::new();
         let mut ser = SerializerBuilder::new().compact(true).build(&mut buf);
-        ser.serialize(Encoding::Json, &json!(["one", "two"]))
+        ser.serialize(Encoding::Json, json!(["one", "two"]))
             .unwrap();
         assert_eq!(&buf, "[\"one\",\"two\"]".as_bytes());
 
         buf.clear();
 
         let mut ser = SerializerBuilder::new().build(&mut buf);
-        ser.serialize(Encoding::Json, &json!(["one", "two"]))
+        ser.serialize(Encoding::Json, json!(["one", "two"]))
             .unwrap();
         assert_eq!(&buf, "[\n  \"one\",\n  \"two\"\n]".as_bytes());
     }
@@ -301,7 +297,7 @@ mod test {
     fn test_serialize_csv() {
         let mut buf = Vec::new();
         let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Csv, &json!([["one", "two"], ["three", "four"]]))
+        ser.serialize(Encoding::Csv, json!([["one", "two"], ["three", "four"]]))
             .unwrap();
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "one,two\nthree,four\n");
 
@@ -312,7 +308,7 @@ mod test {
             .build(&mut buf);
         ser.serialize(
             Encoding::Csv,
-            &json!([
+            json!([
                 {"one": "val1", "two": "val2"},
                 {"one": "val3", "three": "val4"},
                 {"two": "val5"}
@@ -329,7 +325,7 @@ mod test {
         let mut ser = SerializerBuilder::new()
             .keys_as_csv_headers(true)
             .build(&mut buf);
-        ser.serialize(Encoding::Csv, &json!({"one": "val1", "two": "val2"}))
+        ser.serialize(Encoding::Csv, json!({"one": "val1", "two": "val2"}))
             .unwrap();
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "one,two\nval1,val2\n");
     }
@@ -338,16 +334,16 @@ mod test {
     fn test_serialize_csv_errors() {
         let mut buf = Vec::new();
         let mut ser = Serializer::new(&mut buf);
-        assert!(ser.serialize(Encoding::Csv, &json!("non-array")).is_err());
+        assert!(ser.serialize(Encoding::Csv, json!("non-array")).is_err());
         assert!(ser
-            .serialize(Encoding::Csv, &json!([{"non-array": "row"}]))
+            .serialize(Encoding::Csv, json!([{"non-array": "row"}]))
             .is_err());
 
         let mut ser = SerializerBuilder::new()
             .keys_as_csv_headers(true)
             .build(&mut buf);
         assert!(ser
-            .serialize(Encoding::Csv, &json!([["non-object-row"]]))
+            .serialize(Encoding::Csv, json!([["non-object-row"]]))
             .is_err());
     }
 
@@ -355,19 +351,19 @@ mod test {
     fn test_serialize_text() {
         let mut buf = Vec::new();
         let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Text, &json!(["one", "two"]))
+        ser.serialize(Encoding::Text, json!(["one", "two"]))
             .unwrap();
         assert_eq!(&buf, "one\ntwo".as_bytes());
 
         let mut buf = Vec::new();
         let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Text, &json!([{"foo": "bar"}, "baz"]))
+        ser.serialize(Encoding::Text, json!([{"foo": "bar"}, "baz"]))
             .unwrap();
         assert_eq!(&buf, "{\"foo\":\"bar\"}\nbaz".as_bytes());
 
         let mut buf = Vec::new();
         let mut ser = Serializer::new(&mut buf);
-        ser.serialize(Encoding::Text, &json!({"foo": "bar"}))
+        ser.serialize(Encoding::Text, json!({"foo": "bar"}))
             .unwrap();
         assert_eq!(&buf, "{\"foo\":\"bar\"}".as_bytes());
     }

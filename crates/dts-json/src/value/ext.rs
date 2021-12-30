@@ -1,22 +1,37 @@
 //! Extension methods for `Value` which may not be too useful outside of `dts`.
 
-use super::Value;
+use super::{Map, Value};
+use std::fmt;
+use std::iter;
 
 impl Value {
     /// Converts value into an array. If the value is of variant `Value::Array`, the wrapped value
     /// will be returned. Otherwise the result is a `Vec` which contains the `Value`.
-    pub fn to_array(&self) -> Vec<Value> {
+    pub fn into_array(self) -> Vec<Value> {
         match self {
-            Value::Array(array) => array.clone(),
-            value => vec![value.clone()],
+            Value::Array(array) => array,
+            value => vec![value],
+        }
+    }
+
+    /// Converts value into an object. If the value is of variant `Value::Object`, the wrapped value
+    /// will be returned. Otherwise the result is a `Map` which contains a single entry with the
+    /// provided key.
+    pub fn into_object<K>(self, key: K) -> Map<String, Value>
+    where
+        K: fmt::Display,
+    {
+        match self {
+            Value::Object(object) => object,
+            value => Map::from_iter(iter::once((key.to_string(), value))),
         }
     }
 
     /// Converts the value to its string representation but ensures that the resulting string is
     /// not quoted.
-    pub fn to_string_unquoted(&self) -> String {
+    pub fn into_string(self) -> String {
         match self {
-            Value::String(s) => s.clone(),
+            Value::String(s) => s,
             value => value.to_string(),
         }
     }
@@ -62,28 +77,44 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_to_array() {
-        assert_eq!(json!("foo").to_array(), vec![json!("foo")]);
-        assert_eq!(json!(["foo"]).to_array(), vec![json!("foo")]);
+    fn test_into_array() {
+        assert_eq!(json!("foo").into_array(), vec![json!("foo")]);
+        assert_eq!(json!(["foo"]).into_array(), vec![json!("foo")]);
         assert_eq!(
-            json!({"foo": "bar"}).to_array(),
+            json!({"foo": "bar"}).into_array(),
             vec![json!({"foo": "bar"})]
         );
     }
 
     #[test]
-    fn test_to_string_unquoted() {
+    fn test_into_object() {
         assert_eq!(
-            json!({"foo": "bar"}).to_string_unquoted(),
+            json!("foo").into_object("the-key"),
+            Map::from_iter(iter::once(("the-key".into(), json!("foo"))))
+        );
+        assert_eq!(
+            json!(["foo", "bar"]).into_object("the-key"),
+            Map::from_iter(iter::once(("the-key".into(), json!(["foo", "bar"]))))
+        );
+        assert_eq!(
+            json!({"foo": "bar"}).into_object("the-key"),
+            Map::from_iter(iter::once(("foo".into(), json!("bar"))))
+        );
+    }
+
+    #[test]
+    fn test_into_string() {
+        assert_eq!(
+            json!({"foo": "bar"}).into_string(),
             String::from(r#"{"foo":"bar"}"#)
         );
         assert_eq!(
-            json!(["foo", "bar"]).to_string_unquoted(),
+            json!(["foo", "bar"]).into_string(),
             String::from(r#"["foo","bar"]"#)
         );
-        assert_eq!(json!("foo").to_string_unquoted(), String::from("foo"));
-        assert_eq!(json!(true).to_string_unquoted(), String::from("true"));
-        assert_eq!(json!(1).to_string_unquoted(), String::from("1"));
-        assert_eq!(Value::Null.to_string_unquoted(), String::from("null"));
+        assert_eq!(json!("foo").into_string(), String::from("foo"));
+        assert_eq!(json!(true).into_string(), String::from("true"));
+        assert_eq!(json!(1).into_string(), String::from("1"));
+        assert_eq!(Value::Null.into_string(), String::from("null"));
     }
 }

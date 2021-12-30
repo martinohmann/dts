@@ -74,7 +74,7 @@ fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
     transform::apply_chain(&opts.transform, value).context("Failed to transform value")
 }
 
-fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
+fn serialize(sink: &Sink, value: Value, opts: &OutputOptions) -> Result<()> {
     let encoding = opts
         .output_encoding
         .or_else(|| sink.encoding())
@@ -110,9 +110,9 @@ fn serialize(sink: &Sink, value: &Value, opts: &OutputOptions) -> Result<()> {
     .with_context(|| format!("Failed to serialize `{}` to `{}`", encoding, sink))
 }
 
-fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Result<()> {
-    let values = match value.as_array_mut() {
-        Some(values) => {
+fn serialize_many(sinks: &[Sink], value: Value, opts: &OutputOptions) -> Result<()> {
+    let values = match value {
+        Value::Array(mut values) => {
             if sinks.len() < values.len() {
                 // There are more values than files. The last file takes an array of the left
                 // over values.
@@ -122,7 +122,7 @@ fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Re
 
             values
         }
-        None => {
+        _ => {
             return Err(anyhow!(
                 "When using multiple output files, the data must be an array"
             ))
@@ -138,7 +138,7 @@ fn serialize_many(sinks: &[Sink], value: &mut Value, opts: &OutputOptions) -> Re
 
     sinks
         .iter()
-        .zip(values.iter())
+        .zip(values.into_iter())
         .try_for_each(|(file, value)| serialize(file, value, opts))
 }
 
@@ -201,13 +201,13 @@ fn main() -> Result<()> {
         (_, _) => deserialize_many(&sources, &opts.input)?,
     };
 
-    let mut value = transform(value, &opts.transform)?;
+    let value = transform(value, &opts.transform)?;
 
     let sinks = opts.sinks;
 
     if sinks.len() <= 1 {
-        serialize(sinks.get(0).unwrap_or(&Sink::Stdout), &value, &opts.output)
+        serialize(sinks.get(0).unwrap_or(&Sink::Stdout), value, &opts.output)
     } else {
-        serialize_many(&sinks, &mut value, &opts.output)
+        serialize_many(&sinks, value, &opts.output)
     }
 }

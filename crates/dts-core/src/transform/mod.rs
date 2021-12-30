@@ -300,7 +300,9 @@ pub fn remove_empty_values(value: Value) -> Value {
 pub fn flatten(value: Value) -> Value {
     match value {
         Value::Array(array) if array.len() == 1 => array[0].clone(),
-        Value::Array(array) => Value::Array(array.iter().flat_map(Value::to_array).collect()),
+        Value::Array(array) => {
+            Value::Array(array.into_iter().flat_map(Value::into_array).collect())
+        }
         Value::Object(object) if object.len() == 1 => {
             object.into_iter().next().map(|(_, v)| v).unwrap()
         }

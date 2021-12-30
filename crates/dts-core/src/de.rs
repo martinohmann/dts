@@ -190,15 +190,11 @@ where
         let value = if self.opts.csv_headers_as_keys {
             match iter.next() {
                 Some(headers) => {
-                    let headers: Vec<Value> = headers?;
+                    let headers: Vec<String> = headers?;
 
                     Value::Array(
                         iter.map(|record| {
-                            Ok(headers
-                                .iter()
-                                .zip(record?.into_iter())
-                                .map(|(k, v)| (k.to_string_unquoted(), v))
-                                .collect())
+                            Ok(headers.iter().cloned().zip(record?.into_iter()).collect())
                         })
                         .collect::<Result<_>>()?,
                     )
