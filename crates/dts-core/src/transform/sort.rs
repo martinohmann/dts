@@ -71,14 +71,7 @@ impl ValueSorter {
                 .for_each(|v| self.sort_impl(v, depth + 1));
         }
 
-        let mut sortable: Vec<(&String, &Value)> = object.iter().collect();
-
-        sortable.sort_by(|lhs, rhs| self.compare(lhs, rhs));
-
-        *object = sortable
-            .into_iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
+        object.sort_by(|k1, v1, k2, v2| self.compare(&(k1, v1), &(k2, v2)));
     }
 
     fn recurse(&self, depth: u64) -> bool {
