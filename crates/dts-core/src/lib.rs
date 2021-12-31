@@ -1,5 +1,4 @@
-//! Provides serializers and deserializers to transcode between different encodings.
-
+#![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
 
 use std::fs::canonicalize;

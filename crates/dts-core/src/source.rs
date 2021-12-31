@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use url::Url;
 
-/// A ource for data that needs to be deserialized.
+/// A source for data that needs to be deserialized.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Source {
     /// Stdin source.
