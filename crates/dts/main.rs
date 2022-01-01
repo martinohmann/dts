@@ -6,6 +6,8 @@ mod args;
 mod color;
 mod no_color;
 mod paging;
+#[allow(dead_code)]
+mod transformation;
 mod utils;
 
 use anyhow::{anyhow, Context, Result};
@@ -15,13 +17,14 @@ use clap_generate::{generate, Shell};
 #[cfg(feature = "color")]
 use color::{print_themes, ColoredStdoutWriter, HighlightingConfig};
 use dts_core::{de::Deserializer, ser::Serializer};
-use dts_core::{transform, Encoding, Error, Sink, Source};
+use dts_core::{transform::apply_chain, Encoding, Error, Sink, Source};
 use dts_json::Value;
 use no_color::StdoutWriter;
 use paging::PagingConfig;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
+use transformation::print_transformations;
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let encoding = opts
@@ -71,7 +74,7 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
 }
 
 fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
-    transform::apply_chain(&opts.transform, value).context("Failed to transform value")
+    apply_chain(&opts.transform, value).context("Failed to transform value")
 }
 
 fn serialize(sink: &Sink, value: Value, opts: &OutputOptions) -> Result<()> {
@@ -152,6 +155,11 @@ fn main() -> Result<()> {
     if let Some(shell) = opts.generate_completion {
         let mut app = Options::into_app();
         print_completions(&mut app, shell);
+        std::process::exit(0);
+    }
+
+    if opts.transform.list_transformations {
+        print_transformations();
         std::process::exit(0);
     }
 
