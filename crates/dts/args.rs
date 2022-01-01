@@ -248,6 +248,10 @@ pub struct TransformOptions {
     /// List available transformations and exit.
     #[clap(long, conflicts_with = "generate-completion")]
     pub list_transformations: bool,
+
+    #[clap(short = 'T', long)]
+    #[clap(multiple_occurrences = true, number_of_values = 1)]
+    pub transformation: Vec<String>,
 }
 
 /// Options that configure the behaviour of output serialization.

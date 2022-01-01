@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 pub use encoding::*;
 pub use error::*;
-pub use parsers::funcs;
+pub use parsers::func_sig;
 pub use sink::Sink;
 pub use source::Source;
 

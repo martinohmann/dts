@@ -15,15 +15,16 @@ IdentFirstChar = _{ Letter | "_" }
 Letter         = _{ 'a'..'z' | 'A'..'Z' }
 
 // Funcs
-FuncCalls = _{ FuncCall ~ ((";" | ",") ~ FuncCall)* }
-FuncCall  =  { Identifier ~ FuncSig? }
-FuncSig   = _{ "(" ~ Args? ~ ")" }
+FuncSigs  = _{ FuncSig ~ (FuncDelim? ~ FuncSig)* }
+FuncSig   =  { Identifier ~ ArgsSig? }
+FuncDelim = _{ ";" | "," | "." }
 
 // Args
+ArgsSig       = _{ "(" ~ Args? ~ ")" }
 Args          =  { Arg ~ ("," ~ Arg)* }
 Arg           = _{ NamedArg | PositionalArg }
 ArgValue      = _{ StringLitDq | StringLitSq | String }
 NamedArg      =  { Identifier ~ "=" ~ ArgValue }
 PositionalArg =  { ArgValue }
 
-Root = _{ SOI ~ FuncCalls ~ EOI }
+Root = _{ SOI ~ FuncSigs ~ EOI }
