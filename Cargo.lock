@@ -456,6 +456,7 @@ dependencies = [
  "dts-json",
  "grep-cli",
  "hcl",
+ "indexmap",
  "indoc",
  "once_cell",
  "predicates",

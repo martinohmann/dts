@@ -1,0 +1,29 @@
+// Whitespace
+WHITESPACE = _{ " " | "\t" | NEWLINE }
+
+// String values
+StringLitDq = _{ "\"" ~ StringDq ~ "\"" }
+StringLitSq = _{ "'" ~ StringSq ~ "'" }
+String      =  { (!("(" | ")" | ",") ~ ANY)+ }
+StringDq    =  { (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
+StringSq    =  { (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
+
+// Identifiers
+Identifier     = @{ IdentFirstChar ~ IdentChar* }
+IdentChar      = _{ Letter | '0'..'9' | "-" | "_" }
+IdentFirstChar = _{ Letter | "_" }
+Letter         = _{ 'a'..'z' | 'A'..'Z' }
+
+// Funcs
+FuncCalls = _{ FuncCall ~ ((";" | ",") ~ FuncCall)* }
+FuncCall  =  { Identifier ~ FuncSig? }
+FuncSig   = _{ "(" ~ Args? ~ ")" }
+
+// Args
+Args          =  { Arg ~ ("," ~ Arg)* }
+Arg           = _{ NamedArg | PositionalArg }
+ArgValue      = _{ StringLitDq | StringLitSq | String }
+NamedArg      =  { Identifier ~ "=" ~ ArgValue }
+PositionalArg =  { ArgValue }
+
+Root = _{ SOI ~ FuncCalls ~ EOI }

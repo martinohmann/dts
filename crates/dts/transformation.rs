@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use dts_core::funcs::{self, Func, FuncArg};
 use indoc::indoc;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -6,7 +7,7 @@ use std::fmt;
 use std::str::FromStr;
 use textwrap::indent;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Definition<'a> {
     name: &'a str,
     aliases: Vec<&'a str>,
@@ -22,9 +23,15 @@ impl<'a> Definition<'a> {
         }
     }
 
-    pub fn aliases(mut self, aliases: &[&'a str]) -> Self {
-        self.aliases = aliases.to_vec();
+    pub fn alias(mut self, alias: &'a str) -> Self {
+        self.aliases.push(alias);
         self
+    }
+
+    pub fn aliases(self, aliases: &[&'a str]) -> Self {
+        aliases
+            .into_iter()
+            .fold(self, |def, alias| def.alias(alias))
     }
 
     pub fn description(mut self, description: &'a str) -> Self {
@@ -54,6 +61,49 @@ impl<'a> Definition<'a> {
     {
         args.into_iter().fold(self, |def, arg| def.arg(arg))
     }
+
+    pub fn format(&self) -> String {
+        let mut s = String::new();
+        s.push_str(self.name);
+        s.push('(');
+
+        let args = self
+            .args
+            .iter()
+            .map(Arg::format)
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        s.push_str(&args);
+        s.push(')');
+        if !self.aliases.is_empty() {
+            s.push_str("    [aliases: ");
+            s.push_str(&self.aliases.join(", "));
+            s.push(']');
+        }
+
+        s.push('\n');
+
+        if let Some(description) = self.description {
+            s.push_str(&indent(description, "    "));
+            if !description.ends_with('\n') {
+                s.push('\n');
+            }
+        }
+
+        for arg in self.args.iter() {
+            s.push('\n');
+            s.push_str(&format!("    <{}>\n", arg.name));
+            if let Some(description) = arg.description {
+                s.push_str(&indent(description, "        "));
+                if !description.ends_with('\n') {
+                    s.push('\n');
+                }
+            }
+        }
+
+        s
+    }
 }
 
 #[derive(Default)]
@@ -71,52 +121,41 @@ impl<'a> Definitions<'a> {
         self
     }
 
-    pub fn generate_docs(&self) -> String {
+    pub fn format(&self) -> String {
         let mut s = String::new();
 
-        for (i, def) in self.inner.iter().enumerate() {
+        let mut defs = self.inner.clone();
+        defs.sort_by(|a, b| a.name.cmp(&b.name));
+
+        for (i, def) in defs.iter().enumerate() {
             if i > 0 {
                 s.push('\n');
             }
 
-            s.push_str(def.name);
-            s.push('(');
-
-            let args = def
-                .args
-                .iter()
-                .map(|arg| match arg.default_value {
-                    Some(value) => format!("{} = \"{}\"", arg.name, value),
-                    None => arg.name.to_string(),
-                })
-                .collect::<Vec<String>>()
-                .join(", ");
-
-            s.push_str(&args);
-            s.push_str(")\n");
-
-            if let Some(description) = def.description {
-                s.push_str(&indent(description, "    "));
-                if !description.ends_with('\n') {
-                    s.push('\n');
-                }
-            }
-
-            for arg in def.args.iter() {
-                s.push_str(&format!("    <{}>\n", arg.name));
-                if let Some(description) = arg.description {
-                    s.push_str(&indent(description, "        "));
-                    if !description.ends_with('\n') {
-                        s.push('\n');
-                    }
-                }
-            }
+            s.push_str(&def.format());
         }
 
         s
     }
 
-    pub fn parse(&self, _s: &str) -> Result<Vec<Match>> {
+    fn find(&self, name: &str) -> Option<&Definition> {
+        for def in self.inner.iter() {
+            if def.name == name || def.aliases.iter().any(|&alias| alias == name) {
+                return Some(def);
+            }
+        }
+
+        None
+    }
+
+    pub fn parse(&self, input: &str) -> Result<Vec<Match>> {
+        for func in funcs::parse(input)? {
+            let def = match self.find(func.name) {
+                Some(def) => def.clone(),
+                None => return Err(anyhow!("unknown function `{}`", func.name)),
+            };
+        }
+
         Ok(Vec::new())
     }
 }
@@ -144,6 +183,13 @@ impl<'a> Arg<'a> {
     pub fn default_value(mut self, default_value: &'a str) -> Self {
         self.default_value = Some(default_value);
         self
+    }
+
+    pub fn format(&self) -> String {
+        match self.default_value {
+            Some(value) => format!("{} = \"{}\"", self.name, value),
+            None => self.name.to_string(),
+        }
     }
 }
 
@@ -201,6 +247,24 @@ impl<'a> Match<'a> {
 pub fn definitions<'a>() -> Definitions<'a> {
     Definitions::new()
         .add(
+            Definition::new("jsonpath")
+                .aliases(&["j", "jp"])
+                .description(indoc! {r#"
+                    Selects data from the decoded input via jsonpath query. Can be specified multiple times to
+                    allow starting the filtering from the root element again.
+                    
+                    When using a jsonpath query, the result will always be shaped like an array with zero or
+                    more elements. See `flatten` if you want to remove one level of nesting on single element
+                    filter results."#})
+                .arg(
+                    Arg::new("query")
+                        .description(indoc! {r#"
+                            A jsonpath query.
+
+                            See <https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators> for supported
+                            operators."#})),
+        )
+        .add(
             Definition::new("flatten")
                 .aliases(&["f"])
                 .description(indoc! {r#"
@@ -208,14 +272,26 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     Can be specified multiple times.
                     
                     If the input is a one-elemented array it will be removed entirely, leaving the single
-                    element as output.
-                "#}),
+                    element as output."#}),
         )
-        .add(Definition::new("flatten_keys").arg(Arg::new("prefix").default_value("data").description("prefix for flattened keys")))
         .add(
-            Definition::new("jsonpath")
-                .aliases(&["j", "jp"])
-                .arg(Arg::new("query")),
+            Definition::new("flatten_keys")
+                .alias("F")
+                .description(indoc! {r#"
+                    Flattens the input to an object with flat keys.
+                    
+                    The structure of the result is similar to the output of `gron`:
+                    <https://github.com/TomNomNom/gron>.
+                "#})
+                .arg(
+                    Arg::new("prefix")
+                        .default_value("data")
+                        .description("The prefix for flattened keys"))
+        )
+        .add(
+            Definition::new("expand_keys")
+                .alias("e")
+                .description("Recursively expands flat object keys to nested objects.")
         )
 }
 
@@ -224,6 +300,6 @@ pub fn print_transformations() {
 
     print!(
         "Available transformations:\n\n{}",
-        indent(&defs.generate_docs(), "    ")
+        indent(&defs.format(), "    ")
     );
 }
