@@ -6,8 +6,7 @@ mod args;
 mod color;
 mod no_color;
 mod paging;
-#[allow(dead_code)]
-mod transformation;
+mod transform;
 mod utils;
 
 use anyhow::{anyhow, Context, Result};
@@ -24,7 +23,7 @@ use paging::PagingConfig;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
-use transformation::print_transformations;
+use transform::print_definitions;
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let encoding = opts
@@ -77,10 +76,7 @@ fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
     let chain = if opts.transformation.is_empty() {
         opts.transform.clone()
     } else {
-        opts.transformation
-            .iter()
-            .map(|input| transformation::from_str(input))
-            .collect::<Result<Vec<_>>>()?
+        transform::parse_inputs(&opts.transformation)?
     };
 
     Ok(apply_chain(&chain, value)?)
@@ -168,7 +164,7 @@ fn main() -> Result<()> {
     }
 
     if opts.transform.list_transformations {
-        print_transformations();
+        print_definitions();
         std::process::exit(0);
     }
 
