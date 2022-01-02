@@ -164,7 +164,10 @@ fn main() -> Result<()> {
     }
 
     if opts.transform.list_transformations {
-        print_definitions();
+        #[cfg(not(feature = "color"))]
+        print_definitions()?;
+        #[cfg(feature = "color")]
+        print_definitions(opts.output.color)?;
         std::process::exit(0);
     }
 

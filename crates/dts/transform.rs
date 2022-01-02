@@ -1,7 +1,9 @@
+#[cfg(feature = "color")]
+use crate::color::ColorChoice;
 use anyhow::Result;
 use dts_core::transform::{Arg, Definition, Definitions, Transformation};
 use indoc::indoc;
-use textwrap::indent;
+use std::io::{self, Write};
 
 pub fn definitions<'a>() -> Definitions<'a> {
     Definitions::new()
@@ -11,17 +13,19 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 .with_description(indoc! {r#"
                     Selects data from the decoded input via jsonpath query. Can be specified multiple times to
                     allow starting the filtering from the root element again.
-                    
+
                     When using a jsonpath query, the result will always be shaped like an array with zero or
                     more elements. See `flatten` if you want to remove one level of nesting on single element
-                    filter results."#})
+                    filter results.
+                "#})
                 .add_arg(
                     Arg::new("query")
                         .with_description(indoc! {r#"
                             A jsonpath query.
 
                             See <https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators> for supported
-                            operators."#})),
+                            operators.
+                        "#})),
         )
         .add_definition(
             Definition::new("flatten")
@@ -29,16 +33,17 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 .with_description(indoc! {r#"
                     Removes one level of nesting if the data is shaped like an array or one-elemented object.
                     Can be specified multiple times.
-                    
+
                     If the input is a one-elemented array it will be removed entirely, leaving the single
-                    element as output."#}),
+                    element as output.
+                "#}),
         )
         .add_definition(
             Definition::new("flatten_keys")
                 .add_alias("F")
                 .with_description(indoc! {r#"
                     Flattens the input to an object with flat keys.
-                    
+
                     The structure of the result is similar to the output of `gron`:
                     <https://github.com/TomNomNom/gron>.
                 "#})
@@ -51,6 +56,87 @@ pub fn definitions<'a>() -> Definitions<'a> {
             Definition::new("expand_keys")
                 .add_alias("e")
                 .with_description("Recursively expands flat object keys to nested objects.")
+        )
+        .add_definition(
+            Definition::new("remove_empty_values")
+                .add_alias("r")
+                .with_description(indoc! {r#"
+                    Recursively removes nulls, empty arrays and empty objects from the data.
+
+                    Top level empty values are not removed.
+                "#})
+        )
+        .add_definition(
+            Definition::new("deep_merge")
+                .add_alias("m")
+                .with_description(indoc! {r#"
+                    If the data is an array, all children are merged into one from left to right. Otherwise
+                    this is a no-op.
+
+                    Arrays are merged by recurively merging values at the same index. Nulls on the righthand
+                    side not merged.
+
+                    Objects are merged by creating a new object with all keys from the left and right value.
+                    Keys present on sides are merged recursively.
+
+                    In all other cases, the rightmost value is taken.
+                "#})
+        )
+        .add_definition(
+            Definition::new("keys")
+                .add_alias("k")
+                .with_description(indoc! {r#"
+                    Transforms the data into an array of object keys which is empty if the top level value is
+                    not an object.
+                "#})
+        )
+        .add_definition(
+            Definition::new("delete_keys")
+                .add_alias("d")
+                .with_description(indoc! {r#"
+                    Recursively deletes all object keys matching a regex pattern.
+                "#})
+                .add_arg(
+                    Arg::new("pattern")
+                        .with_description(indoc! {r#"
+                            A regex pattern to match the keys that should be deleted.
+                        "#})
+                )
+        )
+        .add_definition(
+            Definition::new("sort")
+                .add_alias("s")
+                .with_description(indoc! {r#"
+                    Sorts collections (arrays and maps) recursively.
+
+                    Optionally accepts a `max_depth` which defines the upper bound for child
+                    collections to be visited and sorted.
+
+                    If `max_depth` is omitted, the sorter will recursively visit all child
+                    collections and sort them.
+                "#})
+                .add_arg(
+                    Arg::new("order")
+                        .with_default_value("asc")
+                        .with_description(indoc! {r#"
+                            The sort order. Possible values are "asc" and "desc".
+                        "#})
+                )
+                .add_arg(
+                    Arg::new("max_depth")
+                        .required(false)
+                        .with_description(indoc! {r#"
+                            Defines the upper bound for child collections to be visited and
+                            sorted. A max depth of 0 means that only the top level is sorted.
+                        "#})
+                )
+        )
+        .add_definition(
+            Definition::new("arrays_to_objects")
+                .add_alias("ato")
+                .with_description(indoc! {r#"
+                    Recursively transforms all arrays into objects with the array index as key.
+                "#})
         )
 }
 
@@ -69,62 +155,135 @@ where
         .iter()
         .flatten()
         .map(|m| match m.name() {
-            "flatten" => Ok(Transformation::Flatten),
-            "flatten_keys" => Ok(Transformation::FlattenKeys(Some(m.arg("prefix")?))),
+            "arrays_to_objects" => Ok(Transformation::ArraysToObjects),
+            "deep_merge" => Ok(Transformation::DeepMerge),
+            "delete_keys" => Ok(Transformation::DeleteKeys(m.arg("pattern")?)),
             "expand_keys" => Ok(Transformation::ExpandKeys),
+            "flatten" => Ok(Transformation::Flatten),
+            // @TODO: remove Option
+            "flatten_keys" => Ok(Transformation::FlattenKeys(Some(m.arg("prefix")?))),
             "jsonpath" => Ok(Transformation::JsonPath(m.arg("query")?)),
-            _ => unreachable!(),
+            "keys" => Ok(Transformation::Keys),
+            "remove_empty_values" => Ok(Transformation::RemoveEmptyValues),
+            "sort" => todo!(),
+            name => panic!("unmatched transformation `{}`, please file a bug", name),
         })
         .collect()
 }
 
-pub fn print_definitions() {
+#[cfg(feature = "color")]
+pub fn print_definitions(choice: ColorChoice) -> io::Result<()> {
+    use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
+
+    let stdout = BufferWriter::stdout(choice.into());
+    let mut buf = stdout.buffer();
+
     let defs = definitions();
 
-    let mut s = String::new();
+    buf.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))?;
+    buf.write_all(b"TRANSFORMATIONS:")?;
+    buf.reset()?;
+
+    buf.write_all(b"\n")?;
 
     let mut defs = defs.into_inner();
     defs.sort_by(|a, b| a.name().cmp(b.name()));
 
     for (i, def) in defs.iter().enumerate() {
         if i > 0 {
-            s.push('\n');
+            buf.write_all(b"\n")?;
         }
 
-        s.push_str(&def.to_string());
+        buf.write_all(b"    ")?;
+
+        buf.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
+        buf.write_all(def.to_string().as_bytes())?;
+        buf.reset()?;
 
         if !def.aliases().is_empty() {
-            s.push_str("    [aliases: ");
-            s.push_str(
-                &def.aliases()
-                    .iter()
-                    .map(|a| a.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            );
-            s.push(']');
+            buf.write_all(format_aliases(def).as_bytes())?;
         }
 
-        s.push('\n');
+        buf.write_all(b"\n")?;
 
-        if let Some(description) = def.description() {
-            s.push_str(&indent(description, "    "));
-            if !description.ends_with('\n') {
-                s.push('\n');
-            }
+        if let Some(desc) = def.description() {
+            buf.write_all(format_desc(desc, "        ").as_bytes())?;
         }
 
         for arg in def.args().values() {
-            s.push('\n');
-            s.push_str(&format!("    <{}>\n", arg.name()));
-            if let Some(description) = arg.description() {
-                s.push_str(&indent(description, "        "));
-                if !description.ends_with('\n') {
-                    s.push('\n');
-                }
+            buf.write_all(b"\n        ")?;
+
+            buf.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
+            write!(&mut buf, "<{}>", arg.name())?;
+            buf.reset()?;
+
+            buf.write_all(b"\n")?;
+
+            if let Some(desc) = arg.description() {
+                buf.write_all(format_desc(desc, "            ").as_bytes())?;
             }
         }
     }
 
-    print!("Available transformations:\n\n{}", indent(&s, "    "));
+    stdout.print(&buf)
+}
+
+#[cfg(not(feature = "color"))]
+pub fn print_definitions() -> io::Result<()> {
+    let mut buf = String::new();
+
+    let defs = definitions();
+
+    buf.push_str("TRANSFORMATIONS:\n");
+
+    let mut defs = defs.into_inner();
+    defs.sort_by(|a, b| a.name().cmp(b.name()));
+
+    for (i, def) in defs.iter().enumerate() {
+        if i > 0 {
+            buf.push('\n');
+        }
+
+        buf.push_str("    ");
+        buf.push_str(def.to_string().as_str());
+
+        if !def.aliases().is_empty() {
+            buf.push_str(format_aliases(def).as_str());
+        }
+
+        buf.push('\n');
+
+        if let Some(desc) = def.description() {
+            buf.push_str(format_desc(desc, "        ").as_str());
+        }
+
+        for arg in def.args().values() {
+            buf.push_str(format!("\n        <{}>\n", arg.name()).as_str());
+
+            if let Some(desc) = arg.description() {
+                buf.push_str(format_desc(desc, "            ").as_str());
+            }
+        }
+    }
+
+    io::stdout().write_all(buf.as_bytes())
+}
+
+fn format_aliases(def: &Definition<'_>) -> String {
+    let aliases = def
+        .aliases()
+        .iter()
+        .map(|a| a.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    format!("    [aliases: {}]", aliases)
+}
+
+fn format_desc(desc: &str, indent: &str) -> String {
+    let mut indented = textwrap::indent(desc, indent);
+    if !indented.ends_with('\n') {
+        indented.push('\n');
+    }
+    indented
 }

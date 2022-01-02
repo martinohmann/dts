@@ -5,7 +5,7 @@ use crate::{Error, Result};
 use indexmap::{IndexMap, IndexSet};
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::str::FromStr;
 
 /// Represents the definition of a transformation.
@@ -81,12 +81,19 @@ impl<'a> Definition<'a> {
     {
         let arg = arg.into();
         self.args.insert(arg.name, arg);
-        // Arguments with default value should always go last.
+
+        // Argument order:
+        // 1. required
+        // 2. optional without default value
+        // 3. optional with default value
         self.args
-            .sort_by(|_, a, _, b| match (a.default_value, b.default_value) {
-                (None, Some(_)) => Ordering::Less,
-                (Some(_), None) => Ordering::Greater,
-                (_, _) => Ordering::Equal,
+            .sort_by(|_, a, _, b| match b.is_required().cmp(&a.is_required()) {
+                Ordering::Equal => match (a.default_value(), b.default_value()) {
+                    (None, Some(_)) => Ordering::Less,
+                    (Some(_), None) => Ordering::Greater,
+                    (_, _) => a.is_required().cmp(&b.is_required()),
+                },
+                non_eq => non_eq,
             });
         self
     }
@@ -136,12 +143,14 @@ impl<'a> Definition<'a> {
         let mut missing_args = Vec::new();
 
         for (name, arg_def) in remaining_args.into_iter() {
-            match arg_def.default_value {
+            match arg_def.default_value() {
                 Some(default_value) => {
                     args.insert(name, default_value);
                 }
                 None => {
-                    missing_args.push(name);
+                    if arg_def.is_required() {
+                        missing_args.push(name);
+                    }
                 }
             }
         }
@@ -159,16 +168,30 @@ impl<'a> Definition<'a> {
 
 impl<'a> fmt::Display for Definition<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}({})",
-            self.name,
-            self.args
-                .values()
-                .map(|arg| arg.to_string())
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
+        f.write_str(self.name)?;
+        f.write_char('(')?;
+
+        let mut optional_args = 0;
+
+        for (i, arg) in self.args.values().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+
+            if !arg.is_required() {
+                f.write_char('[')?;
+                optional_args += 1;
+            }
+
+            f.write_str(&arg.to_string())?;
+        }
+
+        // close the brackets for all optional args.
+        for _ in 0..optional_args {
+            f.write_char(']')?;
+        }
+
+        f.write_char(')')
     }
 }
 
@@ -275,8 +298,7 @@ impl<'a> Definitions<'a> {
     }
 }
 
-/// Represents an argument for a transformation. Arguments can have a default value which
-/// automatically marks them as optional.
+/// Represents an argument for a transformation.
 ///
 /// ## Example
 ///
@@ -290,6 +312,7 @@ impl<'a> Definitions<'a> {
 #[derive(Default, Clone)]
 pub struct Arg<'a> {
     name: &'a str,
+    required: bool,
     default_value: Option<&'a str>,
     description: Option<&'a str>,
 }
@@ -299,6 +322,7 @@ impl<'a> Arg<'a> {
     pub fn new(name: &'a str) -> Self {
         Arg {
             name,
+            required: true,
             ..Default::default()
         }
     }
@@ -306,6 +330,11 @@ impl<'a> Arg<'a> {
     /// Returns the argument's name.
     pub fn name(&self) -> &'a str {
         self.name
+    }
+
+    /// Returns `true` if the argument is required.
+    pub fn is_required(&self) -> bool {
+        self.required
     }
 
     /// Returns the description of the argument or `None`.
@@ -316,6 +345,12 @@ impl<'a> Arg<'a> {
     /// Returns the default value of the argument or `None`.
     pub fn default_value(&self) -> Option<&'a str> {
         self.default_value
+    }
+
+    /// Marks the `Arg` as required and returns it.
+    pub fn required(mut self, yes: bool) -> Self {
+        self.required = yes;
+        self
     }
 
     /// Sets the description for the `Arg` and returns it.
@@ -330,6 +365,7 @@ impl<'a> Arg<'a> {
     /// constructing the actual `Transformation`.
     pub fn with_default_value(mut self, default_value: &'a str) -> Self {
         self.default_value = Some(default_value);
+        self.required = false;
         self
     }
 }
