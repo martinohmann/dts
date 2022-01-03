@@ -13,31 +13,31 @@ pub fn definitions<'a>() -> Definitions<'a> {
             Definition::new("jsonpath")
                 .add_aliases(&["j", "jp"])
                 .with_description(indoc! {r#"
-                    Selects data from the decoded input via jsonpath query. Can be specified multiple times to
-                    allow starting the filtering from the root element again.
+                    Selects data from the decoded input via jsonpath query. Can be specified
+                    multiple times to allow starting the filtering from the root element again.
 
-                    When using a jsonpath query, the result will always be shaped like an array with zero or
-                    more elements. See `flatten` if you want to remove one level of nesting on single element
-                    filter results.
+                    When using a jsonpath query, the result will always be shaped like an array
+                    with zero or more elements. See `flatten` if you want to remove one level of
+                    nesting on single element filter results.
                 "#})
                 .add_arg(
                     Arg::new("query")
                         .with_description(indoc! {r#"
                             A jsonpath query.
 
-                            See <https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators> for supported
-                            operators.
+                            See <https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators>
+                            for supported operators.
                         "#})),
         )
         .add_definition(
             Definition::new("flatten")
                 .add_aliases(&["f"])
                 .with_description(indoc! {r#"
-                    Removes one level of nesting if the data is shaped like an array or one-elemented object.
-                    Can be specified multiple times.
+                    Removes one level of nesting if the data is shaped like an array or
+                    one-elemented object. Can be specified multiple times.
 
-                    If the input is a one-elemented array it will be removed entirely, leaving the single
-                    element as output.
+                    If the input is a one-elemented array it will be removed entirely, leaving the
+                    single element as output.
                 "#}),
         )
         .add_definition(
@@ -72,14 +72,14 @@ pub fn definitions<'a>() -> Definitions<'a> {
             Definition::new("deep_merge")
                 .add_aliases(&["m", "deep-merge"])
                 .with_description(indoc! {r#"
-                    If the data is an array, all children are merged into one from left to right. Otherwise
-                    this is a no-op.
+                    If the data is an array, all children are merged into one from left to right.
+                    Otherwise this is a no-op.
 
-                    Arrays are merged by recurively merging values at the same index. Nulls on the righthand
-                    side not merged.
+                    Arrays are merged by recurively merging values at the same index. Nulls on the
+                    righthand side not merged.
 
-                    Objects are merged by creating a new object with all keys from the left and right value.
-                    Keys present on sides are merged recursively.
+                    Objects are merged by creating a new object with all keys from the left and
+                    right value. Keys present on sides are merged recursively.
 
                     In all other cases, the rightmost value is taken.
                 "#})
@@ -88,8 +88,8 @@ pub fn definitions<'a>() -> Definitions<'a> {
             Definition::new("keys")
                 .add_alias("k")
                 .with_description(indoc! {r#"
-                    Transforms the data into an array of object keys which is empty if the top level value is
-                    not an object.
+                    Transforms the data into an array of object keys which is empty if the top
+                    level value is not an object.
                 "#})
         )
         .add_definition(
@@ -128,8 +128,8 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     Arg::new("max_depth")
                         .required(false)
                         .with_description(indoc! {r#"
-                            Defines the upper bound for child collections to be visited and
-                            sorted. A max depth of 0 means that only the top level is sorted.
+                            Defines the upper bound for child collections to be visited and sorted.
+                            A max depth of 0 means that only the top level is sorted.
                         "#})
                 )
         )
