@@ -73,13 +73,10 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
 }
 
 fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
-    let chain = if opts.transformation.is_empty() {
-        opts.transform.clone()
-    } else {
-        transform::parse_inputs(&opts.transformation)?
-    };
+    let chain =
+        transform::parse_inputs(&opts.inputs).context("Failed to build transformation chain")?;
 
-    Ok(apply_chain(&chain, value)?)
+    apply_chain(&chain, value).context("Failed to transform value")
 }
 
 fn serialize(sink: &Sink, value: Value, opts: &OutputOptions) -> Result<()> {
@@ -217,7 +214,7 @@ fn main() -> Result<()> {
         (_, _) => deserialize_many(&sources, &opts.input)?,
     };
 
-    let value = transform(value, &opts.transform).context("Failed to transform value")?;
+    let value = transform(value, &opts.transform)?;
 
     let sinks = opts.sinks;
 

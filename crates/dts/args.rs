@@ -6,8 +6,7 @@ use crate::paging::PagingChoice;
 use anyhow::{anyhow, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};
 use clap_generate::Shell;
-use dts_core::{de::DeserializeOptions, ser::SerializeOptions};
-use dts_core::{transform::Transformation, Encoding, Sink, Source};
+use dts_core::{de::DeserializeOptions, ser::SerializeOptions, Encoding, Sink, Source};
 use regex::Regex;
 use unescape::unescape;
 
@@ -134,124 +133,29 @@ impl From<&InputOptions> for DeserializeOptions {
 #[derive(Args, Debug)]
 #[clap(help_heading = "TRANSFORM OPTIONS")]
 pub struct TransformOptions {
-    /// Comma-separated list of transformation options. Can be specified multiple times.
-    ///
-    /// Transformation options have a short and a long form and optionally take a value separated
-    /// by `=`. For some options the value is mandatory. Transformations are applied in the order
-    /// they are defined.
+    /// An expression containing one or more transformation functions separated either by '.',
+    /// ';', ',' or spaces. Transformation functions may have one of the following
+    /// forms:
+    /// - function_name
+    /// - function_name()
+    /// - function_name(arg1)
+    /// - function_name(arg1, arg2)
+    /// - function_name(arg2=value2, arg1)
     ///
     /// ## Example
     ///
-    /// dts input.json --transform f,F,jsonpath='$.items' -t remove-empty-values
+    /// dts input.json --transform 'flatten().flatten_keys.jsonpath("$.items")' -t
+    /// 'remove_empty_values'
     ///
-    /// The following transform options are available:
-    ///
-    /// ## JSONPath query filter
-    ///
-    /// Option: `j=<query>` or `jsonpath=<query>`.
-    ///
-    /// Selects data from the decoded input via jsonpath query. Can be specified multiple times to
-    /// allow starting the filtering from the root element again.
-    ///
-    /// See <https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators> for supported
-    /// operators.
-    ///
-    /// When using a jsonpath query, the result will always be shaped like an array with zero or
-    /// more elements. See --flatten if you want to remove one level of nesting on single element
-    /// filter results.
-    ///
-    /// ## Flatten
-    ///
-    /// Option: `f` or `flatten`.
-    ///
-    /// Removes one level of nesting if the data is shaped like an array or one-elemented object.
-    /// Can be specified multiple times.
-    ///
-    /// If the input is a one-elemented array it will be removed entirely, leaving the single
-    /// element as output.
-    ///
-    /// ## Flatten keys
-    ///
-    /// Option: `F[=<prefix>]` or `flatten-keys[=<prefix>]`.
-    ///
-    /// Flattens the input to an object with flat keys.
-    ///
-    /// The flag accepts an optional value for the key prefix. If the value is omitted, the key
-    /// prefix is "data".
-    ///
-    /// The structure of the result is similar to the output of `gron`:
-    /// <https://github.com/TomNomNom/gron>.
-    ///
-    /// ## Remove empty values
-    ///
-    /// Option: `r` or `remove-empty-values`.
-    ///
-    /// Recursively removes nulls, empty arrays and empty objects from the data.
-    ///
-    /// Top level empty values are not removed.
-    ///
-    /// ## Deep merge
-    ///
-    /// Option: `m` or `deep-merge`.
-    ///
-    /// If the data is an array, all children are merged into one from left to right. Otherwise
-    /// this is a no-op.
-    ///
-    /// Arrays are merged by recurively merging values at the same index. Nulls on the righthand
-    /// side not merged.
-    ///
-    /// Objects are merged by creating a new object with all keys from the left and right value.
-    /// Keys present on sides are merged recursively.
-    ///
-    /// In all other cases, the rightmost value is taken.
-    ///
-    /// ## Expand keys
-    ///
-    /// Option: `e` or `expand-keys`.
-    ///
-    /// Recursively expands flat object keys to nested objects.
-    ///
-    /// ## Keys
-    ///
-    /// Option: `k` or `keys`.
-    ///
-    /// Transforms the data into an array of object keys which is empty if the top level value is
-    /// not an object.
-    ///
-    /// ## Delete keys
-    ///
-    /// Option: `d=<pattern>` or `delete-keys=<pattern>`.
-    ///
-    /// Recursively deletes all object keys matching a regex pattern.
-    ///
-    /// ## Sort
-    ///
-    /// Option: `s[=<order>[:<max-depth>]]` or `sort[=<order>[:<max-depth>]]`.
-    ///
-    /// Sorts collections (arrays and maps) recursively. Supported orders are "asc" and "desc". If
-    /// the order is omitted, the default is "asc".
-    ///
-    /// Optionally accepts a `max-depth` which defines the upper bound for child collections to be
-    /// visited and sorted. A `max-depth` of 0 means that only the top level is sorted. If
-    /// `max-depth` is omitted, the sorter will recursively visit all child collections and sort
-    /// them.
-    ///
-    /// # Arrays to objects
-    ///
-    /// Option: `ato` or `arrays-to-objects`.
-    ///
-    /// Recursively transforms all arrays into objects with the array index as key.
-    #[clap(short = 't', long)]
+    /// See --list-transformations to get a list of possible transformation functions and their
+    /// arguments.
+    #[clap(short = 't', long = "transform")]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
-    pub transform: Vec<Transformation>,
+    pub inputs: Vec<String>,
 
-    /// List available transformations and exit.
+    /// List available transformation functions and exit.
     #[clap(long, conflicts_with = "generate-completion")]
     pub list_transformations: bool,
-
-    #[clap(short = 'T', long)]
-    #[clap(multiple_occurrences = true, number_of_values = 1)]
-    pub transformation: Vec<String>,
 }
 
 /// Options that configure the behaviour of output serialization.

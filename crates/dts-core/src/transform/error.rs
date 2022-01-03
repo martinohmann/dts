@@ -6,14 +6,6 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum TransformError {
-    /// Represents an unknown transformation key. This usually indicates incorrect user input.
-    #[error("Unknown transformation `{0}`")]
-    UnknownTransformation(String),
-
-    /// A transformation requires a value.
-    #[error("Transformation `{0}` requires a value")]
-    ValueRequired(String),
-
     /// Represents a error while parsing the query of jsonpath filter transformation.
     #[error("Failed to parse JSONPath query:\n{0}")]
     JSONPathParseError(String),
@@ -41,19 +33,5 @@ impl TransformError {
         T: Display,
     {
         TransformError::InvalidSortOrder(order.to_string())
-    }
-
-    pub(crate) fn unknown_transformation<T>(trans: T) -> Self
-    where
-        T: Display,
-    {
-        TransformError::UnknownTransformation(trans.to_string())
-    }
-
-    pub(crate) fn value_required<T>(trans: T) -> Self
-    where
-        T: Display,
-    {
-        TransformError::ValueRequired(trans.to_string())
     }
 }

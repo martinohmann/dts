@@ -3,7 +3,7 @@
 pub mod definition;
 mod error;
 pub(crate) mod key;
-pub(crate) mod sort;
+pub mod sort;
 
 pub use definition::{Arg, Definition, DefinitionMatch, Definitions};
 pub use error::*;
@@ -18,7 +18,6 @@ use regex::Regex;
 use serde_json::Value as JsonValue;
 use sort::ValueSorter;
 use std::iter;
-use std::str::FromStr;
 
 /// A type that can apply transformations to a `Value`.
 #[derive(Debug, Clone, PartialEq)]
@@ -27,14 +26,12 @@ pub enum Transformation {
     /// Remove one level of nesting if the data is shaped like an array or one-elemented object.
     Flatten,
     /// Flattens value to an object with flat keys.
-    FlattenKeys(Option<String>),
+    FlattenKeys(String),
     /// Filter value according to a jsonpath query.
     JsonPath(String),
     /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
     /// removed.
     RemoveEmptyValues,
-    /// A chain of multiple transformations.
-    Chain(Vec<Transformation>),
     /// Deep merge values if the top level value is an array.
     DeepMerge,
     /// Expands flat keys to nested objects.
@@ -59,12 +56,9 @@ impl Transformation {
     pub fn apply(&self, value: Value) -> Result<Value, TransformError> {
         let value = match self {
             Self::Flatten => flatten(value),
-            Self::FlattenKeys(prefix) => {
-                flatten_keys(value, prefix.as_ref().unwrap_or(&String::from("data")))
-            }
+            Self::FlattenKeys(prefix) => flatten_keys(value, prefix),
             Self::JsonPath(query) => filter_jsonpath(value, query)?,
             Self::RemoveEmptyValues => remove_empty_values(value),
-            Self::Chain(chain) => apply_chain(chain, value)?,
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value),
             Self::Keys => keys(value),
@@ -74,53 +68,6 @@ impl Transformation {
         };
 
         Ok(value)
-    }
-}
-
-impl FromStr for Transformation {
-    type Err = TransformError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let transformation = if s.contains(',') {
-            let chain = s
-                .split(',')
-                .map(Self::from_str)
-                .collect::<Result<Vec<_>, _>>()?;
-
-            Self::Chain(chain)
-        } else {
-            let (key, value) = match s.find('=') {
-                Some(pos) => (&s[..pos], Some(&s[pos + 1..])),
-                None => (s, None),
-            };
-
-            match key {
-                "f" | "flatten" => Self::Flatten,
-                "F" | "flatten-keys" => Self::FlattenKeys(value.map(|v| v.to_string())),
-                "j" | "jsonpath" => value
-                    .map(|query| Self::JsonPath(query.to_string()))
-                    .ok_or_else(|| TransformError::value_required(key))?,
-                "r" | "remove-empty-values" => Self::RemoveEmptyValues,
-                "m" | "deep-merge" => Self::DeepMerge,
-                "e" | "expand-keys" => Self::ExpandKeys,
-                "k" | "keys" => Self::Keys,
-                "d" | "delete-keys" => value
-                    .map(|pattern| Self::DeleteKeys(pattern.to_string()))
-                    .ok_or_else(|| TransformError::value_required(key))?,
-                "s" | "sort" => {
-                    let sorter = match value {
-                        Some(value) => ValueSorter::from_str(value)?,
-                        None => ValueSorter::default(),
-                    };
-
-                    Self::Sort(sorter)
-                }
-                "ato" | "arrays-to-objects" => Self::ArraysToObjects,
-                key => return Err(TransformError::unknown_transformation(key)),
-            }
-        };
-
-        Ok(transformation)
     }
 }
 
@@ -543,67 +490,11 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_transformation_from_str() {
-        use Transformation::*;
-
-        assert_eq!(
-            Transformation::from_str("j=.").unwrap(),
-            JsonPath(".".into())
-        );
-        assert_eq!(
-            Transformation::from_str("j=$[*]").unwrap(),
-            JsonPath("$[*]".into())
-        );
-        assert_eq!(Transformation::from_str("flatten").unwrap(), Flatten);
-        assert_eq!(Transformation::from_str("F").unwrap(), FlattenKeys(None));
-        assert_eq!(
-            Transformation::from_str("flatten-keys").unwrap(),
-            FlattenKeys(None)
-        );
-        assert_eq!(
-            Transformation::from_str("F=json").unwrap(),
-            FlattenKeys(Some("json".into()))
-        );
-        assert_eq!(
-            Transformation::from_str("flatten-keys=foo").unwrap(),
-            FlattenKeys(Some("foo".into()))
-        );
-        assert_eq!(Transformation::from_str("r").unwrap(), RemoveEmptyValues);
-        assert_eq!(
-            Transformation::from_str("remove-empty-values").unwrap(),
-            RemoveEmptyValues
-        );
-    }
-
-    #[test]
-    fn test_transformation_chain_from_str() {
-        use Transformation::*;
-
-        assert_eq!(
-            Transformation::from_str("F=prefix,r,flatten,r,jsonpath=$").unwrap(),
-            Transformation::Chain(vec![
-                FlattenKeys(Some("prefix".into())),
-                RemoveEmptyValues,
-                Flatten,
-                RemoveEmptyValues,
-                JsonPath("$".into()),
-            ])
-        );
-    }
-
-    #[test]
-    fn test_transformation_from_str_errors() {
-        assert!(Transformation::from_str("j").is_err());
-        assert!(Transformation::from_str("jsonpath").is_err());
-        assert!(Transformation::from_str("f,r,baz").is_err());
-    }
-
-    #[test]
     fn test_apply_chain() {
         use Transformation::*;
 
         let transformations = vec![
-            FlattenKeys(None),
+            FlattenKeys("data".into()),
             RemoveEmptyValues,
             JsonPath("$['data[2].bar']".into()),
             Flatten,

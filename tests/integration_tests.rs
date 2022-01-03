@@ -52,7 +52,7 @@ fn json_to_csv_filtered_flattened_with_keys() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-o", "csv", "-t", "j=..friends,f", "-K"])
+        .args(&["-o", "csv", "-t", "jsonpath(..friends),flatten", "-K"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/friends.csv").unwrap());
@@ -63,7 +63,7 @@ fn json_to_csv_collections_as_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-o", "csv", "-t", "jsonpath=.users[*]", "-K"])
+        .args(&["-o", "csv", "-t", "jsonpath(.users[*])", "-K"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/users.csv").unwrap());
@@ -74,7 +74,7 @@ fn json_to_gron() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-tF=json", "-o", "gron"])
+        .args(&["-t", "flatten_keys(json)", "-o", "gron"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.js").unwrap());
@@ -134,7 +134,7 @@ fn deep_merge_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-t", "j=.users,f,m", "-n"])
+        .args(&["-t", "jsonpath(.users).flatten.deep_merge", "-n"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.merged.json").unwrap());
@@ -148,7 +148,13 @@ fn continue_on_error() {
         .unwrap()
         .arg("tests/fixtures/example.js")
         .arg("tests/fixtures/example.json")
-        .args(&["-i", "json", "-t", "j=[*].users,f,m", "-n"])
+        .args(&[
+            "-i",
+            "json",
+            "-t",
+            "jsonpath([*].users),flatten,deep_merge",
+            "-n",
+        ])
         .assert()
         .failure();
 
@@ -160,7 +166,7 @@ fn continue_on_error() {
             "-i",
             "json",
             "-t",
-            "j=[*].users,f,m",
+            "jsonpath([*].users),flatten,deep_merge",
             "-n",
             "--continue-on-error",
         ])

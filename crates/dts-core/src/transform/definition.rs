@@ -271,7 +271,7 @@ impl<'a> Definitions<'a> {
     /// for m in matches {
     ///     match m.name() {
     ///         "sort" => {
-    ///             let order: String = m.arg("order")?;
+    ///             let order: String = m.value_of("order")?;
     ///             assert_eq!(&order, "asc");
     ///         }
     ///         _ => unimplemented!()

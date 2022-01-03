@@ -30,31 +30,39 @@ For a full list of available flags and transform options consult the help:
 dts --help
 ```
 
+Available transformation functions along with their documentation can be listed
+via:
+
+```sh
+dts --list-transformations
+```
+
 ## Examples
 
 Convert YAML to TOML and remove empty values:
 
 ```sh
-dts input.yaml -t remove-empty-values -o toml
+dts input.yaml -t remove_empty_values -o toml
 ```
 
 Load all YAML files from sub directories, flatten nested arrays and merge them into one:
 
 ```sh
-dts . --glob '**/*.yaml' -t flatten-arrays output.yaml
+dts . --glob '**/*.yaml' -t flatten output.yaml
 ```
 
 Run a JSONPath filter on the input data:
 
 ```sh
-dts tests/fixtures/example.json -t jsonpath='$.users[?(@.age < 30)]'
+dts tests/fixtures/example.json -t 'jsonpath("$.users[?(@.age < 30)]")'
 ```
 
-Combine multiple transformation options (multiple usages of the same option possible):
+Combine multiple transformation options (multiple usages and short aliases of
+the same option possible):
 
 ```sh
 # This uses the single char forms of the transformation options
-dts tests/fixtures/example.json -t d='some_key',m,j='[*]',f,j='[*].id'
+dts tests/fixtures/example.json -t "delete_keys('some_key').deep_merge.jp('[*]'),flatten,jsonpath('[*].id')"
 ```
 
 Read data from stdin:

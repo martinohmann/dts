@@ -1,7 +1,9 @@
 #[cfg(feature = "color")]
 use crate::color::ColorChoice;
 use anyhow::Result;
-use dts_core::transform::{Arg, Definition, Definitions, Transformation};
+use dts_core::transform::{
+    sort::ValueSorter, Arg, Definition, DefinitionMatch, Definitions, Transformation,
+};
 use indoc::indoc;
 use std::io::{self, Write};
 
@@ -40,7 +42,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("flatten_keys")
-                .add_alias("F")
+                .add_aliases(&["F", "flatten-keys"])
                 .with_description(indoc! {r#"
                     Flattens the input to an object with flat keys.
 
@@ -54,12 +56,12 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("expand_keys")
-                .add_alias("e")
+                .add_aliases(&["e", "expand-keys"])
                 .with_description("Recursively expands flat object keys to nested objects.")
         )
         .add_definition(
             Definition::new("remove_empty_values")
-                .add_alias("r")
+                .add_aliases(&["r", "remove-empty-values"])
                 .with_description(indoc! {r#"
                     Recursively removes nulls, empty arrays and empty objects from the data.
 
@@ -68,7 +70,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("deep_merge")
-                .add_alias("m")
+                .add_aliases(&["m", "deep-merge"])
                 .with_description(indoc! {r#"
                     If the data is an array, all children are merged into one from left to right. Otherwise
                     this is a no-op.
@@ -92,7 +94,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("delete_keys")
-                .add_alias("d")
+                .add_aliases(&["d", "delete-keys"])
                 .with_description(indoc! {r#"
                     Recursively deletes all object keys matching a regex pattern.
                 "#})
@@ -133,7 +135,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("arrays_to_objects")
-                .add_alias("ato")
+                .add_aliases(&["ato", "arrays-to-objects"])
                 .with_description(indoc! {r#"
                     Recursively transforms all arrays into objects with the array index as key.
                 "#})
@@ -154,21 +156,29 @@ where
     match_groups
         .iter()
         .flatten()
-        .map(|m| match m.name() {
-            "arrays_to_objects" => Ok(Transformation::ArraysToObjects),
-            "deep_merge" => Ok(Transformation::DeepMerge),
-            "delete_keys" => Ok(Transformation::DeleteKeys(m.value_of("pattern")?)),
-            "expand_keys" => Ok(Transformation::ExpandKeys),
-            "flatten" => Ok(Transformation::Flatten),
-            // @TODO: remove Option
-            "flatten_keys" => Ok(Transformation::FlattenKeys(Some(m.value_of("prefix")?))),
-            "jsonpath" => Ok(Transformation::JsonPath(m.value_of("query")?)),
-            "keys" => Ok(Transformation::Keys),
-            "remove_empty_values" => Ok(Transformation::RemoveEmptyValues),
-            "sort" => todo!(),
-            name => panic!("unmatched transformation `{}`, please file a bug", name),
-        })
+        .map(match_transformation)
         .collect()
+}
+
+fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Transformation> {
+    match m.name() {
+        "arrays_to_objects" => Ok(Transformation::ArraysToObjects),
+        "deep_merge" => Ok(Transformation::DeepMerge),
+        "delete_keys" => Ok(Transformation::DeleteKeys(m.value_of("pattern")?)),
+        "expand_keys" => Ok(Transformation::ExpandKeys),
+        "flatten" => Ok(Transformation::Flatten),
+        "flatten_keys" => Ok(Transformation::FlattenKeys(m.value_of("prefix")?)),
+        "jsonpath" => Ok(Transformation::JsonPath(m.value_of("query")?)),
+        "keys" => Ok(Transformation::Keys),
+        "remove_empty_values" => Ok(Transformation::RemoveEmptyValues),
+        "sort" => {
+            let order = m.value_of("order")?;
+            let max_depth = m.value_of("max_depth").ok();
+            let sorter = ValueSorter::new(order, max_depth);
+            Ok(Transformation::Sort(sorter))
+        }
+        name => panic!("unmatched transformation `{}`, please file a bug", name),
+    }
 }
 
 #[cfg(feature = "color")]
