@@ -409,26 +409,43 @@ impl<'a> DefinitionMatch<'a> {
         self.name
     }
 
-    /// Looks up the argument with `name` for the match and attempts to convert it to `T`.
+    /// Looks up the value for the argument with `name` from the match and attempts to convert it
+    /// to `T`.
     ///
     /// ## Errors
     ///
     /// If no argument with `name` was matched or if the argument value is not convertible into `T`
     /// an error is returned.
-    pub fn arg<T>(&self, name: &str) -> Result<T>
+    pub fn value_of<T>(&self, name: &str) -> Result<T>
     where
         T: FromStr,
         <T as FromStr>::Err: fmt::Display,
     {
-        let arg = self.args.get(name).ok_or_else(|| {
-            Error::new(format!("Argument `{}` missing for `{}`", name, self.name))
-        })?;
+        self.map_value_of(name, T::from_str)
+    }
 
-        arg.parse().map_err(|err| {
-            Error::new(format!(
-                "Invalid argument `{}` for `{}`: {}",
-                name, self.name, err
-            ))
-        })
+    /// Looks up the value for the argument with `name` from the match and passes it to the
+    /// `map_value` closure. Returns the value produced by the closure.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if no argument with `name` was matched or if the `map_value` closure
+    /// returned an error.
+    pub fn map_value_of<F, T, E>(&self, name: &str, map_value: F) -> Result<T>
+    where
+        F: FnOnce(&str) -> Result<T, E>,
+        E: fmt::Display,
+    {
+        self.args
+            .get(name)
+            .ok_or_else(|| Error::new(format!("Argument `{}` missing for `{}`", name, self.name)))
+            .and_then(|value| {
+                map_value(value).map_err(|err| {
+                    Error::new(format!(
+                        "Invalid argument `{}` for `{}`: {}",
+                        name, self.name, err
+                    ))
+                })
+            })
     }
 }

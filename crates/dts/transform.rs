@@ -157,12 +157,12 @@ where
         .map(|m| match m.name() {
             "arrays_to_objects" => Ok(Transformation::ArraysToObjects),
             "deep_merge" => Ok(Transformation::DeepMerge),
-            "delete_keys" => Ok(Transformation::DeleteKeys(m.arg("pattern")?)),
+            "delete_keys" => Ok(Transformation::DeleteKeys(m.value_of("pattern")?)),
             "expand_keys" => Ok(Transformation::ExpandKeys),
             "flatten" => Ok(Transformation::Flatten),
             // @TODO: remove Option
-            "flatten_keys" => Ok(Transformation::FlattenKeys(Some(m.arg("prefix")?))),
-            "jsonpath" => Ok(Transformation::JsonPath(m.arg("query")?)),
+            "flatten_keys" => Ok(Transformation::FlattenKeys(Some(m.value_of("prefix")?))),
+            "jsonpath" => Ok(Transformation::JsonPath(m.value_of("query")?)),
             "keys" => Ok(Transformation::Keys),
             "remove_empty_values" => Ok(Transformation::RemoveEmptyValues),
             "sort" => todo!(),
