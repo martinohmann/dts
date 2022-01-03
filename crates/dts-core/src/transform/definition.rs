@@ -65,7 +65,9 @@ impl<'a> Definition<'a> {
 
     /// Adds multiple aliases to the `Definition` and returns it.
     pub fn add_aliases(self, aliases: &[&'a str]) -> Self {
-        aliases.iter().fold(self, |def, alias| def.add_alias(alias))
+        aliases
+            .iter()
+            .fold(self, |definition, alias| definition.add_alias(alias))
     }
 
     /// Sets the description for the `Definition` and returns it.
@@ -104,7 +106,8 @@ impl<'a> Definition<'a> {
         I: IntoIterator<Item = T>,
         T: Into<Arg<'a>>,
     {
-        args.into_iter().fold(self, |def, arg| def.add_arg(arg))
+        args.into_iter()
+            .fold(self, |definition, arg| definition.add_arg(arg))
     }
 
     // Matches a list of function arguments against the `Definition` and returns a `HashMap` of
@@ -237,15 +240,13 @@ impl<'a> Definitions<'a> {
         self
     }
 
-    // Find a definition in the registry. Aliases are used for the lookup as well.
-    fn find(&self, name: &'a str) -> Option<&Definition<'a>> {
-        for def in self.inner.iter() {
-            if def.name == name || def.aliases.iter().any(|&alias| alias == name) {
-                return Some(def);
-            }
-        }
-
-        None
+    // Finds a definition in the registry. Aliases are used for the lookup as well.
+    //
+    // Returns `None` if no definition matching the provided name or alias exists.
+    fn find_definition(&self, name: &'a str) -> Option<&Definition<'a>> {
+        self.inner.iter().find(|definition| {
+            definition.name == name || definition.aliases.iter().any(|&alias| alias == name)
+        })
     }
 
     /// Parses transformations from a `&str` and returns a `Vec<DefinitionMatch>` which contains
@@ -284,15 +285,15 @@ impl<'a> Definitions<'a> {
         func_sig::parse(input)?
             .iter()
             .map(|sig| {
-                let def = self
-                    .find(sig.name())
+                let definition = self
+                    .find_definition(sig.name())
                     .ok_or_else(|| Error::new(format!("Unknown function `{}`", sig.name())))?;
 
-                let args = def.match_func_args(sig.args()).map_err(|err| {
+                let args = definition.match_func_args(sig.args()).map_err(|err| {
                     Error::new(format!("Invalid function signature `{}`: {}", sig, err))
                 })?;
 
-                Ok(DefinitionMatch::new(def.name, args))
+                Ok(DefinitionMatch::new(definition.name, args))
             })
             .collect()
     }

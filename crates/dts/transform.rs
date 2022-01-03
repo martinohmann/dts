@@ -13,12 +13,12 @@ pub fn definitions<'a>() -> Definitions<'a> {
             Definition::new("jsonpath")
                 .add_aliases(&["j", "jp"])
                 .with_description(indoc! {r#"
-                    Selects data from the decoded input via jsonpath query. Can be specified
-                    multiple times to allow starting the filtering from the root element again.
+                    Selects data from the decoded input via jsonpath query. Can be specified multiple times to
+                    allow starting the filtering from the root element again.
 
-                    When using a jsonpath query, the result will always be shaped like an array
-                    with zero or more elements. See `flatten` if you want to remove one level of
-                    nesting on single element filter results.
+                    When using a jsonpath query, the result will always be shaped like an array with zero or
+                    more elements. See `flatten` if you want to remove one level of nesting on single element
+                    filter results.
                 "#})
                 .add_arg(
                     Arg::new("query")
@@ -161,24 +161,26 @@ where
 }
 
 fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Transformation> {
-    match m.name() {
-        "arrays_to_objects" => Ok(Transformation::ArraysToObjects),
-        "deep_merge" => Ok(Transformation::DeepMerge),
-        "delete_keys" => Ok(Transformation::DeleteKeys(m.value_of("pattern")?)),
-        "expand_keys" => Ok(Transformation::ExpandKeys),
-        "flatten" => Ok(Transformation::Flatten),
-        "flatten_keys" => Ok(Transformation::FlattenKeys(m.value_of("prefix")?)),
-        "jsonpath" => Ok(Transformation::JsonPath(m.value_of("query")?)),
-        "keys" => Ok(Transformation::Keys),
-        "remove_empty_values" => Ok(Transformation::RemoveEmptyValues),
+    let transformation = match m.name() {
+        "arrays_to_objects" => Transformation::ArraysToObjects,
+        "deep_merge" => Transformation::DeepMerge,
+        "delete_keys" => Transformation::DeleteKeys(m.value_of("pattern")?),
+        "expand_keys" => Transformation::ExpandKeys,
+        "flatten" => Transformation::Flatten,
+        "flatten_keys" => Transformation::FlattenKeys(m.value_of("prefix")?),
+        "jsonpath" => Transformation::JsonPath(m.value_of("query")?),
+        "keys" => Transformation::Keys,
+        "remove_empty_values" => Transformation::RemoveEmptyValues,
         "sort" => {
             let order = m.value_of("order")?;
             let max_depth = m.value_of("max_depth").ok();
             let sorter = ValueSorter::new(order, max_depth);
-            Ok(Transformation::Sort(sorter))
+            Transformation::Sort(sorter)
         }
         name => panic!("unmatched transformation `{}`, please file a bug", name),
-    }
+    };
+
+    Ok(transformation)
 }
 
 #[cfg(feature = "color")]
@@ -188,18 +190,16 @@ pub fn print_definitions(choice: ColorChoice) -> io::Result<()> {
     let stdout = BufferWriter::stdout(choice.into());
     let mut buf = stdout.buffer();
 
-    let defs = definitions();
-
     buf.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))?;
     buf.write_all(b"TRANSFORMATIONS:")?;
     buf.reset()?;
 
     buf.write_all(b"\n")?;
 
-    let mut defs = defs.into_inner();
-    defs.sort_by(|a, b| a.name().cmp(b.name()));
+    let mut definitions = definitions().into_inner();
+    definitions.sort_by(|a, b| a.name().cmp(b.name()));
 
-    for (i, def) in defs.iter().enumerate() {
+    for (i, definition) in definitions.iter().enumerate() {
         if i > 0 {
             buf.write_all(b"\n")?;
         }
@@ -207,20 +207,20 @@ pub fn print_definitions(choice: ColorChoice) -> io::Result<()> {
         buf.write_all(b"    ")?;
 
         buf.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
-        buf.write_all(def.to_string().as_bytes())?;
+        buf.write_all(definition.to_string().as_bytes())?;
         buf.reset()?;
 
-        if !def.aliases().is_empty() {
-            buf.write_all(format_aliases(def).as_bytes())?;
+        if !definition.aliases().is_empty() {
+            buf.write_all(format_aliases(definition).as_bytes())?;
         }
 
         buf.write_all(b"\n")?;
 
-        if let Some(desc) = def.description() {
-            buf.write_all(format_desc(desc, "        ").as_bytes())?;
+        if let Some(desc) = definition.description() {
+            buf.write_all(format_desc(desc, 8).as_bytes())?;
         }
 
-        for arg in def.args().values() {
+        for arg in definition.args().values() {
             buf.write_all(b"\n        ")?;
 
             buf.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
@@ -230,7 +230,7 @@ pub fn print_definitions(choice: ColorChoice) -> io::Result<()> {
             buf.write_all(b"\n")?;
 
             if let Some(desc) = arg.description() {
-                buf.write_all(format_desc(desc, "            ").as_bytes())?;
+                buf.write_all(format_desc(desc, 12).as_bytes())?;
             }
         }
     }
@@ -242,36 +242,34 @@ pub fn print_definitions(choice: ColorChoice) -> io::Result<()> {
 pub fn print_definitions() -> io::Result<()> {
     let mut buf = String::new();
 
-    let defs = definitions();
-
     buf.push_str("TRANSFORMATIONS:\n");
 
-    let mut defs = defs.into_inner();
-    defs.sort_by(|a, b| a.name().cmp(b.name()));
+    let mut definitions = definitions().into_inner();
+    definitions.sort_by(|a, b| a.name().cmp(b.name()));
 
-    for (i, def) in defs.iter().enumerate() {
+    for (i, definition) in definitions.iter().enumerate() {
         if i > 0 {
             buf.push('\n');
         }
 
         buf.push_str("    ");
-        buf.push_str(def.to_string().as_str());
+        buf.push_str(definition.to_string().as_str());
 
-        if !def.aliases().is_empty() {
-            buf.push_str(format_aliases(def).as_str());
+        if !definition.aliases().is_empty() {
+            buf.push_str(format_aliases(definition).as_str());
         }
 
         buf.push('\n');
 
-        if let Some(desc) = def.description() {
-            buf.push_str(format_desc(desc, "        ").as_str());
+        if let Some(desc) = definition.description() {
+            buf.push_str(format_desc(desc, 8).as_str());
         }
 
-        for arg in def.args().values() {
+        for arg in definition.args().values() {
             buf.push_str(format!("\n        <{}>\n", arg.name()).as_str());
 
             if let Some(desc) = arg.description() {
-                buf.push_str(format_desc(desc, "            ").as_str());
+                buf.push_str(format_desc(desc, 12).as_str());
             }
         }
     }
@@ -279,8 +277,8 @@ pub fn print_definitions() -> io::Result<()> {
     io::stdout().write_all(buf.as_bytes())
 }
 
-fn format_aliases(def: &Definition<'_>) -> String {
-    let aliases = def
+fn format_aliases(definition: &Definition<'_>) -> String {
+    let aliases = definition
         .aliases()
         .iter()
         .map(|a| a.to_string())
@@ -290,10 +288,15 @@ fn format_aliases(def: &Definition<'_>) -> String {
     format!("    [aliases: {}]", aliases)
 }
 
-fn format_desc(desc: &str, indent: &str) -> String {
-    let mut indented = textwrap::indent(desc, indent);
-    if !indented.ends_with('\n') {
-        indented.push('\n');
+fn format_desc(desc: &str, spaces: usize) -> String {
+    let mut desc = indent(desc, spaces);
+    if !desc.ends_with('\n') {
+        desc.push('\n');
     }
-    indented
+    desc
+}
+
+fn indent(s: &str, spaces: usize) -> String {
+    let prefix = " ".repeat(spaces);
+    textwrap::indent(s, &prefix)
 }
