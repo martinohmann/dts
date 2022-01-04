@@ -1,14 +1,11 @@
 //! Data transformation utilities.
 
 pub mod dsl;
-mod error;
 pub(crate) mod key;
 pub mod sort;
 
-pub use error::*;
-
 use crate::parsers::flat_key::{self, KeyPart, KeyParts};
-use crate::Result;
+use crate::{Error, Result};
 use dts_json::{Map, Value};
 use jsonpath_rust::JsonPathQuery;
 use key::KeyFlattener;
@@ -19,7 +16,7 @@ use sort::ValueSorter;
 use std::iter;
 
 /// A type that can apply transformations to a `Value`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Transformation {
     /// Remove one level of nesting if the data is shaped like an array or one-elemented object.
@@ -38,7 +35,7 @@ pub enum Transformation {
     /// Extracts object keys.
     Keys,
     /// Delete object keys matching a pattern.
-    DeleteKeys(String),
+    DeleteKeys(Regex),
     /// Sort objects and arrays.
     Sort(ValueSorter),
     /// Convert all arrays into objects.
@@ -52,7 +49,7 @@ impl Transformation {
     ///
     /// If the `Transformation::JsonPath` variant is applied with a malformed query `apply_chain`
     /// returns a `TransformError`.
-    pub fn apply(&self, value: Value) -> Result<Value, TransformError> {
+    pub fn apply(&self, value: Value) -> Result<Value> {
         let value = match self {
             Self::Flatten => flatten(value),
             Self::FlattenKeys(prefix) => flatten_keys(value, prefix),
@@ -61,7 +58,7 @@ impl Transformation {
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value),
             Self::Keys => keys(value),
-            Self::DeleteKeys(pattern) => delete_keys(value, pattern)?,
+            Self::DeleteKeys(regex) => delete_keys(value, regex),
             Self::Sort(sorter) => sort(sorter, value),
             Self::ArraysToObjects => arrays_to_objects(value),
         };
@@ -76,7 +73,7 @@ impl Transformation {
 ///
 /// If the `Transformation::JsonPath` variant is applied with a malformed query `apply_chain`
 /// returns an `Error`.
-pub fn apply_chain<'a, I>(chain: I, value: Value) -> Result<Value, TransformError>
+pub fn apply_chain<'a, I>(chain: I, value: Value) -> Result<Value>
 where
     I: IntoIterator<Item = &'a Transformation>,
 {
@@ -121,14 +118,14 @@ where
 /// let value = json!([]);
 /// assert!(filter_jsonpath(value, "$[").is_err());
 /// ```
-pub fn filter_jsonpath<Q>(value: Value, query: Q) -> Result<Value, TransformError>
+pub fn filter_jsonpath<Q>(value: Value, query: Q) -> Result<Value>
 where
     Q: AsRef<str>,
 {
     JsonValue::from(value)
         .path(query.as_ref())
         .map(Into::into)
-        .map_err(TransformError::JSONPathParseError)
+        .map_err(|err| Error::new(format!("Failed to parse jsonpath query:\n{}", err)))
 }
 
 /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
@@ -427,29 +424,25 @@ pub fn keys(value: Value) -> Value {
 /// #
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// let value = json!({"foo": "bar", "baz": {"foobar": "qux", "one": "two"}});
+/// let regex = Regex::new("^fo")?;
 ///
-/// assert_eq!(delete_keys(value, "^fo")?, json!({"baz": {"one": "two"}}));
+/// assert_eq!(delete_keys(value, &regex), json!({"baz": {"one": "two"}}));
 /// #   Ok(())
 /// # }
 /// ```
-pub fn delete_keys(value: Value, pattern: &str) -> Result<Value, TransformError> {
-    let regex = Regex::new(pattern)?;
-    Ok(delete_keys_impl(value, &regex))
-}
-
-fn delete_keys_impl(value: Value, regex: &Regex) -> Value {
+pub fn delete_keys(value: Value, regex: &Regex) -> Value {
     match value {
         Value::Object(object) => Value::Object(
             object
                 .into_iter()
                 .filter(|(key, _)| !regex.is_match(key))
-                .map(|(key, value)| (key, delete_keys_impl(value, regex)))
+                .map(|(key, value)| (key, delete_keys(value, regex)))
                 .collect(),
         ),
         Value::Array(array) => Value::Array(
             array
                 .into_iter()
-                .map(|value| delete_keys_impl(value, regex))
+                .map(|value| delete_keys(value, regex))
                 .collect(),
         ),
         value => value,

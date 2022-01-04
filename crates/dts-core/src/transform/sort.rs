@@ -1,6 +1,6 @@
 //! Provides a `ValueSorter` for recursively sorting `Value` instances.
 
-use super::TransformError;
+use crate::Error;
 use dts_json::{Map, Value};
 use std::cmp::Ordering;
 use std::str::FromStr;
@@ -15,13 +15,13 @@ pub enum Order {
 }
 
 impl FromStr for Order {
-    type Err = TransformError;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "asc" => Ok(Order::Asc),
             "desc" => Ok(Order::Desc),
-            other => Err(TransformError::invalid_sort_order(other)),
+            other => Err(Error::new(format!("Invalid sort order `{}`", other))),
         }
     }
 }
