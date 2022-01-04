@@ -1,11 +1,10 @@
 //! Data transformation utilities.
 
-pub mod definition;
+pub mod dsl;
 mod error;
 pub(crate) mod key;
 pub mod sort;
 
-pub use definition::{Arg, Definition, DefinitionMatch, Definitions};
 pub use error::*;
 
 use crate::parsers::flat_key::{self, KeyPart, KeyParts};

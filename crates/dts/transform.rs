@@ -2,7 +2,9 @@
 use crate::color::ColorChoice;
 use anyhow::Result;
 use dts_core::transform::{
-    sort::ValueSorter, Arg, Definition, DefinitionMatch, Definitions, Transformation,
+    dsl::{Arg, Definition, DefinitionMatch, Definitions},
+    sort::ValueSorter,
+    Transformation,
 };
 use indoc::indoc;
 use std::io::{self, Write};

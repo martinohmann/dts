@@ -13,7 +13,7 @@ use std::str::FromStr;
 /// ## Example
 ///
 /// ```
-/// use dts_core::transform::{Arg, Definition};
+/// use dts_core::transform::dsl::{Arg, Definition};
 ///
 /// let definition = Definition::new("sort")
 ///     .with_description("Sorts the input based on the value of the `order` argument")
@@ -209,7 +209,7 @@ impl<'a> fmt::Display for Definition<'a> {
 /// ## Example
 ///
 /// ```
-/// use dts_core::transform::{Arg, Definition, Definitions};
+/// use dts_core::transform::dsl::{Arg, Definition, Definitions};
 ///
 /// let definitions = Definitions::new()
 ///     .add_definition(
@@ -255,7 +255,7 @@ impl<'a> Definitions<'a> {
     /// ## Example
     ///
     /// ```
-    /// use dts_core::transform::{Arg, Definition, Definitions};
+    /// use dts_core::transform::dsl::{Arg, Definition, Definitions};
     ///
     /// # use pretty_assertions::assert_eq;
     /// # use std::error::Error;
@@ -304,7 +304,7 @@ impl<'a> Definitions<'a> {
 /// ## Example
 ///
 /// ```
-/// use dts_core::transform::Arg;
+/// use dts_core::transform::dsl::Arg;
 ///
 /// let arg = Arg::new("order")
 ///     .with_description("The sorting order")
