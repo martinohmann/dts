@@ -134,18 +134,13 @@ impl From<&InputOptions> for DeserializeOptions {
 #[clap(help_heading = "TRANSFORM OPTIONS")]
 pub struct TransformOptions {
     /// An expression containing one or more transformation functions separated either by '.',
-    /// ';', ',' or spaces. Transformation functions may have one of the following
-    /// forms:
+    /// ';', ',' or spaces.
     ///
-    /// - function_name
+    /// Transformation functions may have one of the following forms: `function_name`,
+    /// `function_name()`, `function_name(arg1)`, `function_name(arg1, arg2)` or
+    /// `function_name(arg2=value2, arg1)`.
     ///
-    /// - function_name()
-    ///
-    /// - function_name(arg1)
-    ///
-    /// - function_name(arg1, arg2)
-    ///
-    /// - function_name(arg2=value2, arg1)
+    /// Function arguments may be quoted or unquoted strings.
     ///
     /// ## Example
     ///
