@@ -480,7 +480,7 @@ dependencies = [
  "hcl",
  "indexmap",
  "json5",
- "jsonpath-rust",
+ "jsonpath_lib",
  "pathdiff",
  "pest",
  "pest_derive",
@@ -820,14 +820,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "jsonpath-rust"
-version = "0.1.4"
+name = "jsonpath_lib"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da86e332e6de16fa0e12388aeac5a295c522f9930c103cef43b2d17ccf0ba147"
+checksum = "eaa63191d68230cccb81c5aa23abd53ed64d83337cacbb25a7b8c7979523774f"
 dependencies = [
- "pest",
- "pest_derive",
- "regex",
+ "log",
+ "serde",
  "serde_json",
 ]
 

@@ -27,8 +27,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                         .with_description(indoc! {r#"
                             A jsonpath query.
 
-                            See <https://docs.rs/jsonpath-rust/0.1.3/jsonpath_rust/index.html#operators>
-                            for supported operators.
+                            See <https://goessner.net/articles/JsonPath/> for supported operators.
                         "#})),
         )
         .add_definition(

@@ -1,18 +1,8 @@
 //! Provides a `JsonPathSelector` type.
 
-// This module is here because the types in the `jsonpath_rust` crate are neither `Clone` nor
-// `Debug` which makes it hard to integrate them into the `Transformation` type.
-//
-// The `JsonPathSelector` type is a wrapper around `jsonpath_rust::JsonPathInst` and
-// `jsonpath_rust::JsonPathFinder` to make working with it easier at the cost of an unnecessary
-// clone and parse operation.
-//
-// This cannot be avoided as we want to separate the time when the query is validated and parsed
-// from the time where it is used to have a consistent UX.
 use crate::{Error, Result};
 use dts_json::Value;
-use jsonpath_rust::{JsonPathFinder, JsonPathInst};
-use std::fmt;
+use jsonpath_lib::Compiled as CompiledJsonPath;
 use std::str::FromStr;
 
 /// A jsonpath selector.
@@ -42,9 +32,9 @@ use std::str::FromStr;
 /// #     Ok(())
 /// # }
 /// ```
+#[derive(Debug, Clone)]
 pub struct JsonPathSelector {
-    query: String,
-    finder: JsonPathFinder,
+    compiled: CompiledJsonPath,
 }
 
 impl JsonPathSelector {
@@ -54,40 +44,16 @@ impl JsonPathSelector {
     ///
     /// Returns an error if query is malformed and cannot be parsed.
     pub fn new(query: &str) -> Result<Self> {
-        let inst = JsonPathInst::from_str(query)
-            .map_err(|err| Error::new(format!("Failed to parse jsonpath query:\n{}", err)))?;
+        let compiled = CompiledJsonPath::compile(query)
+            .map_err(|err| Error::new(format!("Failed to parse jsonpath query:\n\n{}", err)))?;
 
-        let finder = JsonPathFinder::new(serde_json::Value::Null.into(), inst.into());
-
-        Ok(JsonPathSelector {
-            query: query.to_owned(),
-            finder,
-        })
+        Ok(JsonPathSelector { compiled })
     }
 
     /// Applies the `JsonPathSelector` to the `Value` and returns the selected elements as a new
     /// `Value`.
     pub fn select(&self, value: Value) -> Value {
-        self.clone().select_mut(value)
-    }
-
-    fn select_mut(&mut self, value: Value) -> Value {
-        self.finder.set_json(Box::new(value.into()));
-        self.finder.find().into()
-    }
-}
-
-impl Clone for JsonPathSelector {
-    fn clone(&self) -> Self {
-        JsonPathSelector::new(&self.query).unwrap()
-    }
-}
-
-impl fmt::Debug for JsonPathSelector {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("JsonPathSelector")
-            .field("query", &self.query)
-            .finish()
+        self.compiled.select(&value.into()).unwrap().into()
     }
 }
 
