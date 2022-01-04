@@ -83,7 +83,13 @@ fn benchmark_transform(c: &mut Criterion) {
             Command::cargo_bin("dts")
                 .unwrap()
                 .arg("tests/fixtures")
-                .args(&["--glob", "*", "-C", "-t", "F,e,j=.data,f"])
+                .args(&[
+                    "--glob",
+                    "*",
+                    "-C",
+                    "-t",
+                    "flatten_keys(json),expand_keys,jsonpath(.data),flatten",
+                ])
                 .assert()
                 .success()
         })
