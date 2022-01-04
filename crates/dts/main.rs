@@ -76,7 +76,7 @@ fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
     let chain =
         transform::parse_inputs(&opts.inputs).context("Failed to build transformation chain")?;
 
-    apply_chain(&chain, value).context("Failed to transform value")
+    Ok(apply_chain(&chain, value))
 }
 
 fn serialize(sink: &Sink, value: Value, opts: &OutputOptions) -> Result<()> {
