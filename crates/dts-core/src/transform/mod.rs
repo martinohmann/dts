@@ -1,38 +1,32 @@
 //! Data transformation utilities.
 
-mod error;
+pub mod dsl;
+pub mod jsonpath;
 pub(crate) mod key;
-pub(crate) mod sort;
-
-pub use error::*;
+pub mod sort;
 
 use crate::parsers::flat_key::{self, KeyPart, KeyParts};
-use crate::Result;
 use dts_json::{Map, Value};
-use jsonpath_rust::JsonPathQuery;
+use jsonpath::JsonPathSelector;
 use key::KeyFlattener;
 use rayon::prelude::*;
 use regex::Regex;
-use serde_json::Value as JsonValue;
 use sort::ValueSorter;
 use std::iter;
-use std::str::FromStr;
 
 /// A type that can apply transformations to a `Value`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Transformation {
     /// Remove one level of nesting if the data is shaped like an array or one-elemented object.
     Flatten,
     /// Flattens value to an object with flat keys.
-    FlattenKeys(Option<String>),
-    /// Filter value according to a jsonpath query.
-    JsonPath(String),
+    FlattenKeys(String),
+    /// Filter value according to a jsonpath selector.
+    JsonPath(JsonPathSelector),
     /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
     /// removed.
     RemoveEmptyValues,
-    /// A chain of multiple transformations.
-    Chain(Vec<Transformation>),
     /// Deep merge values if the top level value is an array.
     DeepMerge,
     /// Expands flat keys to nested objects.
@@ -40,7 +34,7 @@ pub enum Transformation {
     /// Extracts object keys.
     Keys,
     /// Delete object keys matching a pattern.
-    DeleteKeys(String),
+    DeleteKeys(Regex),
     /// Sort objects and arrays.
     Sort(ValueSorter),
     /// Convert all arrays into objects.
@@ -49,138 +43,30 @@ pub enum Transformation {
 
 impl Transformation {
     /// Applies the `Transformation` to a value.
-    ///
-    /// ## Errors
-    ///
-    /// If the `Transformation::JsonPath` variant is applied with a malformed query `apply_chain`
-    /// returns a `TransformError`.
-    pub fn apply(&self, value: Value) -> Result<Value, TransformError> {
-        let value = match self {
+    pub fn apply(&self, value: Value) -> Value {
+        match self {
             Self::Flatten => flatten(value),
-            Self::FlattenKeys(prefix) => {
-                flatten_keys(value, prefix.as_ref().unwrap_or(&String::from("data")))
-            }
-            Self::JsonPath(query) => filter_jsonpath(value, query)?,
+            Self::FlattenKeys(prefix) => flatten_keys(value, prefix),
+            Self::JsonPath(selector) => selector.select(value),
             Self::RemoveEmptyValues => remove_empty_values(value),
-            Self::Chain(chain) => apply_chain(chain, value)?,
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value),
             Self::Keys => keys(value),
-            Self::DeleteKeys(pattern) => delete_keys(value, pattern)?,
+            Self::DeleteKeys(regex) => delete_keys(value, regex),
             Self::Sort(sorter) => sort(sorter, value),
             Self::ArraysToObjects => arrays_to_objects(value),
-        };
-
-        Ok(value)
-    }
-}
-
-impl FromStr for Transformation {
-    type Err = TransformError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let transformation = if s.contains(',') {
-            let chain = s
-                .split(',')
-                .map(Self::from_str)
-                .collect::<Result<Vec<_>, _>>()?;
-
-            Self::Chain(chain)
-        } else {
-            let (key, value) = match s.find('=') {
-                Some(pos) => (&s[..pos], Some(&s[pos + 1..])),
-                None => (s, None),
-            };
-
-            match key {
-                "f" | "flatten" => Self::Flatten,
-                "F" | "flatten-keys" => Self::FlattenKeys(value.map(|v| v.to_string())),
-                "j" | "jsonpath" => value
-                    .map(|query| Self::JsonPath(query.to_string()))
-                    .ok_or_else(|| TransformError::value_required(key))?,
-                "r" | "remove-empty-values" => Self::RemoveEmptyValues,
-                "m" | "deep-merge" => Self::DeepMerge,
-                "e" | "expand-keys" => Self::ExpandKeys,
-                "k" | "keys" => Self::Keys,
-                "d" | "delete-keys" => value
-                    .map(|pattern| Self::DeleteKeys(pattern.to_string()))
-                    .ok_or_else(|| TransformError::value_required(key))?,
-                "s" | "sort" => {
-                    let sorter = match value {
-                        Some(value) => ValueSorter::from_str(value)?,
-                        None => ValueSorter::default(),
-                    };
-
-                    Self::Sort(sorter)
-                }
-                "ato" | "arrays-to-objects" => Self::ArraysToObjects,
-                key => return Err(TransformError::unknown_transformation(key)),
-            }
-        };
-
-        Ok(transformation)
+        }
     }
 }
 
 /// Applies a chain of transformations to a value.
-///
-/// ## Errors
-///
-/// If the `Transformation::JsonPath` variant is applied with a malformed query `apply_chain`
-/// returns an `Error`.
-pub fn apply_chain<'a, I>(chain: I, value: Value) -> Result<Value, TransformError>
+pub fn apply_chain<'a, I>(chain: I, value: Value) -> Value
 where
     I: IntoIterator<Item = &'a Transformation>,
 {
     chain
         .into_iter()
-        .try_fold(value, |value, transformation| transformation.apply(value))
-}
-
-/// Filter value according to the jsonpath query.
-///
-/// ## Example
-///
-/// ```
-/// use dts_core::transform::filter_jsonpath;
-/// use dts_json::json;
-/// # use pretty_assertions::assert_eq;
-/// # use std::error::Error;
-/// #
-/// # fn main() -> Result<(), Box<dyn Error>> {
-/// let value = json!({
-///   "orders": [
-///     {"id": 1, "active": true},
-///     {"id": 2},
-///     {"id": 3},
-///     {"id": 4, "active": true}
-///   ]
-/// });
-///
-/// assert_eq!(filter_jsonpath(value, "$.orders[?(@.active)].id")?, json!([1, 4]));
-/// #     Ok(())
-/// # }
-/// ```
-///
-/// ## Errors
-///
-/// This function can fail if parsing the query fails.
-///
-/// ```
-/// use dts_core::transform::filter_jsonpath;
-/// use dts_json::json;
-///
-/// let value = json!([]);
-/// assert!(filter_jsonpath(value, "$[").is_err());
-/// ```
-pub fn filter_jsonpath<Q>(value: Value, query: Q) -> Result<Value, TransformError>
-where
-    Q: AsRef<str>,
-{
-    JsonValue::from(value)
-        .path(query.as_ref())
-        .map(Into::into)
-        .map_err(TransformError::JSONPathParseError)
+        .fold(value, |value, transformation| transformation.apply(value))
 }
 
 /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
@@ -479,29 +365,25 @@ pub fn keys(value: Value) -> Value {
 /// #
 /// # fn main() -> Result<(), Box<dyn Error>> {
 /// let value = json!({"foo": "bar", "baz": {"foobar": "qux", "one": "two"}});
+/// let regex = Regex::new("^fo")?;
 ///
-/// assert_eq!(delete_keys(value, "^fo")?, json!({"baz": {"one": "two"}}));
+/// assert_eq!(delete_keys(value, &regex), json!({"baz": {"one": "two"}}));
 /// #   Ok(())
 /// # }
 /// ```
-pub fn delete_keys(value: Value, pattern: &str) -> Result<Value, TransformError> {
-    let regex = Regex::new(pattern)?;
-    Ok(delete_keys_impl(value, &regex))
-}
-
-fn delete_keys_impl(value: Value, regex: &Regex) -> Value {
+pub fn delete_keys(value: Value, regex: &Regex) -> Value {
     match value {
         Value::Object(object) => Value::Object(
             object
                 .into_iter()
                 .filter(|(key, _)| !regex.is_match(key))
-                .map(|(key, value)| (key, delete_keys_impl(value, regex)))
+                .map(|(key, value)| (key, delete_keys(value, regex)))
                 .collect(),
         ),
         Value::Array(array) => Value::Array(
             array
                 .into_iter()
-                .map(|value| delete_keys_impl(value, regex))
+                .map(|value| delete_keys(value, regex))
                 .collect(),
         ),
         value => value,
@@ -541,74 +423,18 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_transformation_from_str() {
-        use Transformation::*;
-
-        assert_eq!(
-            Transformation::from_str("j=.").unwrap(),
-            JsonPath(".".into())
-        );
-        assert_eq!(
-            Transformation::from_str("j=$[*]").unwrap(),
-            JsonPath("$[*]".into())
-        );
-        assert_eq!(Transformation::from_str("flatten").unwrap(), Flatten);
-        assert_eq!(Transformation::from_str("F").unwrap(), FlattenKeys(None));
-        assert_eq!(
-            Transformation::from_str("flatten-keys").unwrap(),
-            FlattenKeys(None)
-        );
-        assert_eq!(
-            Transformation::from_str("F=json").unwrap(),
-            FlattenKeys(Some("json".into()))
-        );
-        assert_eq!(
-            Transformation::from_str("flatten-keys=foo").unwrap(),
-            FlattenKeys(Some("foo".into()))
-        );
-        assert_eq!(Transformation::from_str("r").unwrap(), RemoveEmptyValues);
-        assert_eq!(
-            Transformation::from_str("remove-empty-values").unwrap(),
-            RemoveEmptyValues
-        );
-    }
-
-    #[test]
-    fn test_transformation_chain_from_str() {
-        use Transformation::*;
-
-        assert_eq!(
-            Transformation::from_str("F=prefix,r,flatten,r,jsonpath=$").unwrap(),
-            Transformation::Chain(vec![
-                FlattenKeys(Some("prefix".into())),
-                RemoveEmptyValues,
-                Flatten,
-                RemoveEmptyValues,
-                JsonPath("$".into()),
-            ])
-        );
-    }
-
-    #[test]
-    fn test_transformation_from_str_errors() {
-        assert!(Transformation::from_str("j").is_err());
-        assert!(Transformation::from_str("jsonpath").is_err());
-        assert!(Transformation::from_str("f,r,baz").is_err());
-    }
-
-    #[test]
     fn test_apply_chain() {
         use Transformation::*;
 
         let transformations = vec![
-            FlattenKeys(None),
+            FlattenKeys("data".into()),
             RemoveEmptyValues,
-            JsonPath("$['data[2].bar']".into()),
+            JsonPath(JsonPathSelector::new("$['data[2].bar']").unwrap()),
             Flatten,
         ];
 
         assert_eq!(
-            apply_chain(&transformations, json!([null, "foo", {"bar": "baz"}])).unwrap(),
+            apply_chain(&transformations, json!([null, "foo", {"bar": "baz"}])),
             json!("baz")
         );
     }

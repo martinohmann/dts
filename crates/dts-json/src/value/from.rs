@@ -93,6 +93,12 @@ impl From<()> for Value {
     }
 }
 
+impl From<&JsonValue> for Value {
+    fn from(v: &JsonValue) -> Self {
+        From::from(v.clone())
+    }
+}
+
 impl From<JsonValue> for Value {
     fn from(v: JsonValue) -> Self {
         match v {

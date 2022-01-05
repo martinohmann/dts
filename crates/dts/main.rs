@@ -3,22 +3,27 @@
 
 mod args;
 #[cfg(feature = "color")]
-mod color;
-mod no_color;
+mod highlighting;
+mod output;
 mod paging;
+mod transform;
 mod utils;
 
+#[cfg(feature = "color")]
+use crate::highlighting::{print_themes, ColoredStdoutWriter, HighlightingConfig};
+use crate::{
+    args::{InputOptions, Options, OutputOptions, TransformOptions},
+    output::StdoutWriter,
+    paging::PagingConfig,
+    transform::{parse_expressions, print_transform_help},
+};
 use anyhow::{anyhow, Context, Result};
-use args::{InputOptions, Options, OutputOptions, TransformOptions};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
-#[cfg(feature = "color")]
-use color::{print_themes, ColoredStdoutWriter, HighlightingConfig};
-use dts_core::{de::Deserializer, ser::Serializer};
-use dts_core::{transform, Encoding, Error, Sink, Source};
+use dts_core::{
+    de::Deserializer, ser::Serializer, transform::apply_chain, Encoding, Error, Sink, Source,
+};
 use dts_json::Value;
-use no_color::StdoutWriter;
-use paging::PagingConfig;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
@@ -71,7 +76,9 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
 }
 
 fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
-    transform::apply_chain(&opts.transform, value).context("Failed to transform value")
+    parse_expressions(&opts.expressions)
+        .map(|chain| apply_chain(&chain, value))
+        .context("Failed to build transformation chain")
 }
 
 fn serialize(sink: &Sink, value: Value, opts: &OutputOptions) -> Result<()> {
@@ -152,6 +159,14 @@ fn main() -> Result<()> {
     if let Some(shell) = opts.generate_completion {
         let mut app = Options::into_app();
         print_completions(&mut app, shell);
+        std::process::exit(0);
+    }
+
+    if opts.transform.print_help {
+        #[cfg(not(feature = "color"))]
+        print_transform_help(output::ColorChoice::Never)?;
+        #[cfg(feature = "color")]
+        print_transform_help(opts.output.color)?;
         std::process::exit(0);
     }
 

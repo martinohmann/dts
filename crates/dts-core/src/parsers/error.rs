@@ -28,6 +28,8 @@ pub enum ParseErrorKind {
     FlatKey,
     /// Error parsing gron.
     Gron,
+    /// Error parsing function signature.
+    FuncSig,
 }
 
 impl Display for ParseErrorKind {
@@ -35,6 +37,7 @@ impl Display for ParseErrorKind {
         match self {
             ParseErrorKind::FlatKey => write!(f, "flat key"),
             ParseErrorKind::Gron => write!(f, "gron"),
+            ParseErrorKind::FuncSig => write!(f, "function signature"),
         }
     }
 }

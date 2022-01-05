@@ -1,6 +1,6 @@
 //! Defines the `Error` and `Result` types used by this crate.
 
-use crate::{parsers::ParseError, transform::TransformError, Encoding};
+use crate::{parsers::ParseError, Encoding};
 use std::error::Error as StdError;
 use std::fmt::Display;
 use std::io;
@@ -24,10 +24,6 @@ pub enum Error {
     /// Error emitted by parsers from this crate.
     #[error(transparent)]
     ParseError(#[from] ParseError),
-
-    /// Error emitted by the transform module of this crate.
-    #[error(transparent)]
-    TransformError(#[from] TransformError),
 
     /// Represents generic IO errors.
     #[error(transparent)]

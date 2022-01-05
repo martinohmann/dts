@@ -1,4 +1,6 @@
-use super::TransformError;
+//! Provides a `ValueSorter` for recursively sorting `Value` instances.
+
+use crate::Error;
 use dts_json::{Map, Value};
 use std::cmp::Ordering;
 use std::str::FromStr;
@@ -13,13 +15,13 @@ pub enum Order {
 }
 
 impl FromStr for Order {
-    type Err = TransformError;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "asc" => Ok(Order::Asc),
             "desc" => Ok(Order::Desc),
-            other => Err(TransformError::invalid_sort_order(other)),
+            other => Err(Error::new(format!("Invalid sort order `{}`", other))),
         }
     }
 }
@@ -91,19 +93,6 @@ impl ValueSorter {
 impl Default for ValueSorter {
     fn default() -> Self {
         ValueSorter::new(Order::Asc, None)
-    }
-}
-
-impl FromStr for ValueSorter {
-    type Err = TransformError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (order, max_depth) = match s.split_once(':') {
-            Some((order, max_depth)) => (Order::from_str(order)?, Some(max_depth.parse()?)),
-            None => (Order::from_str(s)?, None),
-        };
-
-        Ok(ValueSorter::new(order, max_depth))
     }
 }
 
