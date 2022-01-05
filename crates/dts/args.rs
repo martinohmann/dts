@@ -226,6 +226,10 @@ pub struct OutputOptions {
     /// Custom separator to join text output with.
     #[clap(short = 'J', long, parse(try_from_str = parse_unescaped))]
     pub text_join_separator: Option<String>,
+
+    /// Overwrite output files if they exist.
+    #[clap(long)]
+    pub overwrite: bool,
 }
 
 impl From<&OutputOptions> for SerializeOptions {

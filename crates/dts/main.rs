@@ -210,6 +210,29 @@ fn main() -> Result<()> {
         sources.push(Source::Stdin);
     }
 
+    let sinks = opts.sinks;
+
+    // Validate sinks to prevent accidentally overwriting existing files.
+    for sink in &sinks {
+        if let Sink::Path(path) = sink {
+            if !path.exists() {
+                continue;
+            }
+
+            if !path.is_file() {
+                return Err(anyhow!(
+                    "Output file `{}` exists but is not a file",
+                    path.display()
+                ));
+            } else if !opts.output.overwrite {
+                return Err(anyhow!(
+                    "Output file `{}` exists, pass --overwrite to overwrite it",
+                    path.display()
+                ));
+            }
+        }
+    }
+
     let value = match (sources.len(), dir_sources) {
         (0, false) => return Err(anyhow!("Input file or data on stdin expected")),
         (1, false) => deserialize(&sources[0], &opts.input)?,
@@ -217,8 +240,6 @@ fn main() -> Result<()> {
     };
 
     let value = transform(value, &opts.transform)?;
-
-    let sinks = opts.sinks;
 
     if sinks.len() <= 1 {
         serialize(sinks.get(0).unwrap_or(&Sink::Stdout), value, &opts.output)
