@@ -3,27 +3,30 @@
 
 mod args;
 #[cfg(feature = "color")]
-mod color;
-mod no_color;
+mod highlighting;
+mod output;
 mod paging;
 mod transform;
 mod utils;
 
+#[cfg(feature = "color")]
+use crate::highlighting::{print_themes, ColoredStdoutWriter, HighlightingConfig};
+use crate::{
+    args::{InputOptions, Options, OutputOptions, TransformOptions},
+    output::StdoutWriter,
+    paging::PagingConfig,
+    transform::print_definitions,
+};
 use anyhow::{anyhow, Context, Result};
-use args::{InputOptions, Options, OutputOptions, TransformOptions};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
-#[cfg(feature = "color")]
-use color::{print_themes, ColoredStdoutWriter, HighlightingConfig};
-use dts_core::{de::Deserializer, ser::Serializer};
-use dts_core::{transform::apply_chain, Encoding, Error, Sink, Source};
+use dts_core::{
+    de::Deserializer, ser::Serializer, transform::apply_chain, Encoding, Error, Sink, Source,
+};
 use dts_json::Value;
-use no_color::StdoutWriter;
-use paging::PagingConfig;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter};
-use transform::print_definitions;
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let encoding = opts
@@ -162,7 +165,7 @@ fn main() -> Result<()> {
 
     if opts.transform.list_transformations {
         #[cfg(not(feature = "color"))]
-        print_definitions()?;
+        print_definitions(output::ColorChoice::Never)?;
         #[cfg(feature = "color")]
         print_definitions(opts.output.color)?;
         std::process::exit(0);

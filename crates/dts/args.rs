@@ -1,7 +1,7 @@
 //! Command line arguments for dts.
 
 #[cfg(feature = "color")]
-use crate::color::ColorChoice;
+use crate::output::ColorChoice;
 use crate::paging::PagingChoice;
 use anyhow::{anyhow, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};

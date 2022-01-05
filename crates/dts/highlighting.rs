@@ -1,9 +1,11 @@
-//! Utilities to facilitate colorful output.
+//! Utilities to syntax highlight output.
 
-use crate::paging::{PagingChoice, PagingConfig};
-use crate::utils::resolve_cmd;
+use crate::{
+    output::ColorChoice,
+    paging::{PagingChoice, PagingConfig},
+    utils::resolve_cmd,
+};
 use bat::{assets::HighlightingAssets, config::Config, controller::Controller, Input, PagingMode};
-use clap::ArgEnum;
 use dts_core::Encoding;
 use once_cell::sync::Lazy;
 use std::io::{self, Write};
@@ -13,74 +15,6 @@ use termcolor::{ColorSpec, StandardStream, WriteColor};
 /// Lazyloaded instance of `HighlightingAssets`. For performance reasons this should only be done
 /// once as it's a very heavy operation.
 static HIGHLIGHTING_ASSETS: Lazy<HighlightingAssets> = Lazy::new(HighlightingAssets::from_binary);
-
-/// ColorChoice represents the color preference of a user.
-#[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
-pub enum ColorChoice {
-    /// Always color output even if stdout is a file.
-    Always,
-    /// Automatically detect if output should be colored. Coloring is disabled if stdout is not
-    /// interactive or a dumb term, or the user explicitly disabled colors via `NO_COLOR`
-    /// environment variable.
-    Auto,
-    /// Never color output.
-    Never,
-}
-
-impl Default for ColorChoice {
-    fn default() -> Self {
-        ColorChoice::Never
-    }
-}
-
-impl From<ColorChoice> for termcolor::ColorChoice {
-    fn from(cc: ColorChoice) -> Self {
-        match cc {
-            ColorChoice::Always => termcolor::ColorChoice::Always,
-            ColorChoice::Auto => termcolor::ColorChoice::Auto,
-            ColorChoice::Never => termcolor::ColorChoice::Never,
-        }
-    }
-}
-
-impl ColorChoice {
-    /// Returns true if the `ColorChoice` indicates that coloring is enabled.
-    pub fn should_colorize(&self) -> bool {
-        match *self {
-            ColorChoice::Always => true,
-            ColorChoice::Never => false,
-            ColorChoice::Auto => self.env_allows_color() && atty::is(atty::Stream::Stdout),
-        }
-    }
-
-    #[cfg(not(windows))]
-    fn env_allows_color(&self) -> bool {
-        match std::env::var_os("TERM") {
-            None => return false,
-            Some(k) => {
-                if k == "dumb" {
-                    return false;
-                }
-            }
-        }
-
-        std::env::var_os("NO_COLOR").is_none()
-    }
-
-    #[cfg(windows)]
-    fn env_allows_color(&self) -> bool {
-        // On Windows, if TERM isn't set, then we shouldn't automatically
-        // assume that colors aren't allowed. This is unlike Unix environments
-        // where TERM is more rigorously set.
-        if let Some(k) = std::env::var_os("TERM") {
-            if k == "dumb" {
-                return false;
-            }
-        }
-
-        std::env::var_os("NO_COLOR").is_none()
-    }
-}
 
 /// ColoredStdoutWriter writes data to stdout and may or may not colorize it.
 pub struct ColoredStdoutWriter<'a> {

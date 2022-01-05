@@ -12,7 +12,7 @@ members = [
 
 [features]
 default = ["color"]
-color = ["bat", "bat/paging", "clap/color", "once_cell", "termcolor"]
+color = ["bat", "bat/paging", "clap/color", "once_cell"]
 
 [dependencies]
 anyhow = "1.0.44"
@@ -25,6 +25,7 @@ indoc = "1.0"
 rayon = "1.5.1"
 regex = "1.5.4"
 shell-words = "1.0.0"
+termcolor = "1.1.2"
 textwrap = "0.14.2"
 unescape = "0.1.0"
 
@@ -42,10 +43,6 @@ version = "= 3.0.0-rc.7"
 [dependencies.once_cell]
 optional = true
 version = "1.9.0"
-
-[dependencies.termcolor]
-optional = true
-version = "1.1.2"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"

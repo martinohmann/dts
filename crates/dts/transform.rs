@@ -1,5 +1,4 @@
-#[cfg(feature = "color")]
-use crate::color::ColorChoice;
+use crate::output::{BufferedStdoutPrinter, ColorChoice};
 use anyhow::Result;
 use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
@@ -7,7 +6,8 @@ use dts_core::transform::{
     Transformation,
 };
 use indoc::indoc;
-use std::io::{self, Write};
+use std::io::{self};
+use termcolor::{Color, ColorSpec};
 
 pub fn definitions<'a>() -> Definitions<'a> {
     Definitions::new()
@@ -184,98 +184,52 @@ fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Transformation> {
     Ok(transformation)
 }
 
-#[cfg(feature = "color")]
 pub fn print_definitions(choice: ColorChoice) -> io::Result<()> {
-    use termcolor::{BufferWriter, Color, ColorSpec, WriteColor};
-
-    let stdout = BufferWriter::stdout(choice.into());
-    let mut buf = stdout.buffer();
-
-    buf.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))?;
-    buf.write_all(b"TRANSFORMATIONS:")?;
-    buf.reset()?;
-
-    buf.write_all(b"\n")?;
-
     let mut definitions = definitions().into_inner();
     definitions.sort_by(|a, b| a.name().cmp(b.name()));
 
-    for (i, definition) in definitions.iter().enumerate() {
-        if i > 0 {
-            buf.write_all(b"\n")?;
-        }
+    let mut printer = BufferedStdoutPrinter::new(choice);
 
-        buf.write_all(b"    ")?;
+    printer.write_colored(
+        ColorSpec::new().set_fg(Some(Color::Yellow)),
+        "TRANSFORMATIONS:",
+    )?;
 
-        buf.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
-        buf.write_all(definition.to_string().as_bytes())?;
-        buf.reset()?;
+    for definition in definitions.iter() {
+        printer.write("\n")?;
+        printer.write(spaces(4))?;
+        printer.write_colored(
+            ColorSpec::new().set_fg(Some(Color::Green)),
+            definition.to_string(),
+        )?;
 
         if !definition.aliases().is_empty() {
-            buf.write_all(format_aliases(definition).as_bytes())?;
+            printer.write(spaces(4))?;
+            printer.write(format_aliases(definition))?;
         }
 
-        buf.write_all(b"\n")?;
+        printer.write("\n")?;
 
         if let Some(desc) = definition.description() {
-            buf.write_all(format_desc(desc, 8).as_bytes())?;
+            printer.write(format_desc(desc, 8))?;
         }
 
         for arg in definition.args().values() {
-            buf.write_all(b"\n        ")?;
-
-            buf.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
-            write!(&mut buf, "<{}>", arg.name())?;
-            buf.reset()?;
-
-            buf.write_all(b"\n")?;
+            printer.write("\n")?;
+            printer.write(spaces(8))?;
+            printer.write_colored(
+                ColorSpec::new().set_fg(Some(Color::Green)),
+                format!("<{}>", arg.name()),
+            )?;
+            printer.write("\n")?;
 
             if let Some(desc) = arg.description() {
-                buf.write_all(format_desc(desc, 12).as_bytes())?;
+                printer.write(format_desc(desc, 12))?;
             }
         }
     }
 
-    stdout.print(&buf)
-}
-
-#[cfg(not(feature = "color"))]
-pub fn print_definitions() -> io::Result<()> {
-    let mut buf = String::new();
-
-    buf.push_str("TRANSFORMATIONS:\n");
-
-    let mut definitions = definitions().into_inner();
-    definitions.sort_by(|a, b| a.name().cmp(b.name()));
-
-    for (i, definition) in definitions.iter().enumerate() {
-        if i > 0 {
-            buf.push('\n');
-        }
-
-        buf.push_str("    ");
-        buf.push_str(definition.to_string().as_str());
-
-        if !definition.aliases().is_empty() {
-            buf.push_str(format_aliases(definition).as_str());
-        }
-
-        buf.push('\n');
-
-        if let Some(desc) = definition.description() {
-            buf.push_str(format_desc(desc, 8).as_str());
-        }
-
-        for arg in definition.args().values() {
-            buf.push_str(format!("\n        <{}>\n", arg.name()).as_str());
-
-            if let Some(desc) = arg.description() {
-                buf.push_str(format_desc(desc, 12).as_str());
-            }
-        }
-    }
-
-    io::stdout().write_all(buf.as_bytes())
+    printer.print()
 }
 
 fn format_aliases(definition: &Definition<'_>) -> String {
@@ -286,7 +240,7 @@ fn format_aliases(definition: &Definition<'_>) -> String {
         .collect::<Vec<_>>()
         .join(", ");
 
-    format!("    [aliases: {}]", aliases)
+    format!("[aliases: {}]", aliases)
 }
 
 fn format_desc(desc: &str, spaces: usize) -> String {
@@ -297,7 +251,11 @@ fn format_desc(desc: &str, spaces: usize) -> String {
     desc
 }
 
-fn indent(s: &str, spaces: usize) -> String {
-    let prefix = " ".repeat(spaces);
+fn indent(s: &str, n: usize) -> String {
+    let prefix = spaces(n);
     textwrap::indent(s, &prefix)
+}
+
+fn spaces(n: usize) -> String {
+    " ".repeat(n)
 }
