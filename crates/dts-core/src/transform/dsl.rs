@@ -119,21 +119,21 @@ impl<'a> Definition<'a> {
 
         for arg in func_args.iter() {
             let (name, value) = match arg {
-                FuncArg::Named(name, value) => {
-                    let arg_def = remaining_args.shift_remove(name).ok_or_else(|| {
+                FuncArg::Named(name, value) => remaining_args
+                    .shift_remove(name)
+                    .map(|arg_def| (arg_def.name, value))
+                    .ok_or_else(|| {
                         Error::new(format!(
                             "Unexpected named argument `{}=\"{}\"`",
                             name, value
                         ))
-                    })?;
-                    (arg_def.name, value)
-                }
-                FuncArg::Positional(value) => {
-                    let (_, arg_def) = remaining_args.shift_remove_index(0).ok_or_else(|| {
+                    })?,
+                FuncArg::Positional(value) => remaining_args
+                    .shift_remove_index(0)
+                    .map(|(_, arg_def)| (arg_def.name, value))
+                    .ok_or_else(|| {
                         Error::new(format!("Unexpected positional argument `{}`", value))
-                    })?;
-                    (arg_def.name, value)
-                }
+                    })?,
             };
 
             if args.contains_key(name) {
