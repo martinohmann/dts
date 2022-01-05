@@ -15,7 +15,7 @@ use crate::{
     args::{InputOptions, Options, OutputOptions, TransformOptions},
     output::StdoutWriter,
     paging::PagingConfig,
-    transform::print_definitions,
+    transform::{parse_expressions, print_transform_help},
 };
 use anyhow::{anyhow, Context, Result};
 use clap::{App, IntoApp, Parser};
@@ -76,10 +76,9 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
 }
 
 fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
-    let chain =
-        transform::parse_inputs(&opts.inputs).context("Failed to build transformation chain")?;
-
-    Ok(apply_chain(&chain, value))
+    parse_expressions(&opts.expressions)
+        .map(|chain| apply_chain(&chain, value))
+        .context("Failed to build transformation chain")
 }
 
 fn serialize(sink: &Sink, value: Value, opts: &OutputOptions) -> Result<()> {
@@ -163,11 +162,11 @@ fn main() -> Result<()> {
         std::process::exit(0);
     }
 
-    if opts.transform.list_transformations {
+    if opts.transform.print_help {
         #[cfg(not(feature = "color"))]
-        print_definitions(output::ColorChoice::Never)?;
+        print_transform_help(output::ColorChoice::Never)?;
         #[cfg(feature = "color")]
-        print_definitions(opts.output.color)?;
+        print_transform_help(opts.output.color)?;
         std::process::exit(0);
     }
 

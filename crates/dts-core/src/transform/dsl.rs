@@ -281,8 +281,8 @@ impl<'a> Definitions<'a> {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn parse(&self, input: &'a str) -> Result<Vec<DefinitionMatch<'a>>> {
-        func_sig::parse(input)?
+    pub fn parse(&self, expression: &'a str) -> Result<Vec<DefinitionMatch<'a>>> {
+        func_sig::parse(expression)?
             .iter()
             .map(|sig| {
                 let definition = self

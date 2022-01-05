@@ -24,17 +24,17 @@ cargo install --locked --path .
 dts [<source>...] [-t <transform-options>] [-O <sink>...]
 ```
 
-For a full list of available flags and transform options consult the help:
+For a full list of available flags consult the help:
 
 ```sh
 dts --help
 ```
 
-Available transformation functions along with their documentation can be listed
-via:
+The help for the transformation expression syntax and available functions along
+with their documentation can be printed via:
 
 ```sh
-dts --list-transformations
+dts --help-transform
 ```
 
 ## Examples

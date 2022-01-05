@@ -143,15 +143,16 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
 }
 
-pub fn parse_inputs<T>(inputs: &[T]) -> Result<Vec<Transformation>>
+/// Parses expressions into a sequence of transformations.
+pub fn parse_expressions<T>(expressions: &[T]) -> Result<Vec<Transformation>>
 where
     T: AsRef<str>,
 {
     let definitions = definitions();
 
-    let match_groups = inputs
+    let match_groups = expressions
         .iter()
-        .map(|input| definitions.parse(input.as_ref()))
+        .map(|expression| definitions.parse(expression.as_ref()))
         .collect::<Result<Vec<_>, dts_core::Error>>()?;
 
     match_groups
@@ -184,16 +185,39 @@ fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Transformation> {
     Ok(transformation)
 }
 
-pub fn print_definitions(choice: ColorChoice) -> io::Result<()> {
+/// Prints the help for the transformation functions.
+pub fn print_transform_help(choice: ColorChoice) -> io::Result<()> {
     let mut definitions = definitions().into_inner();
     definitions.sort_by(|a, b| a.name().cmp(b.name()));
 
     let mut printer = BufferedStdoutPrinter::new(choice);
 
-    printer.write_colored(
-        ColorSpec::new().set_fg(Some(Color::Yellow)),
-        "TRANSFORMATIONS:",
-    )?;
+    printer.write(indoc! {r#"
+        dts provides several transformation functions which are evaluated after the input is
+        deserialized into an internal representation that resembles JSON.
+
+        A transformation expression containing one or more transformation functions separated
+        either by '.', ';', ',' or spaces.
+
+        Transformation functions may have one of the following forms:
+
+            function_name                    # no parenthesis
+            function_name()                  # empty parenthesis
+            function_name(arg1)              # single argument
+            function_name(arg1, arg2)        # multiple arguments
+            function_name(arg2=value, arg1)  # named argument in different position
+
+        Function arguments may be numbers, raw string identifiers or quoted strings.
+    "#})?;
+    printer.write("\n")?;
+    printer.write_colored(ColorSpec::new().set_fg(Some(Color::Yellow)), "EXAMPLE:")?;
+    printer.write("\n")?;
+    printer.write(indent(
+        r#"dts input.json --transform 'jsonpath("$.selector").flatten.sort(order=asc)' -o toml"#,
+        4,
+    ))?;
+    printer.write("\n\n")?;
+    printer.write_colored(ColorSpec::new().set_fg(Some(Color::Yellow)), "FUNCTIONS:")?;
 
     for definition in definitions.iter() {
         printer.write("\n")?;
@@ -202,16 +226,17 @@ pub fn print_definitions(choice: ColorChoice) -> io::Result<()> {
             ColorSpec::new().set_fg(Some(Color::Green)),
             definition.to_string(),
         )?;
-
-        if !definition.aliases().is_empty() {
-            printer.write(spaces(4))?;
-            printer.write(format_aliases(definition))?;
-        }
-
         printer.write("\n")?;
 
         if let Some(desc) = definition.description() {
             printer.write(format_desc(desc, 8))?;
+        }
+
+        if !definition.aliases().is_empty() {
+            printer.write("\n")?;
+            printer.write(spaces(8))?;
+            printer.write(format_aliases(definition))?;
+            printer.write("\n")?;
         }
 
         for arg in definition.args().values() {

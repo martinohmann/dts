@@ -21,7 +21,7 @@ use unescape::unescape;
 #[clap(
     name = "dts",
     version,
-    after_help = "Hint: `dts -h` only provides a usage summary. Run `dts --help` for the full details to each flag."
+    after_help = "Hint: `dts -h` only provides a usage summary. Run `dts --help` for the full details to each flag.\n\nTo get help about the transformation expression syntax, run `dts --help-transform`."
 )]
 pub struct Options {
     /// Input sources.
@@ -133,29 +133,17 @@ impl From<&InputOptions> for DeserializeOptions {
 #[derive(Args, Debug)]
 #[clap(help_heading = "TRANSFORM OPTIONS")]
 pub struct TransformOptions {
-    /// An expression containing one or more transformation functions separated either by '.',
-    /// ';', ',' or spaces.
+    /// An expression containing one or more transformation functions.
     ///
-    /// Transformation functions may have one of the following forms: `function_name`,
-    /// `function_name()`, `function_name(arg1)`, `function_name(arg1, arg2)` or
-    /// `function_name(arg2=value2, arg1)`.
-    ///
-    /// Function arguments may be quoted or unquoted strings.
-    ///
-    /// ## Example
-    ///
-    /// dts input.json --transform 'flatten().flatten_keys.jsonpath("$.items")' -t
-    /// 'remove_empty_values'
-    ///
-    /// See --list-transformations to get a list of possible transformation functions and their
-    /// arguments.
-    #[clap(short = 't', long = "transform")]
+    /// See --help-transform to get a list of possible transformation functions, their arguments.
+    #[clap(short = 't', long = "transform", value_name = "EXPRESSION")]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
-    pub inputs: Vec<String>,
+    pub expressions: Vec<String>,
 
-    /// List available transformation functions and exit.
-    #[clap(long, conflicts_with = "generate-completion")]
-    pub list_transformations: bool,
+    /// Displays help and usage examples for the transformation expressions and available
+    /// functions and exit.
+    #[clap(long = "help-transform", conflicts_with = "generate-completion")]
+    pub print_help: bool,
 }
 
 /// Options that configure the behaviour of output serialization.
