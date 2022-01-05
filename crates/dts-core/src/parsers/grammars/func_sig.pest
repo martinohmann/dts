@@ -16,7 +16,7 @@ Letter         = _{ 'a'..'z' | 'A'..'Z' }
 
 // Funcs
 FuncSigs  = _{ FuncSig ~ (FuncDelim? ~ FuncSig)* }
-FuncSig   =  { Identifier ~ ArgsSig? }
+FuncSig   =  { Identifier ~ (ArgsSig | LegacyArgsSig)? }
 FuncDelim = _{ ";" | "," | "." }
 
 // Args
@@ -26,5 +26,12 @@ Arg           = _{ NamedArg | PositionalArg }
 ArgValue      = _{ StringLitDq | StringLitSq | String }
 NamedArg      =  { Identifier ~ "=" ~ ArgValue }
 PositionalArg =  { ArgValue }
+
+// Legacy Args
+LegacyArgsSig  = _{ "=" ~ LegacyArgs }
+LegacyArgs     =  { LegacyArg ~ (":" ~ LegacyArg)* }
+LegacyArg      =  { LegacyArgValue }
+LegacyArgValue = _{ StringLitDq | StringLitSq | LegacyString }
+LegacyString   =  { (!("(" | ")" | ":" | ",") ~ ANY)+ }
 
 Root = _{ SOI ~ FuncSigs ~ EOI }

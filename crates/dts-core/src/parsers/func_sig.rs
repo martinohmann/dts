@@ -55,6 +55,10 @@ fn parse_func_arg(pair: Pair<Rule>) -> FuncArg {
             let value = inner.next().unwrap().as_str();
             FuncArg::Named(name, value)
         }
+        Rule::LegacyArg => {
+            let value = inner.next().unwrap().as_str();
+            FuncArg::Positional(value)
+        }
         _ => unreachable!(),
     }
 }
@@ -180,6 +184,31 @@ mod test {
                 FuncSig {
                     name: "baz",
                     args: vec![FuncArg::Positional("qux")]
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_legacy() {
+        assert_eq!(
+            parse("foo='bar',bar=baz:2,qux=\"one\":\'two\':3").unwrap(),
+            vec![
+                FuncSig {
+                    name: "foo",
+                    args: vec![FuncArg::Positional("bar")]
+                },
+                FuncSig {
+                    name: "bar",
+                    args: vec![FuncArg::Positional("baz"), FuncArg::Positional("2")]
+                },
+                FuncSig {
+                    name: "qux",
+                    args: vec![
+                        FuncArg::Positional("one"),
+                        FuncArg::Positional("two"),
+                        FuncArg::Positional("3")
+                    ]
                 }
             ]
         );
