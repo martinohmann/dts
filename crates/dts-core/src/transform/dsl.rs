@@ -485,3 +485,23 @@ impl<'a> DefinitionMatch<'a> {
             })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn contains_keyword() {
+        let def = Definition::new("foo")
+            .add_aliases(&["barbaz", "qux"])
+            .with_description("some description")
+            .add_arg(Arg::new("the-arg").with_description("this is some argument"));
+
+        assert!(def.contains_keyword("foo"));
+        assert!(def.contains_keyword("baz"));
+        assert!(def.contains_keyword("arg"));
+        assert!(def.contains_keyword("argu"));
+        assert!(def.contains_keyword("desc"));
+        assert!(!def.contains_keyword("something else"));
+    }
+}
