@@ -142,8 +142,16 @@ pub struct TransformOptions {
 
     /// Displays help and usage examples for the transformation expressions and available
     /// functions and exit.
-    #[clap(long = "help-transform", conflicts_with = "generate-completion")]
-    pub print_help: bool,
+    ///
+    /// Optionally accepts one or more keywords to filter functions docs. Only displays function
+    /// docs that contain all of the provided keywords (case insensitive).
+    #[clap(
+        long = "help-transform",
+        min_values = 0,
+        value_name = "KEYWORDS",
+        conflicts_with = "generate-completion"
+    )]
+    pub help_keywords: Option<Vec<String>>,
 }
 
 /// Options that configure the behaviour of output serialization.
