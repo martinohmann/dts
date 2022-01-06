@@ -62,13 +62,13 @@ the same option possible):
 
 ```sh
 # This uses the single char forms of the transformation options
-dts tests/fixtures/example.json -t "delete_keys('some_key').deep_merge.jp('[*]'),flatten,jsonpath('[*].id')"
+dts tests/fixtures/example.json -t "delete_keys('some_key').deep_merge.jp('[*]').flatten.jsonpath('[*].id')"
 ```
 
 Read data from stdin:
 
 ```sh
-echo '{"foo": {"bar": "baz"}}' | dts -i json -tF,r -o yaml
+echo '{"foo": {"bar": "baz"}}' | dts -i json -tF.r -o yaml
 ```
 
 ## Output colors and themes

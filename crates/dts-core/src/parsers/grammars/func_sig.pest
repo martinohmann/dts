@@ -1,12 +1,18 @@
 // Whitespace
 WHITESPACE = _{ " " | "\t" | NEWLINE }
 
-// String values
+// String literals
+StringLit   = _{ StringLitDq | StringLitSq }
 StringLitDq = _{ "\"" ~ StringDq ~ "\"" }
 StringLitSq = _{ "'" ~ StringSq ~ "'" }
-String      =  { (!("(" | ")" | ",") ~ ANY)+ }
-StringDq    =  { (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
-StringSq    =  { (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
+StringDq    = @{ (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
+StringSq    = @{ (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
+
+// Other literals
+BooleanLit =  { "true" | "false" }
+NumericLit = @{ "-"? ~ Decimal+ ~ (("." ~ Decimal+ ~ (ExpMark ~ Decimal+)?) | (ExpMark ~ Decimal+))? }
+ExpMark    =  { ("e" | "E") ~ ("+" | "-")? }
+Decimal    =  { '0'..'9' }
 
 // Identifiers
 Identifier     = @{ IdentFirstChar ~ IdentChar* }
@@ -16,22 +22,15 @@ Letter         = _{ 'a'..'z' | 'A'..'Z' }
 
 // Funcs
 FuncSigs  = _{ FuncSig ~ (FuncDelim? ~ FuncSig)* }
-FuncSig   =  { Identifier ~ (ArgsSig | LegacyArgsSig)? }
-FuncDelim = _{ ";" | "," | "." }
+FuncSig   =  { Identifier ~ ArgsSig? }
+FuncDelim = _{ "." }
 
 // Args
 ArgsSig       = _{ "(" ~ Args? ~ ")" }
 Args          =  { Arg ~ ("," ~ Arg)* }
 Arg           = _{ NamedArg | PositionalArg }
-ArgValue      = _{ StringLitDq | StringLitSq | String }
+ArgValue      = _{ StringLit | NumericLit | BooleanLit }
 NamedArg      =  { Identifier ~ "=" ~ ArgValue }
 PositionalArg =  { ArgValue }
-
-// Legacy Args
-LegacyArgsSig  = _{ "=" ~ LegacyArgs }
-LegacyArgs     =  { LegacyArg ~ (":" ~ LegacyArg)* }
-LegacyArg      =  { LegacyArgValue }
-LegacyArgValue = _{ StringLitDq | StringLitSq | LegacyString }
-LegacyString   =  { (!("(" | ")" | ":" | ",") ~ ANY)+ }
 
 Root = _{ SOI ~ FuncSigs ~ EOI }
