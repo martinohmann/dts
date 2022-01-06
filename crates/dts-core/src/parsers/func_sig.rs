@@ -55,10 +55,6 @@ fn parse_func_arg(pair: Pair<Rule>) -> FuncArg {
             let value = inner.next().unwrap().as_str();
             FuncArg::Named(name, value)
         }
-        Rule::LegacyArg => {
-            let value = inner.next().unwrap().as_str();
-            FuncArg::Positional(value)
-        }
         _ => unreachable!(),
     }
 }
@@ -131,86 +127,78 @@ mod test {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    #[test]
-    fn test_parse() {
-        assert!(parse("foo.[").is_err());
-        assert_eq!(
-            parse("foo").unwrap(),
-            vec![FuncSig {
-                name: "foo",
-                args: Vec::new()
-            }]
-        );
-        assert_eq!(
-            parse("foo()").unwrap(),
-            vec![FuncSig {
-                name: "foo",
-                args: Vec::new()
-            }]
-        );
-        assert_eq!(
-            parse("foo(bar)").unwrap(),
-            vec![FuncSig {
-                name: "foo",
-                args: vec![FuncArg::Positional("bar")],
-            }]
-        );
-        assert_eq!(
-            parse("foo(\"bar\")").unwrap(),
-            vec![FuncSig {
-                name: "foo",
-                args: vec![FuncArg::Positional("bar")],
-            }]
-        );
-        assert_eq!(
-            parse("foo(\"bar\", other = qux)").unwrap(),
-            vec![FuncSig {
-                name: "foo",
-                args: vec![FuncArg::Positional("bar"), FuncArg::Named("other", "qux")]
-            }]
-        );
+    #[track_caller]
+    fn assert_parse(s: &str, expected: Vec<FuncSig>) {
+        assert_eq!(parse(s).unwrap(), expected);
+    }
 
-        assert_eq!(
-            parse("foo(), bar; baz(qux)").unwrap(),
-            vec![
-                FuncSig {
-                    name: "foo",
-                    args: Vec::new()
-                },
-                FuncSig {
-                    name: "bar",
-                    args: Vec::new()
-                },
-                FuncSig {
-                    name: "baz",
-                    args: vec![FuncArg::Positional("qux")]
-                }
-            ]
+    #[test]
+    fn test_parse_simple() {
+        assert_parse("foo", vec![FuncSig::new("foo", vec![])]);
+        assert_parse("foo()", vec![FuncSig::new("foo", vec![])]);
+        assert_parse(
+            "foo(1)",
+            vec![FuncSig::new("foo", vec![FuncArg::Positional("1")])],
+        );
+        assert_parse(
+            "foo(-1.0e10)",
+            vec![FuncSig::new("foo", vec![FuncArg::Positional("-1.0e10")])],
+        );
+        assert_parse(
+            "foo(true, false)",
+            vec![FuncSig::new(
+                "foo",
+                vec![FuncArg::Positional("true"), FuncArg::Positional("false")],
+            )],
+        );
+        assert_parse(
+            "foo('bar')",
+            vec![FuncSig::new("foo", vec![FuncArg::Positional("bar")])],
+        );
+        assert_parse(
+            "foo(\"bar\")",
+            vec![FuncSig::new("foo", vec![FuncArg::Positional("bar")])],
         );
     }
 
     #[test]
-    fn test_parse_legacy() {
-        assert_eq!(
-            parse("foo='bar',bar=baz:2,qux=\"one\":\'two\':3").unwrap(),
+    fn test_parse_complex() {
+        assert_parse(
+            "foo(\"bar\", other = 'qux', three=4)",
+            vec![FuncSig {
+                name: "foo",
+                args: vec![
+                    FuncArg::Positional("bar"),
+                    FuncArg::Named("other", "qux"),
+                    FuncArg::Named("three", "4"),
+                ],
+            }],
+        );
+
+        assert_parse(
+            "foo().bar baz('qux')",
             vec![
                 FuncSig {
                     name: "foo",
-                    args: vec![FuncArg::Positional("bar")]
+                    args: Vec::new(),
                 },
                 FuncSig {
                     name: "bar",
-                    args: vec![FuncArg::Positional("baz"), FuncArg::Positional("2")]
+                    args: Vec::new(),
                 },
                 FuncSig {
-                    name: "qux",
-                    args: vec![
-                        FuncArg::Positional("one"),
-                        FuncArg::Positional("two"),
-                        FuncArg::Positional("3")
-                    ]
-                }
-            ]
+                    name: "baz",
+                    args: vec![FuncArg::Positional("qux")],
+                },
+            ],
         );
+    }
+
+    #[test]
+    fn test_parse_errors() {
+        assert!(parse("foo.[").is_err());
+        assert!(parse("foo(bar)").is_err());
+        assert!(parse("foo('baz)").is_err());
+        assert!(parse("foo(bar=baz)").is_err());
     }
 }

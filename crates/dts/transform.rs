@@ -203,7 +203,7 @@ where
         deserialized into an internal representation that resembles JSON.
 
         A transformation expression containing one or more transformation functions separated
-        either by '.', ';', ',' or spaces.
+        either by '.' or spaces.
 
         Transformation functions may have one of the following forms:
 
@@ -213,13 +213,13 @@ where
             function_name(arg1, arg2)        # multiple arguments
             function_name(arg2=value, arg1)  # named argument in different position
 
-        Function arguments may be numbers, raw string identifiers or quoted strings.
+        Function arguments may be quoted string, numbers or booleans.
     "#})?;
     printer.write("\n")?;
     printer.write_colored(ColorSpec::new().set_fg(Some(Color::Yellow)), "EXAMPLE:")?;
     printer.write("\n")?;
     printer.write(indent(
-        r#"dts input.json --transform 'jsonpath("$.selector").flatten.sort(order=asc)' -o toml"#,
+        r#"dts input.json --transform 'jsonpath("$.selector").flatten.sort(order="asc")' -o toml"#,
         4,
     ))?;
     printer.write("\n\n")?;
