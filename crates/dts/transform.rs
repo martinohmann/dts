@@ -1,12 +1,11 @@
 use crate::output::{BufferedStdoutPrinter, ColorChoice};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     sort::ValueSorter,
     Transformation,
 };
 use indoc::indoc;
-use std::io::{self};
 use termcolor::{Color, ColorSpec};
 
 pub fn definitions<'a>() -> Definitions<'a> {
@@ -186,11 +185,18 @@ fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Transformation> {
 }
 
 /// Prints the help for the transformation functions.
-pub fn print_transform_help(choice: ColorChoice) -> io::Result<()> {
+pub fn print_transform_help<T>(keywords: &[T], choice: ColorChoice) -> Result<()>
+where
+    T: AsRef<str>,
+{
     let mut definitions = definitions().into_inner();
-    definitions.sort_by(|a, b| a.name().cmp(b.name()));
+    definitions.sort_by_key(|definition| definition.name());
 
     let mut printer = BufferedStdoutPrinter::new(choice);
+
+    if !keywords.is_empty() {
+        definitions = filter_definitions(definitions, keywords)?;
+    }
 
     printer.write(indoc! {r#"
         dts provides several transformation functions which are evaluated after the input is
@@ -254,18 +260,44 @@ pub fn print_transform_help(choice: ColorChoice) -> io::Result<()> {
         }
     }
 
-    printer.print()
+    printer.print()?;
+
+    Ok(())
 }
 
-fn format_aliases(definition: &Definition<'_>) -> String {
-    let aliases = definition
-        .aliases()
+fn filter_definitions<'a, T>(
+    definitions: Vec<Definition<'a>>,
+    keywords: &[T],
+) -> Result<Vec<Definition<'a>>>
+where
+    T: AsRef<str>,
+{
+    let keywords = keywords
         .iter()
-        .map(|a| a.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
+        .flat_map(|keyword| keyword.as_ref().split_whitespace())
+        .map(|keyword| keyword.to_lowercase())
+        .collect::<Vec<_>>();
 
-    format!("[aliases: {}]", aliases)
+    let filtered = definitions
+        .into_iter()
+        .filter(|definition| {
+            keywords
+                .iter()
+                .all(|keyword| definition.contains_keyword(keyword))
+        })
+        .collect::<Vec<Definition>>();
+
+    if filtered.is_empty() {
+        return Err(anyhow!("No matches for keywords `{}`", keywords.join(" ")));
+    }
+
+    Ok(filtered)
+}
+
+fn format_aliases(definition: &Definition) -> String {
+    let aliases = Vec::from_iter(definition.aliases().clone());
+
+    format!("[aliases: {}]", aliases.join(","))
 }
 
 fn format_desc(desc: &str, spaces: usize) -> String {

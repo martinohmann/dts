@@ -110,6 +110,28 @@ impl<'a> Definition<'a> {
             .fold(self, |definition, arg| definition.add_arg(arg))
     }
 
+    /// Returns `true` if any of the definition's attributes (e.g. name, description, aliases or
+    /// args) contains the keyword. The keyword is assumed to be lowercase.
+    ///
+    /// This is useful for search.
+    pub fn contains_keyword(&self, keyword: &str) -> bool {
+        self.name().to_lowercase().contains(keyword)
+            || self
+                .description()
+                .map(|desc| desc.to_lowercase())
+                .map(|desc| desc.contains(keyword))
+                .unwrap_or(false)
+            || self
+                .aliases()
+                .iter()
+                .map(|alias| alias.to_lowercase())
+                .any(|alias| alias.contains(keyword))
+            || self
+                .args()
+                .values()
+                .any(|arg| arg.contains_keyword(keyword))
+    }
+
     // Matches a list of function arguments against the `Definition` and returns a `HashMap` of
     // argument name to argument value or an error if a required argument is missing. Optional
     // arguments receive their default value if they did not appear in `func_args`.
@@ -368,6 +390,19 @@ impl<'a> Arg<'a> {
         self.default_value = Some(default_value);
         self.required = false;
         self
+    }
+
+    /// Returns `true` if any of the arg's attributes (e.g. name or description) contains the
+    /// keyword. The keyword is assumed to be lowercase.
+    ///
+    /// This is useful for search.
+    pub fn contains_keyword(&self, keyword: &str) -> bool {
+        self.name().to_lowercase().contains(keyword)
+            || self
+                .description()
+                .map(|desc| desc.to_lowercase())
+                .map(|desc| desc.contains(keyword))
+                .unwrap_or(false)
     }
 }
 

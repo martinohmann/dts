@@ -162,11 +162,11 @@ fn main() -> Result<()> {
         std::process::exit(0);
     }
 
-    if opts.transform.print_help {
+    if let Some(keywords) = opts.transform.help_keywords {
         #[cfg(not(feature = "color"))]
-        print_transform_help(output::ColorChoice::Never)?;
+        print_transform_help(&keywords, output::ColorChoice::Never)?;
         #[cfg(feature = "color")]
-        print_transform_help(opts.output.color)?;
+        print_transform_help(&keywords, opts.output.color)?;
         std::process::exit(0);
     }
 
