@@ -7,11 +7,12 @@ pub mod sort;
 
 use crate::parsers::flat_key::{self, KeyPart, KeyParts};
 use dts_json::{Map, Value};
-use jsonpath::JsonPathSelector;
+use jsonpath::{JsonPathMutator, JsonPathSelector};
 use key::KeyFlattener;
 use rayon::prelude::*;
 use regex::Regex;
 use sort::ValueSorter;
+use std::fmt::Debug;
 use std::iter;
 
 /// Represents a thing that can take a value, transform it and produce a new value.
@@ -75,6 +76,25 @@ impl Transform for Chain {
         self.inner
             .iter()
             .fold(value, |value, trans| trans.transform(value))
+    }
+}
+
+/// Mutates transformations to the matches of a jsonpath selector.
+pub struct Mutate {
+    mutator: JsonPathMutator,
+    chain: Chain,
+}
+
+impl Mutate {
+    /// @TODO
+    pub fn new(mutator: JsonPathMutator, chain: Chain) -> Self {
+        Mutate { mutator, chain }
+    }
+}
+
+impl Transform for Mutate {
+    fn transform(&self, value: Value) -> Value {
+        self.mutator.mutate(value, |v| self.chain.transform(v))
     }
 }
 
