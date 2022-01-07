@@ -14,7 +14,73 @@ use regex::Regex;
 use sort::ValueSorter;
 use std::iter;
 
+/// Represents a thing that can take a value, transform it and produce a new value.
+pub trait Transform {
+    /// Takes a `Value`, applies a transformation and yields a new `Value`.
+    fn transform(&self, value: Value) -> Value;
+}
+
+impl<T> Transform for Box<T>
+where
+    T: Transform + ?Sized,
+{
+    fn transform(&self, value: Value) -> Value {
+        (**self).transform(value)
+    }
+}
+
+impl<T> Transform for &T
+where
+    T: Transform + ?Sized,
+{
+    fn transform(&self, value: Value) -> Value {
+        (*self).transform(value)
+    }
+}
+
+/// Represents a chain of transformation operations.
+pub struct Chain {
+    inner: Vec<Box<dyn Transform>>,
+}
+
+impl Chain {
+    /// Creates a new `Chain` for an iterator.
+    pub fn new<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = Box<dyn Transform>>,
+    {
+        Chain {
+            inner: iter.into_iter().collect(),
+        }
+    }
+}
+
+impl FromIterator<Box<dyn Transform>> for Chain {
+    fn from_iter<I: IntoIterator<Item = Box<dyn Transform>>>(iter: I) -> Self {
+        Chain::new(iter)
+    }
+}
+
+impl IntoIterator for Chain {
+    type Item = Box<dyn Transform>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
+}
+
+impl Transform for Chain {
+    fn transform(&self, value: Value) -> Value {
+        self.inner
+            .iter()
+            .fold(value, |value, trans| trans.transform(value))
+    }
+}
+
 /// A type that can apply transformations to a `Value`.
+//
+// @TODO(mohmann): split this into smaller types
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum Transformation {
@@ -41,9 +107,8 @@ pub enum Transformation {
     ArraysToObjects,
 }
 
-impl Transformation {
-    /// Applies the `Transformation` to a value.
-    pub fn apply(&self, value: Value) -> Value {
+impl Transform for Transformation {
+    fn transform(&self, value: Value) -> Value {
         match self {
             Self::Flatten => flatten(value),
             Self::FlattenKeys(prefix) => flatten_keys(value, prefix),
@@ -57,16 +122,6 @@ impl Transformation {
             Self::ArraysToObjects => arrays_to_objects(value),
         }
     }
-}
-
-/// Applies a chain of transformations to a value.
-pub fn apply_chain<'a, I>(chain: I, value: Value) -> Value
-where
-    I: IntoIterator<Item = &'a Transformation>,
-{
-    chain
-        .into_iter()
-        .fold(value, |value, transformation| transformation.apply(value))
 }
 
 /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
@@ -423,18 +478,20 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn test_apply_chain() {
+    fn test_chain() {
         use Transformation::*;
 
-        let transformations = vec![
-            FlattenKeys("data".into()),
-            RemoveEmptyValues,
-            JsonPath(JsonPathSelector::new("$['data[2].bar']").unwrap()),
-            Flatten,
+        let transformations: Vec<Box<dyn Transform>> = vec![
+            Box::new(FlattenKeys("data".into())),
+            Box::new(RemoveEmptyValues),
+            Box::new(JsonPath(JsonPathSelector::new("$['data[2].bar']").unwrap())),
+            Box::new(Flatten),
         ];
 
+        let chain = Chain::from_iter(transformations);
+
         assert_eq!(
-            apply_chain(&transformations, json!([null, "foo", {"bar": "baz"}])),
+            chain.transform(json!([null, "foo", {"bar": "baz"}])),
             json!("baz")
         );
     }
