@@ -21,7 +21,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
 use dts_core::{
-    de::Deserializer, ser::Serializer, transform::apply_chain, Encoding, Error, Sink, Source,
+    de::Deserializer, ser::Serializer, transform::Transform, Encoding, Error, Sink, Source,
 };
 use dts_json::Value;
 use rayon::prelude::*;
@@ -77,7 +77,7 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
 
 fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
     parse_expressions(&opts.expressions)
-        .map(|chain| apply_chain(&chain, value))
+        .map(|chain| chain.transform(value))
         .context("Failed to build transformation chain")
 }
 

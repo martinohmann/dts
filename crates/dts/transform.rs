@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     sort::ValueSorter,
-    Transformation,
+    Chain, Transform, Transformation,
 };
 use indoc::indoc;
 use termcolor::{Color, ColorSpec};
@@ -142,8 +142,8 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
 }
 
-/// Parses expressions into a sequence of transformations.
-pub fn parse_expressions<T>(expressions: &[T]) -> Result<Vec<Transformation>>
+/// Parses expressions into a chain of transformations.
+pub fn parse_expressions<T>(expressions: &[T]) -> Result<Chain>
 where
     T: AsRef<str>,
 {
@@ -154,29 +154,31 @@ where
         .map(|expression| definitions.parse(expression.as_ref()))
         .collect::<Result<Vec<_>, dts_core::Error>>()?;
 
-    match_groups
+    let chain = match_groups
         .iter()
         .flatten()
         .map(match_transformation)
-        .collect()
+        .collect::<Result<Vec<_>>>()?;
+
+    Ok(Chain::new(chain))
 }
 
-fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Transformation> {
-    let transformation = match m.name() {
-        "arrays_to_objects" => Transformation::ArraysToObjects,
-        "deep_merge" => Transformation::DeepMerge,
-        "delete_keys" => Transformation::DeleteKeys(m.value_of("pattern")?),
-        "expand_keys" => Transformation::ExpandKeys,
-        "flatten" => Transformation::Flatten,
-        "flatten_keys" => Transformation::FlattenKeys(m.value_of("prefix")?),
-        "jsonpath" => Transformation::JsonPath(m.value_of("query")?),
-        "keys" => Transformation::Keys,
-        "remove_empty_values" => Transformation::RemoveEmptyValues,
+fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
+    let transformation: Box<dyn Transform> = match m.name() {
+        "arrays_to_objects" => Box::new(Transformation::ArraysToObjects),
+        "deep_merge" => Box::new(Transformation::DeepMerge),
+        "delete_keys" => Box::new(Transformation::DeleteKeys(m.value_of("pattern")?)),
+        "expand_keys" => Box::new(Transformation::ExpandKeys),
+        "flatten" => Box::new(Transformation::Flatten),
+        "flatten_keys" => Box::new(Transformation::FlattenKeys(m.value_of("prefix")?)),
+        "jsonpath" => Box::new(Transformation::JsonPath(m.value_of("query")?)),
+        "keys" => Box::new(Transformation::Keys),
+        "remove_empty_values" => Box::new(Transformation::RemoveEmptyValues),
         "sort" => {
             let order = m.value_of("order")?;
             let max_depth = m.value_of("max_depth").ok();
             let sorter = ValueSorter::new(order, max_depth);
-            Transformation::Sort(sorter)
+            Box::new(Transformation::Sort(sorter))
         }
         name => panic!("unmatched transformation `{}`, please file a bug", name),
     };
