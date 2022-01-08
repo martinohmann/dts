@@ -79,7 +79,24 @@ impl Transform for Chain {
     }
 }
 
-/// Mutates transformations to the matches of a jsonpath selector.
+/// A type that can select a value based on a jsonpath query.
+pub struct Select(JsonPathSelector);
+
+impl Select {
+    /// Creates a new `Mutate`.
+    pub fn new(selector: JsonPathSelector) -> Self {
+        Select(selector)
+    }
+}
+
+impl Transform for Select {
+    fn transform(&self, value: Value) -> Value {
+        self.0.select(value)
+    }
+}
+
+/// A type that can selectively mutate a value based on an jsonpath query and a chain of
+/// transformations.
 pub struct Mutate {
     mutator: JsonPathMutator,
     chain: Chain,
@@ -108,8 +125,6 @@ pub enum Transformation {
     Flatten,
     /// Flattens value to an object with flat keys.
     FlattenKeys(String),
-    /// Filter value according to a jsonpath selector.
-    JsonPath(JsonPathSelector),
     /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
     /// removed.
     RemoveEmptyValues,
@@ -132,7 +147,6 @@ impl Transform for Transformation {
         match self {
             Self::Flatten => flatten(value),
             Self::FlattenKeys(prefix) => flatten_keys(value, prefix),
-            Self::JsonPath(selector) => selector.select(value),
             Self::RemoveEmptyValues => remove_empty_values(value),
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value),
@@ -504,7 +518,7 @@ mod tests {
         let transformations: Vec<Box<dyn Transform>> = vec![
             Box::new(FlattenKeys("data".into())),
             Box::new(RemoveEmptyValues),
-            Box::new(JsonPath(JsonPathSelector::new("$['data[2].bar']").unwrap())),
+            Box::new(Select(JsonPathSelector::new("$['data[2].bar']").unwrap())),
             Box::new(Flatten),
         ];
 

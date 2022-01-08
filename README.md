@@ -51,24 +51,28 @@ Load all YAML files from sub directories, flatten nested arrays and merge them i
 dts . --glob '**/*.yaml' -t flatten output.yaml
 ```
 
-Run a JSONPath filter on the input data:
+Select a subset of the input data via JSONPath query:
 
 ```sh
-dts tests/fixtures/example.json -t 'jsonpath("$.users[?(@.age < 30)]")'
+dts tests/fixtures/example.json -t 'select("$.users[?(@.age < 30)]")'
 ```
 
-Combine multiple transformation options (multiple usages and short aliases of
-the same option possible):
+Mutate just a subset of the input data:
 
 ```sh
-# This uses the single char forms of the transformation options
-dts tests/fixtures/example.json -t "delete_keys('some_key').deep_merge.jp('[*]').flatten.jsonpath('[*].id')"
+dts tests/fixtures/example.json -t 'mutate("$.users[?(@.age > 30)]", sort().flatten())'
+```
+
+Combine multiple transformation options:
+
+```sh
+dts tests/fixtures/example.json -t "delete_keys('some_key').deep_merge.select('[*]').flatten.select('[*].id')"
 ```
 
 Read data from stdin:
 
 ```sh
-echo '{"foo": {"bar": "baz"}}' | dts -i json -tF.r -o yaml
+echo '{"foo": {"bar": "baz"}}' | dts -i json -o yaml
 ```
 
 ## Output colors and themes

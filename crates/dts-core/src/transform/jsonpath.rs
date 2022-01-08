@@ -78,7 +78,7 @@ impl JsonPathMutator {
         let mut selector = SelectorMut::new();
 
         selector
-            .str_path(&query)
+            .str_path(query)
             .map_err(|err| Error::new(format!("Failed to parse jsonpath query:\n\n{}", err)))?;
 
         Ok(JsonPathMutator {

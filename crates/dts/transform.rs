@@ -4,7 +4,7 @@ use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     jsonpath::JsonPathMutator,
     sort::ValueSorter,
-    Chain, Mutate, Transform, Transformation,
+    Chain, Mutate, Select, Transform, Transformation,
 };
 use indoc::indoc;
 use termcolor::{Color, ColorSpec};
@@ -22,8 +22,8 @@ pub fn definitions<'a>() -> Definitions<'a> {
 
     Definitions::new()
         .add_definition(
-            Definition::new("jsonpath")
-                .add_aliases(&["j", "jp", "select"])
+            Definition::new("select")
+                .add_aliases(&["j", "jp", "jsonpath"])
                 .with_description(indoc! {r#"
                     Selects data from the decoded input via jsonpath query. Can be specified multiple times to
                     allow starting the filtering from the root element again.
@@ -185,7 +185,6 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         "expand_keys" => Box::new(Transformation::ExpandKeys),
         "flatten" => Box::new(Transformation::Flatten),
         "flatten_keys" => Box::new(Transformation::FlattenKeys(m.value_of("prefix")?)),
-        "jsonpath" => Box::new(Transformation::JsonPath(m.value_of("query")?)),
         "keys" => Box::new(Transformation::Keys),
         "remove_empty_values" => Box::new(Transformation::RemoveEmptyValues),
         "sort" => {
@@ -200,6 +199,7 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
             let mutator = JsonPathMutator::new(&query)?;
             Box::new(Mutate::new(mutator, chain))
         }
+        "select" => Box::new(Select::new(m.value_of("query")?)),
         name => panic!("unmatched transformation `{}`, please file a bug", name),
     };
 
@@ -235,7 +235,7 @@ where
             function_name(arg1, arg2)        # multiple arguments
             function_name(arg2=value, arg1)  # named argument in different position
 
-        Function arguments may be quoted string, numbers or booleans.
+        Function arguments may be quoted string, numbers, booleans or function expressions.
     "#})?;
     printer.write("\n")?;
     printer.write_colored(ColorSpec::new().set_fg(Some(Color::Yellow)), "EXAMPLE:")?;
