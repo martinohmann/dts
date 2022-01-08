@@ -3,7 +3,8 @@ use anyhow::{anyhow, Result};
 use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     sort::ValueSorter,
-    Chain, Delete, Mutate, Remove, Select, Transform, Transformation,
+    Chain, Delete, DeleteKeys, FlattenKeys, Mutate, Remove, Select, Sort, Transform,
+    Unparameterized,
 };
 use indoc::indoc;
 use termcolor::{Color, ColorSpec};
@@ -192,28 +193,31 @@ fn parse_matches(matches: &[DefinitionMatch<'_>]) -> Result<Chain> {
 
 fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
     let transformation: Box<dyn Transform> = match m.name() {
-        "arrays_to_objects" => Box::new(Transformation::ArraysToObjects),
-        "deep_merge" => Box::new(Transformation::DeepMerge),
-        "delete_keys" => Box::new(Transformation::DeleteKeys(m.value_of("pattern")?)),
-        "expand_keys" => Box::new(Transformation::ExpandKeys),
-        "flatten" => Box::new(Transformation::Flatten),
-        "flatten_keys" => Box::new(Transformation::FlattenKeys(m.value_of("prefix")?)),
-        "keys" => Box::new(Transformation::Keys),
-        "remove_empty_values" => Box::new(Transformation::RemoveEmptyValues),
-        "sort" => {
-            let order = m.value_of("order")?;
-            let max_depth = m.value_of("max_depth").ok();
-            let sorter = ValueSorter::new(order, max_depth);
-            Box::new(Transformation::Sort(sorter))
+        "arrays_to_objects" => Box::new(Unparameterized::ArraysToObjects),
+        "deep_merge" => Box::new(Unparameterized::DeepMerge),
+        "delete" => Box::new(Delete::new(m.value_of("query")?)),
+        "delete_keys" => Box::new(DeleteKeys::new(m.value_of("pattern")?)),
+        "expand_keys" => Box::new(Unparameterized::ExpandKeys),
+        "flatten" => Box::new(Unparameterized::Flatten),
+        "flatten_keys" => {
+            let prefix: String = m.value_of("prefix")?;
+            Box::new(FlattenKeys::new(&prefix))
         }
+        "keys" => Box::new(Unparameterized::Keys),
         "mutate" => {
             let mutator = m.value_of("query")?;
             let chain = m.map_expr_of("expression", parse_matches)?;
             Box::new(Mutate::new(mutator, chain))
         }
-        "select" => Box::new(Select::new(m.value_of("query")?)),
-        "delete" => Box::new(Delete::new(m.value_of("query")?)),
         "remove" => Box::new(Remove::new(m.value_of("query")?)),
+        "remove_empty_values" => Box::new(Unparameterized::RemoveEmptyValues),
+        "select" => Box::new(Select::new(m.value_of("query")?)),
+        "sort" => {
+            let order = m.value_of("order")?;
+            let max_depth = m.value_of("max_depth").ok();
+            let sorter = ValueSorter::new(order, max_depth);
+            Box::new(Sort::new(sorter))
+        }
         name => panic!("unmatched transformation `{}`, please file a bug", name),
     };
 

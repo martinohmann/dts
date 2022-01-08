@@ -149,16 +149,60 @@ impl Transform for Remove {
     }
 }
 
-/// A type that can apply transformations to a `Value`.
-//
-// @TODO(mohmann): split this into smaller types
+/// Flattens value to an object with flat keys.
+pub struct FlattenKeys(String);
+
+impl FlattenKeys {
+    /// Creates a new `FlattenKeys`.
+    pub fn new(prefix: &str) -> Self {
+        FlattenKeys(prefix.to_owned())
+    }
+}
+
+impl Transform for FlattenKeys {
+    fn transform(&self, value: Value) -> Value {
+        flatten_keys(value, &self.0)
+    }
+}
+
+/// Deletes object keys matching a pattern.
+pub struct DeleteKeys(Regex);
+
+impl DeleteKeys {
+    /// Creates a new `DeleteKeys`.
+    pub fn new(regex: Regex) -> Self {
+        DeleteKeys(regex)
+    }
+}
+
+impl Transform for DeleteKeys {
+    fn transform(&self, value: Value) -> Value {
+        delete_keys(value, &self.0)
+    }
+}
+
+/// Sorts objects and arrays.
+pub struct Sort(ValueSorter);
+
+impl Sort {
+    /// Creates a new `Sort`.
+    pub fn new(sorter: ValueSorter) -> Self {
+        Sort(sorter)
+    }
+}
+
+impl Transform for Sort {
+    fn transform(&self, value: Value) -> Value {
+        sort(&self.0, value)
+    }
+}
+
+/// A type that can apply unparameterized transformations to a `Value`.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
-pub enum Transformation {
+pub enum Unparameterized {
     /// Remove one level of nesting if the data is shaped like an array or one-elemented object.
     Flatten,
-    /// Flattens value to an object with flat keys.
-    FlattenKeys(String),
     /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
     /// removed.
     RemoveEmptyValues,
@@ -168,25 +212,18 @@ pub enum Transformation {
     ExpandKeys,
     /// Extracts object keys.
     Keys,
-    /// Delete object keys matching a pattern.
-    DeleteKeys(Regex),
-    /// Sort objects and arrays.
-    Sort(ValueSorter),
     /// Convert all arrays into objects.
     ArraysToObjects,
 }
 
-impl Transform for Transformation {
+impl Transform for Unparameterized {
     fn transform(&self, value: Value) -> Value {
         match self {
             Self::Flatten => flatten(value),
-            Self::FlattenKeys(prefix) => flatten_keys(value, prefix),
             Self::RemoveEmptyValues => remove_empty_values(value),
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value),
             Self::Keys => keys(value),
-            Self::DeleteKeys(regex) => delete_keys(value, regex),
-            Self::Sort(sorter) => sort(sorter, value),
             Self::ArraysToObjects => arrays_to_objects(value),
         }
     }
@@ -547,10 +584,10 @@ mod tests {
 
     #[test]
     fn test_chain() {
-        use Transformation::*;
+        use Unparameterized::*;
 
         let transformations: Vec<Box<dyn Transform>> = vec![
-            Box::new(FlattenKeys("data".into())),
+            Box::new(FlattenKeys::new("data")),
             Box::new(RemoveEmptyValues),
             Box::new(Select(JsonPathSelector::new("$['data[2].bar']").unwrap())),
             Box::new(Flatten),
