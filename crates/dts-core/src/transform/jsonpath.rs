@@ -89,15 +89,23 @@ impl JsonPathMutator {
     /// Mutate the parts of the value that are matched by the query and return the mutated result.
     pub fn mutate<F>(&self, value: Value, mut replacer: F) -> Value
     where
-        F: FnMut(Value) -> Value,
+        F: FnMut(Value) -> Option<Value>,
     {
         self.selector
             .borrow_mut()
             .value(value.into())
-            .replace_with(&mut |value: JsonValue| Some((replacer)(value.into()).into()))
+            .replace_with(&mut |value: JsonValue| (replacer)(value.into()).map(Into::into))
             .unwrap()
             .take()
             .map(Into::into)
             .unwrap_or_default()
+    }
+}
+
+impl FromStr for JsonPathMutator {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        JsonPathMutator::new(s)
     }
 }

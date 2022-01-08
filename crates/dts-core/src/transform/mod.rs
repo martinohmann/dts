@@ -95,7 +95,7 @@ impl Transform for Select {
     }
 }
 
-/// A type that can selectively mutate a value based on an jsonpath query and a chain of
+/// A type that can selectively mutate a value based on a jsonpath query and a chain of
 /// transformations.
 pub struct Mutate {
     mutator: JsonPathMutator,
@@ -111,7 +111,41 @@ impl Mutate {
 
 impl Transform for Mutate {
     fn transform(&self, value: Value) -> Value {
-        self.mutator.mutate(value, |v| self.chain.transform(v))
+        self.mutator
+            .mutate(value, |v| Some(self.chain.transform(v)))
+    }
+}
+
+/// A type that can selectively delete values based on a jsonpath query. Deleted values are
+/// represented as `Value::Null`.
+pub struct Delete(JsonPathMutator);
+
+impl Delete {
+    /// Creates a new `Delete`.
+    pub fn new(mutator: JsonPathMutator) -> Self {
+        Delete(mutator)
+    }
+}
+
+impl Transform for Delete {
+    fn transform(&self, value: Value) -> Value {
+        self.0.mutate(value, |_| Some(Value::Null))
+    }
+}
+
+/// A type that can selectively remove values based on a jsonpath query.
+pub struct Remove(JsonPathMutator);
+
+impl Remove {
+    /// Creates a new `Remove`.
+    pub fn new(mutator: JsonPathMutator) -> Self {
+        Remove(mutator)
+    }
+}
+
+impl Transform for Remove {
+    fn transform(&self, value: Value) -> Value {
+        self.0.mutate(value, |_| None)
     }
 }
 

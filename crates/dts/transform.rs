@@ -2,9 +2,8 @@ use crate::output::{BufferedStdoutPrinter, ColorChoice};
 use anyhow::{anyhow, Result};
 use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
-    jsonpath::JsonPathMutator,
     sort::ValueSorter,
-    Chain, Mutate, Select, Transform, Transformation,
+    Chain, Delete, Mutate, Remove, Select, Transform, Transformation,
 };
 use indoc::indoc;
 use termcolor::{Color, ColorSpec};
@@ -25,7 +24,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
             Definition::new("select")
                 .add_aliases(&["j", "jp", "jsonpath"])
                 .with_description(indoc! {r#"
-                    Selects data from the decoded input via jsonpath query. Can be specified multiple times to
+                    Selects values based on a jsonpath query. Can be specified multiple times to
                     allow starting the filtering from the root element again.
 
                     When using a jsonpath query, the result will always be shaped like an array with zero or
@@ -147,12 +146,26 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("mutate")
-                .add_aliases(&["map"])
                 .with_description(indoc! {r#"
                     Applies the expression to all values matched by the query and returns the
                     mutated value.
                 "#})
-                .add_args(&[query_arg, expression_arg])
+                .add_args(&[query_arg.clone(), expression_arg])
+        )
+        .add_definition(
+            Definition::new("delete")
+                .with_description(indoc! {r#"
+                    Selectively deletes values based on a jsonpath query. Deleted values are
+                    represented as nulls.
+                "#})
+                .add_arg(query_arg.clone()),
+        )
+        .add_definition(
+            Definition::new("remove")
+                .with_description(indoc! {r#"
+                    Selectively removes values based on a jsonpath query.
+                "#})
+                .add_arg(query_arg),
         )
 }
 
@@ -168,9 +181,9 @@ where
         .map(|expression| definitions.parse(expression.as_ref()))
         .collect::<Result<Vec<_>, dts_core::Error>>()?;
 
-    let expressions = match_groups.into_iter().flatten().collect::<Vec<_>>();
+    let matches = match_groups.into_iter().flatten().collect::<Vec<_>>();
 
-    parse_matches(&expressions)
+    parse_matches(&matches)
 }
 
 fn parse_matches(matches: &[DefinitionMatch<'_>]) -> Result<Chain> {
@@ -194,12 +207,13 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
             Box::new(Transformation::Sort(sorter))
         }
         "mutate" => {
-            let query: String = m.value_of("query")?;
+            let mutator = m.value_of("query")?;
             let chain = m.map_expr_of("expression", parse_matches)?;
-            let mutator = JsonPathMutator::new(&query)?;
             Box::new(Mutate::new(mutator, chain))
         }
         "select" => Box::new(Select::new(m.value_of("query")?)),
+        "delete" => Box::new(Delete::new(m.value_of("query")?)),
+        "remove" => Box::new(Remove::new(m.value_of("query")?)),
         name => panic!("unmatched transformation `{}`, please file a bug", name),
     };
 
