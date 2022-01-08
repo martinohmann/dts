@@ -2,17 +2,28 @@ use crate::output::{BufferedStdoutPrinter, ColorChoice};
 use anyhow::{anyhow, Result};
 use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
+    jsonpath::JsonPathMutator,
     sort::ValueSorter,
-    Chain, Transform, Transformation,
+    Chain, Mutate, Select, Transform, Transformation,
 };
 use indoc::indoc;
 use termcolor::{Color, ColorSpec};
 
 pub fn definitions<'a>() -> Definitions<'a> {
+    let query_arg = Arg::new("query").with_description(indoc! {r#"
+        A jsonpath query.
+
+        See <https://goessner.net/articles/JsonPath/> for supported operators.
+    "#});
+
+    let expression_arg = Arg::new("expression").with_description(indoc! {r#"
+        An expression consisting of one or more transformation functions.
+    "#});
+
     Definitions::new()
         .add_definition(
-            Definition::new("jsonpath")
-                .add_aliases(&["j", "jp"])
+            Definition::new("select")
+                .add_aliases(&["j", "jp", "jsonpath"])
                 .with_description(indoc! {r#"
                     Selects data from the decoded input via jsonpath query. Can be specified multiple times to
                     allow starting the filtering from the root element again.
@@ -21,13 +32,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     more elements. See `flatten` if you want to remove one level of nesting on single element
                     filter results.
                 "#})
-                .add_arg(
-                    Arg::new("query")
-                        .with_description(indoc! {r#"
-                            A jsonpath query.
-
-                            See <https://goessner.net/articles/JsonPath/> for supported operators.
-                        "#})),
+                .add_arg(query_arg.clone()),
         )
         .add_definition(
             Definition::new("flatten")
@@ -140,6 +145,15 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     Recursively transforms all arrays into objects with the array index as key.
                 "#})
         )
+        .add_definition(
+            Definition::new("mutate")
+                .add_aliases(&["map"])
+                .with_description(indoc! {r#"
+                    Applies the expression to all values matched by the query and returns the
+                    mutated value.
+                "#})
+                .add_args(&[query_arg, expression_arg])
+        )
 }
 
 /// Parses expressions into a chain of transformations.
@@ -154,16 +168,16 @@ where
         .map(|expression| definitions.parse(expression.as_ref()))
         .collect::<Result<Vec<_>, dts_core::Error>>()?;
 
-    let chain = match_groups
-        .iter()
-        .flatten()
-        .map(match_transformation)
-        .collect::<Result<Vec<_>>>()?;
+    let expressions = match_groups.into_iter().flatten().collect::<Vec<_>>();
 
-    Ok(Chain::new(chain))
+    parse_matches(&expressions)
 }
 
-fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
+fn parse_matches(matches: &[DefinitionMatch<'_>]) -> Result<Chain> {
+    matches.iter().map(parse_transformation).collect()
+}
+
+fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
     let transformation: Box<dyn Transform> = match m.name() {
         "arrays_to_objects" => Box::new(Transformation::ArraysToObjects),
         "deep_merge" => Box::new(Transformation::DeepMerge),
@@ -171,7 +185,6 @@ fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         "expand_keys" => Box::new(Transformation::ExpandKeys),
         "flatten" => Box::new(Transformation::Flatten),
         "flatten_keys" => Box::new(Transformation::FlattenKeys(m.value_of("prefix")?)),
-        "jsonpath" => Box::new(Transformation::JsonPath(m.value_of("query")?)),
         "keys" => Box::new(Transformation::Keys),
         "remove_empty_values" => Box::new(Transformation::RemoveEmptyValues),
         "sort" => {
@@ -180,6 +193,13 @@ fn match_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
             let sorter = ValueSorter::new(order, max_depth);
             Box::new(Transformation::Sort(sorter))
         }
+        "mutate" => {
+            let query: String = m.value_of("query")?;
+            let chain = m.map_expr_of("expression", parse_matches)?;
+            let mutator = JsonPathMutator::new(&query)?;
+            Box::new(Mutate::new(mutator, chain))
+        }
+        "select" => Box::new(Select::new(m.value_of("query")?)),
         name => panic!("unmatched transformation `{}`, please file a bug", name),
     };
 
@@ -215,7 +235,7 @@ where
             function_name(arg1, arg2)        # multiple arguments
             function_name(arg2=value, arg1)  # named argument in different position
 
-        Function arguments may be quoted string, numbers or booleans.
+        Function arguments may be quoted string, numbers, booleans or function expressions.
     "#})?;
     printer.write("\n")?;
     printer.write_colored(ColorSpec::new().set_fg(Some(Color::Yellow)), "EXAMPLE:")?;

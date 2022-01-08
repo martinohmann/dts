@@ -7,11 +7,12 @@ pub mod sort;
 
 use crate::parsers::flat_key::{self, KeyPart, KeyParts};
 use dts_json::{Map, Value};
-use jsonpath::JsonPathSelector;
+use jsonpath::{JsonPathMutator, JsonPathSelector};
 use key::KeyFlattener;
 use rayon::prelude::*;
 use regex::Regex;
 use sort::ValueSorter;
+use std::fmt::Debug;
 use std::iter;
 
 /// Represents a thing that can take a value, transform it and produce a new value.
@@ -78,6 +79,42 @@ impl Transform for Chain {
     }
 }
 
+/// A type that can select a value based on a jsonpath query.
+pub struct Select(JsonPathSelector);
+
+impl Select {
+    /// Creates a new `Mutate`.
+    pub fn new(selector: JsonPathSelector) -> Self {
+        Select(selector)
+    }
+}
+
+impl Transform for Select {
+    fn transform(&self, value: Value) -> Value {
+        self.0.select(value)
+    }
+}
+
+/// A type that can selectively mutate a value based on an jsonpath query and a chain of
+/// transformations.
+pub struct Mutate {
+    mutator: JsonPathMutator,
+    chain: Chain,
+}
+
+impl Mutate {
+    /// Creates a new `Mutate`.
+    pub fn new(mutator: JsonPathMutator, chain: Chain) -> Self {
+        Mutate { mutator, chain }
+    }
+}
+
+impl Transform for Mutate {
+    fn transform(&self, value: Value) -> Value {
+        self.mutator.mutate(value, |v| self.chain.transform(v))
+    }
+}
+
 /// A type that can apply transformations to a `Value`.
 //
 // @TODO(mohmann): split this into smaller types
@@ -88,8 +125,6 @@ pub enum Transformation {
     Flatten,
     /// Flattens value to an object with flat keys.
     FlattenKeys(String),
-    /// Filter value according to a jsonpath selector.
-    JsonPath(JsonPathSelector),
     /// Removes nulls, empty arrays and empty objects from value. Top level empty values are not
     /// removed.
     RemoveEmptyValues,
@@ -112,7 +147,6 @@ impl Transform for Transformation {
         match self {
             Self::Flatten => flatten(value),
             Self::FlattenKeys(prefix) => flatten_keys(value, prefix),
-            Self::JsonPath(selector) => selector.select(value),
             Self::RemoveEmptyValues => remove_empty_values(value),
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value),
@@ -484,7 +518,7 @@ mod tests {
         let transformations: Vec<Box<dyn Transform>> = vec![
             Box::new(FlattenKeys("data".into())),
             Box::new(RemoveEmptyValues),
-            Box::new(JsonPath(JsonPathSelector::new("$['data[2].bar']").unwrap())),
+            Box::new(Select(JsonPathSelector::new("$['data[2].bar']").unwrap())),
             Box::new(Flatten),
         ];
 

@@ -1,6 +1,6 @@
 //! Provides a DSL to define transformations and parse user input.
 
-use crate::parsers::func_sig::{self, FuncArg};
+use crate::parsers::func_sig::{self, ExprTerm, FuncArg, FuncSig};
 use crate::{Error, Result};
 use indexmap::{IndexMap, IndexSet};
 use std::cmp::Ordering;
@@ -135,26 +135,30 @@ impl<'a> Definition<'a> {
     // Matches a list of function arguments against the `Definition` and returns a `HashMap` of
     // argument name to argument value or an error if a required argument is missing. Optional
     // arguments receive their default value if they did not appear in `func_args`.
-    fn match_func_args(&self, func_args: &[FuncArg<'a>]) -> Result<HashMap<&'a str, &'a str>> {
+    fn match_func_args(
+        &self,
+        definitions: &Definitions<'a>,
+        func_args: &[FuncArg<'a>],
+    ) -> Result<HashMap<&'a str, ArgMatch<'a>>> {
         let mut remaining_args = self.args.clone();
-        let mut args: HashMap<&'a str, &'a str> = HashMap::new();
+        let mut args: HashMap<&'a str, ArgMatch<'a>> = HashMap::new();
 
         for arg in func_args.iter() {
-            let (name, value) = match arg {
-                FuncArg::Named(name, value) => remaining_args
+            let (name, expr_term) = match arg {
+                FuncArg::Named(name, expr_term) => remaining_args
                     .shift_remove(name)
-                    .map(|arg_def| (arg_def.name, value))
+                    .map(|arg_def| (arg_def.name, expr_term))
                     .ok_or_else(|| {
                         Error::new(format!(
                             "Unexpected named argument `{}=\"{}\"`",
-                            name, value
+                            name, expr_term
                         ))
                     })?,
-                FuncArg::Positional(value) => remaining_args
+                FuncArg::Positional(expr_term) => remaining_args
                     .shift_remove_index(0)
-                    .map(|(_, arg_def)| (arg_def.name, value))
+                    .map(|(_, arg_def)| (arg_def.name, expr_term))
                     .ok_or_else(|| {
-                        Error::new(format!("Unexpected positional argument `{}`", value))
+                        Error::new(format!("Unexpected positional argument `{}`", expr_term))
                     })?,
             };
 
@@ -162,7 +166,17 @@ impl<'a> Definition<'a> {
                 return Err(Error::new(format!("Duplicate argument `{}`", name)));
             }
 
-            args.insert(name, value);
+            let arg_match = match expr_term {
+                ExprTerm::Value(value) => ArgMatch::Value(value),
+                ExprTerm::Expr(func_sigs) => ArgMatch::Expr(
+                    func_sigs
+                        .iter()
+                        .map(|func_sig| definitions.match_definition(func_sig))
+                        .collect::<Result<Vec<_>>>()?,
+                ),
+            };
+
+            args.insert(name, arg_match);
         }
 
         let mut missing_args = Vec::new();
@@ -170,7 +184,7 @@ impl<'a> Definition<'a> {
         for (name, arg_def) in remaining_args.into_iter() {
             match arg_def.default_value() {
                 Some(default_value) => {
-                    args.insert(name, default_value);
+                    args.insert(name, ArgMatch::Value(default_value));
                 }
                 None => {
                     if arg_def.is_required() {
@@ -306,18 +320,25 @@ impl<'a> Definitions<'a> {
     pub fn parse(&self, expression: &'a str) -> Result<Vec<DefinitionMatch<'a>>> {
         func_sig::parse(expression)?
             .iter()
-            .map(|sig| {
-                let definition = self
-                    .find_definition(sig.name())
-                    .ok_or_else(|| Error::new(format!("Unknown function `{}`", sig.name())))?;
-
-                let args = definition.match_func_args(sig.args()).map_err(|err| {
-                    Error::new(format!("Invalid function signature `{}`: {}", sig, err))
-                })?;
-
-                Ok(DefinitionMatch::new(definition.name, args))
-            })
+            .map(|func_sig| self.match_definition(func_sig))
             .collect()
+    }
+
+    fn match_definition(&self, func_sig: &FuncSig<'a>) -> Result<DefinitionMatch<'a>> {
+        let definition = self
+            .find_definition(func_sig.name())
+            .ok_or_else(|| Error::new(format!("Unknown function `{}`", func_sig.name())))?;
+
+        let args = definition
+            .match_func_args(self, func_sig.args())
+            .map_err(|err| {
+                Error::new(format!(
+                    "Invalid function signature `{}`: {}",
+                    func_sig, err
+                ))
+            })?;
+
+        Ok(DefinitionMatch::new(definition.name, args))
     }
 }
 
@@ -424,7 +445,7 @@ impl<'a> From<&Arg<'a>> for Arg<'a> {
 /// Represents a match of a transformation that was parsed from user input.
 pub struct DefinitionMatch<'a> {
     name: &'a str,
-    args: HashMap<&'a str, &'a str>,
+    args: HashMap<&'a str, ArgMatch<'a>>,
 }
 
 impl<'a> DefinitionMatch<'a> {
@@ -432,7 +453,7 @@ impl<'a> DefinitionMatch<'a> {
     /// that where parsed from the input.
     pub fn new<I>(name: &'a str, args: I) -> Self
     where
-        I: IntoIterator<Item = (&'a str, &'a str)>,
+        I: IntoIterator<Item = (&'a str, ArgMatch<'a>)>,
     {
         DefinitionMatch {
             name,
@@ -450,8 +471,8 @@ impl<'a> DefinitionMatch<'a> {
     ///
     /// ## Errors
     ///
-    /// If no argument with `name` was matched or if the argument value is not convertible into `T`
-    /// an error is returned.
+    /// If no argument with `name` was matched, the argument contains and expression or if the
+    /// argument value is not convertible into `T` an error is returned.
     pub fn value_of<T>(&self, name: &str) -> Result<T>
     where
         T: FromStr,
@@ -465,8 +486,8 @@ impl<'a> DefinitionMatch<'a> {
     ///
     /// ## Errors
     ///
-    /// Returns an error if no argument with `name` was matched or if the `map_value` closure
-    /// returned an error.
+    /// Returns an error if no argument with `name` was matched, the argument contains an
+    /// expression or if the `map_value` closure returned an error.
     pub fn map_value_of<F, T, E>(&self, name: &str, map_value: F) -> Result<T>
     where
         F: FnOnce(&str) -> Result<T, E>,
@@ -475,8 +496,13 @@ impl<'a> DefinitionMatch<'a> {
         self.args
             .get(name)
             .ok_or_else(|| Error::new(format!("Argument `{}` missing for `{}`", name, self.name)))
-            .and_then(|value| {
-                map_value(value).map_err(|err| {
+            .and_then(|arg_match| {
+                let res = match arg_match {
+                    ArgMatch::Value(value) => map_value(value).map_err(Error::new),
+                    ArgMatch::Expr(_) => Err(Error::new("Expected value but got expression")),
+                };
+
+                res.map_err(|err| {
                     Error::new(format!(
                         "Invalid argument `{}` for `{}`: {}",
                         name, self.name, err
@@ -484,6 +510,44 @@ impl<'a> DefinitionMatch<'a> {
                 })
             })
     }
+
+    /// Looks up the value for the argument with `name` from the match and passes it to the
+    /// `map_expr` closure. Returns the value produced by the closure.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if no argument with `name` was matched, the argument contains a literal
+    /// value or if the `map_expr` closure returned an error.
+    pub fn map_expr_of<F, T, E>(&self, name: &str, map_expr: F) -> Result<T>
+    where
+        F: FnOnce(&[DefinitionMatch<'a>]) -> Result<T, E>,
+        E: fmt::Display,
+    {
+        self.args
+            .get(name)
+            .ok_or_else(|| Error::new(format!("Argument `{}` missing for `{}`", name, self.name)))
+            .and_then(|arg_match| {
+                let res = match arg_match {
+                    ArgMatch::Value(_) => Err(Error::new("Expected expression but got value")),
+                    ArgMatch::Expr(expr) => map_expr(expr).map_err(Error::new),
+                };
+
+                res.map_err(|err| {
+                    Error::new(format!(
+                        "Invalid argument `{}` for `{}`: {}",
+                        name, self.name, err
+                    ))
+                })
+            })
+    }
+}
+
+/// Represents a matched transformation function argument.
+pub enum ArgMatch<'a> {
+    /// A literal value.
+    Value(&'a str),
+    /// An expression composed out of one or more other definition matches.
+    Expr(Vec<DefinitionMatch<'a>>),
 }
 
 #[cfg(test)]
