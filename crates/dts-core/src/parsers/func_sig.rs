@@ -162,7 +162,7 @@ impl<'a> fmt::Display for FuncArg<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FuncArg::Named(name, value) => write!(f, "{}={}", name, value),
-            FuncArg::Positional(value) => write!(f, "\"{}\"", value),
+            FuncArg::Positional(value) => write!(f, "{}", value),
         }
     }
 }
