@@ -4,6 +4,7 @@ use crate::{Error, Result};
 use dts_json::Value;
 use jsonpath_lib::{Compiled as CompiledJsonPath, SelectorMut};
 use serde_json::Value as JsonValue;
+use std::cell::RefCell;
 use std::str::FromStr;
 
 /// A jsonpath selector.
@@ -68,18 +69,20 @@ impl FromStr for JsonPathSelector {
 
 /// A json selector that can mutate parts of a value in place.
 pub struct JsonPathMutator {
-    query: String,
+    selector: RefCell<SelectorMut>,
 }
 
 impl JsonPathMutator {
     /// Creates a new `JsonPathMutator`.
     pub fn new(query: &str) -> Result<Self> {
-        // Just comile the query to ensure that it will not panic later.
-        CompiledJsonPath::compile(query)
+        let mut selector = SelectorMut::new();
+
+        selector
+            .str_path(&query)
             .map_err(|err| Error::new(format!("Failed to parse jsonpath query:\n\n{}", err)))?;
 
         Ok(JsonPathMutator {
-            query: query.to_owned(),
+            selector: RefCell::new(selector),
         })
     }
 
@@ -88,15 +91,10 @@ impl JsonPathMutator {
     where
         F: FnMut(Value) -> Value,
     {
-        let mut selector = SelectorMut::new();
-
-        let mut replacer = |value: JsonValue| Some((replacer)(value.into()).into());
-
-        selector
-            .str_path(&self.query)
-            .unwrap()
+        self.selector
+            .borrow_mut()
             .value(value.into())
-            .replace_with(&mut replacer)
+            .replace_with(&mut |value: JsonValue| Some((replacer)(value.into()).into()))
             .unwrap()
             .take()
             .map(Into::into)

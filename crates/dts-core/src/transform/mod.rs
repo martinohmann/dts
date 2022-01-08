@@ -86,7 +86,7 @@ pub struct Mutate {
 }
 
 impl Mutate {
-    /// @TODO
+    /// Creates a new `Mutate`.
     pub fn new(mutator: JsonPathMutator, chain: Chain) -> Self {
         Mutate { mutator, chain }
     }
