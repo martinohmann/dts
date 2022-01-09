@@ -1,6 +1,7 @@
 use super::{Map, Number, Value};
 use serde_json::Value as JsonValue;
 use std::borrow::Cow;
+use std::str::FromStr;
 
 macro_rules! impl_from_integer {
     ($($ty:ty),*) => {
@@ -122,5 +123,13 @@ impl From<Value> for JsonValue {
             Value::Array(a) => JsonValue::from_iter(a),
             Value::Object(o) => JsonValue::from_iter(o),
         }
+    }
+}
+
+impl FromStr for Value {
+    type Err = serde_json::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_str(s)
     }
 }
