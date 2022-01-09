@@ -27,7 +27,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
     Definitions::new()
         .add_definition(
             Definition::new("select")
-                .add_aliases(&["j", "jp", "jsonpath"])
+                .add_alias("sel")
                 .with_description(indoc! {r#"
                     Selects values based on a jsonpath query. Can be specified multiple times to
                     allow starting the filtering from the root element again.
@@ -40,7 +40,6 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("flatten")
-                .add_aliases(&["f"])
                 .with_description(indoc! {r#"
                     Removes one level of nesting if the data is shaped like an array or
                     one-elemented object. Can be specified multiple times.
@@ -51,7 +50,6 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("flatten_keys")
-                .add_aliases(&["F", "flatten-keys"])
                 .with_description(indoc! {r#"
                     Flattens the input to an object with flat keys.
 
@@ -65,12 +63,11 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("expand_keys")
-                .add_aliases(&["e", "expand-keys"])
                 .with_description("Recursively expands flat object keys to nested objects.")
         )
         .add_definition(
             Definition::new("remove_empty_values")
-                .add_aliases(&["r", "remove-empty-values"])
+                .add_alias("remove_empty")
                 .with_description(indoc! {r#"
                     Recursively removes nulls, empty arrays and empty objects from the data.
 
@@ -79,7 +76,6 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("deep_merge")
-                .add_aliases(&["m", "deep-merge"])
                 .with_description(indoc! {r#"
                     If the data is an array, all children are merged into one from left to right.
                     Otherwise this is a no-op.
@@ -95,7 +91,6 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("keys")
-                .add_alias("k")
                 .with_description(indoc! {r#"
                     Transforms the data into an array of object keys which is empty if the top
                     level value is not an object.
@@ -103,7 +98,6 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("delete_keys")
-                .add_aliases(&["d", "delete-keys"])
                 .with_description(indoc! {r#"
                     Recursively deletes all object keys matching a regex pattern.
                 "#})
@@ -116,7 +110,6 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("sort")
-                .add_alias("s")
                 .with_description(indoc! {r#"
                     Sorts collections (arrays and maps) recursively.
 
@@ -144,13 +137,13 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("arrays_to_objects")
-                .add_aliases(&["ato", "arrays-to-objects"])
                 .with_description(indoc! {r#"
                     Recursively transforms all arrays into objects with the array index as key.
                 "#})
         )
         .add_definition(
             Definition::new("mutate")
+                .add_alias("mut")
                 .with_description(indoc! {r#"
                     Applies the expression to all values matched by the query and returns the
                     mutated value.
@@ -159,6 +152,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("delete")
+                .add_alias("del")
                 .with_description(indoc! {r#"
                     Selectively deletes values based on a jsonpath query. Deleted values are
                     represented as nulls.
@@ -167,6 +161,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("remove")
+                .add_alias("rm")
                 .with_description(indoc! {r#"
                     Selectively removes values based on a jsonpath query.
                 "#})
@@ -182,6 +177,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("each_value")
+                .add_alias("each_val")
                 .with_description(indoc! {r#"
                     Applies the expression to all values of the current array or object. This is a
                     no-op for non-array and non-object values.
@@ -190,6 +186,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         )
         .add_definition(
             Definition::new("values")
+                .add_alias("vals")
                 .with_description(indoc! {r#"
                     Transforms the data into an array of values which is empty if the top
                     level value is not an array or object.

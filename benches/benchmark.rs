@@ -88,7 +88,7 @@ fn benchmark_transform(c: &mut Criterion) {
                     "*",
                     "-C",
                     "-t",
-                    "flatten_keys('json').expand_keys.jsonpath('$.json').flatten",
+                    "flatten_keys(\"json\").expand_keys.select(\"$.json\").flatten",
                 ])
                 .assert()
                 .success()
