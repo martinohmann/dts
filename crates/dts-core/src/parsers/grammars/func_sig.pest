@@ -1,18 +1,30 @@
 // Whitespace
 WHITESPACE = _{ " " | "\t" | NEWLINE }
 
-// String literals
-StringLit   = _{ StringLitDq | StringLitSq }
-StringLitDq = _{ "\"" ~ StringDq ~ "\"" }
-StringLitSq = _{ "'" ~ StringSq ~ "'" }
-StringDq    = @{ (("\\" ~ ("\"" | "\\")) | (!"\"" ~ ANY))* }
-StringSq    = @{ (("\\" ~ ("'" | "\\")) | (!"'" ~ ANY))* }
+// Collections
+Object       = { "{" ~ "}" | "{" ~ KeyValuePair ~ ("," ~ KeyValuePair)* ~ "}" }
+KeyValuePair = { String ~ ":" ~ Value }
+Array        = { "[" ~ "]" | "[" ~ Value ~ ("," ~ Value)* ~ "]" }
 
-// Other literals
-BooleanLit =  { "true" | "false" }
-NumericLit = @{ "-"? ~ Decimal+ ~ (("." ~ Decimal+ ~ (ExpMark ~ Decimal+)?) | (ExpMark ~ Decimal+))? }
-ExpMark    =  { ("e" | "E") ~ ("+" | "-")? }
-Decimal    =  { '0'..'9' }
+// String literals
+String      = ${ "\"" ~ StringInner ~ "\"" }
+StringInner = @{ Char* }
+
+Char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+// Other literal values
+Boolean =  { "true" | "false" }
+Null    =  { "null" }
+Number = @{
+    "-"?
+    ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
+    ~ ("." ~ ASCII_DIGIT*)?
+    ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}
 
 // Identifiers
 Identifier     = @{ IdentFirstChar ~ IdentChar* }
@@ -37,6 +49,6 @@ NamedArg      =  { Identifier ~ "=" ~ ExprTerm }
 PositionalArg =  { ExprTerm }
 
 // Values
-Value = { StringLit | NumericLit | BooleanLit }
+Value = { Object | Array | String | Number | Boolean | Null }
 
 Root = _{ SOI ~ FuncSigs ~ EOI }

@@ -218,28 +218,29 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
     let transformation: Box<dyn Transform> = match m.name() {
         "arrays_to_objects" => Box::new(Unparameterized::ArraysToObjects),
         "deep_merge" => Box::new(Unparameterized::DeepMerge),
-        "delete" => Box::new(Delete::new(m.value_of("query")?)),
-        "delete_keys" => Box::new(DeleteKeys::new(m.value_of("pattern")?)),
-        "each_key" => Box::new(EachKey::new(m.map_expr_of("expression", parse_matches)?)),
-        "each_value" => Box::new(EachValue::new(m.map_expr_of("expression", parse_matches)?)),
+        "delete" => Box::new(Delete::new(m.parse_str("query")?)),
+        "delete_keys" => Box::new(DeleteKeys::new(m.parse_str("pattern")?)),
+        "each_key" => Box::new(EachKey::new(m.map_expr("expression", parse_matches)?)),
+        "each_value" => Box::new(EachValue::new(m.map_expr("expression", parse_matches)?)),
         "expand_keys" => Box::new(Unparameterized::ExpandKeys),
         "flatten" => Box::new(Unparameterized::Flatten),
-        "flatten_keys" => {
-            let prefix: String = m.value_of("prefix")?;
-            Box::new(FlattenKeys::new(&prefix))
-        }
+        "flatten_keys" => Box::new(FlattenKeys::new(m.str_value("prefix")?)),
         "keys" => Box::new(Unparameterized::Keys),
         "mutate" => {
-            let mutator = m.value_of("query")?;
-            let chain = m.map_expr_of("expression", parse_matches)?;
+            let mutator = m.parse_str("query")?;
+            let chain = m.map_expr("expression", parse_matches)?;
             Box::new(Mutate::new(mutator, chain))
         }
-        "remove" => Box::new(Remove::new(m.value_of("query")?)),
+        "remove" => Box::new(Remove::new(m.parse_str("query")?)),
         "remove_empty_values" => Box::new(Unparameterized::RemoveEmptyValues),
-        "select" => Box::new(Select::new(m.value_of("query")?)),
+        "select" => Box::new(Select::new(m.parse_str("query")?)),
         "sort" => {
-            let order = m.value_of("order")?;
-            let max_depth = m.value_of("max_depth").ok();
+            let order = m.parse_str("order")?;
+            let max_depth = if m.is_present("max_depth") {
+                Some(m.parse_number("max_depth")?)
+            } else {
+                None
+            };
             let sorter = ValueSorter::new(order, max_depth);
             Box::new(Sort::new(sorter))
         }
@@ -279,7 +280,8 @@ where
             function_name(arg1, arg2)        # multiple arguments
             function_name(arg2=value, arg1)  # named argument in different position
 
-        Function arguments may be quoted string, numbers, booleans or function expressions.
+        Function arguments may be function expressions or any valid JSON value. Literal strings
+        need to be double quoted.
     "#})?;
     printer.write("\n")?;
     printer.write_colored(ColorSpec::new().set_fg(Some(Color::Yellow)), "EXAMPLE:")?;

@@ -66,7 +66,7 @@ dts tests/fixtures/example.json -t 'mutate("$.users[?(@.age > 30)]", sort().flat
 Combine multiple transformation options:
 
 ```sh
-dts tests/fixtures/example.json -t "delete_keys('some_key').deep_merge.select('[*]').flatten.select('[*].id')"
+dts tests/fixtures/example.json -t 'delete_keys("some_key").deep_merge.select("[*]").flatten.select("[*].id")'
 ```
 
 Read data from stdin:
