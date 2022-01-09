@@ -197,6 +197,62 @@ impl Transform for Sort {
     }
 }
 
+/// EachKey applies a chain of transformations to every key of an object. For values of any other
+/// type this is a no-op.
+pub struct EachKey(Chain);
+
+impl EachKey {
+    /// Creates a new `EachKey` which applies the `Chain` to every key of an object.
+    pub fn new(chain: Chain) -> Self {
+        EachKey(chain)
+    }
+}
+
+impl Transform for EachKey {
+    fn transform(&self, value: Value) -> Value {
+        match value {
+            Value::Object(object) => Value::Object(
+                object
+                    .into_iter()
+                    .map(|(key, value)| (self.0.transform(key.into()).into_string(), value))
+                    .collect(),
+            ),
+            value => value,
+        }
+    }
+}
+
+/// EachValue applies a chain of transformations to every value of an array or object. For values
+/// of any other type this is a no-op.
+pub struct EachValue(Chain);
+
+impl EachValue {
+    /// Creates a new `EachValue` which applies the `Chain` to every value of an array or object.
+    pub fn new(chain: Chain) -> Self {
+        EachValue(chain)
+    }
+}
+
+impl Transform for EachValue {
+    fn transform(&self, value: Value) -> Value {
+        match value {
+            Value::Array(array) => Value::Array(
+                array
+                    .into_iter()
+                    .map(|value| self.0.transform(value))
+                    .collect(),
+            ),
+            Value::Object(object) => Value::Object(
+                object
+                    .into_iter()
+                    .map(|(key, value)| (key, self.0.transform(value)))
+                    .collect(),
+            ),
+            value => value,
+        }
+    }
+}
+
 /// A type that can apply unparameterized transformations to a `Value`.
 #[derive(Debug, Clone)]
 #[non_exhaustive]

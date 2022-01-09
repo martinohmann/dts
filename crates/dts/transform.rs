@@ -3,8 +3,8 @@ use anyhow::{anyhow, Result};
 use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     sort::ValueSorter,
-    Chain, Delete, DeleteKeys, FlattenKeys, Mutate, Remove, Select, Sort, Transform,
-    Unparameterized,
+    Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Mutate, Remove, Select, Sort,
+    Transform, Unparameterized,
 };
 use indoc::indoc;
 use termcolor::{Color, ColorSpec};
@@ -151,7 +151,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     Applies the expression to all values matched by the query and returns the
                     mutated value.
                 "#})
-                .add_args(&[query_arg.clone(), expression_arg])
+                .add_args(&[query_arg.clone(), expression_arg.clone()])
         )
         .add_definition(
             Definition::new("delete")
@@ -167,6 +167,22 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     Selectively removes values based on a jsonpath query.
                 "#})
                 .add_arg(query_arg),
+        )
+        .add_definition(
+            Definition::new("each_key")
+                .with_description(indoc! {r#"
+                    Applies the expression to all keys of the current object. This is a no-op for
+                    non-object values.
+                "#})
+                .add_arg(expression_arg.clone())
+        )
+        .add_definition(
+            Definition::new("each_value")
+                .with_description(indoc! {r#"
+                    Applies the expression to all values of the current array or object. This is a
+                    no-op for non-array and non-object values.
+                "#})
+                .add_arg(expression_arg.clone())
         )
 }
 
@@ -197,6 +213,8 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         "deep_merge" => Box::new(Unparameterized::DeepMerge),
         "delete" => Box::new(Delete::new(m.value_of("query")?)),
         "delete_keys" => Box::new(DeleteKeys::new(m.value_of("pattern")?)),
+        "each_key" => Box::new(EachKey::new(m.map_expr_of("expression", parse_matches)?)),
+        "each_value" => Box::new(EachValue::new(m.map_expr_of("expression", parse_matches)?)),
         "expand_keys" => Box::new(Unparameterized::ExpandKeys),
         "flatten" => Box::new(Unparameterized::Flatten),
         "flatten_keys" => {
