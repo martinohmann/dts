@@ -94,6 +94,12 @@ impl From<()> for Value {
     }
 }
 
+impl From<&Value> for Value {
+    fn from(v: &Value) -> Self {
+        From::from(v.clone())
+    }
+}
+
 impl From<&JsonValue> for Value {
     fn from(v: &JsonValue) -> Self {
         From::from(v.clone())

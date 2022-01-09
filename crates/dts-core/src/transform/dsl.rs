@@ -202,7 +202,7 @@ impl<'a> Definition<'a> {
         if !missing_args.is_empty() {
             return Err(Error::new(format!(
                 "Required arguments missing: {}",
-                missing_args.join(","),
+                missing_args.join(", "),
             )));
         }
 

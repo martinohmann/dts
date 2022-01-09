@@ -253,6 +253,25 @@ impl Transform for EachValue {
     }
 }
 
+/// Yields a value and discards the old one.
+pub struct YieldValue(Value);
+
+impl YieldValue {
+    /// Creates a new `YieldValue`.
+    pub fn new<V>(value: V) -> Self
+    where
+        V: Into<Value>,
+    {
+        YieldValue(value.into())
+    }
+}
+
+impl Transform for YieldValue {
+    fn transform(&self, _: Value) -> Value {
+        self.0.clone()
+    }
+}
+
 /// A type that can apply unparameterized transformations to a `Value`.
 #[derive(Debug, Clone)]
 #[non_exhaustive]

@@ -4,7 +4,7 @@ use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     sort::ValueSorter,
     Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Mutate, Remove, Select, Sort,
-    Transform, Unparameterized,
+    Transform, Unparameterized, YieldValue,
 };
 use indoc::indoc;
 use termcolor::{Color, ColorSpec};
@@ -18,6 +18,10 @@ pub fn definitions<'a>() -> Definitions<'a> {
 
     let expression_arg = Arg::new("expression").with_description(indoc! {r#"
         An expression consisting of one or more transformation functions.
+    "#});
+
+    let value_arg = Arg::new("value").with_description(indoc! {r#"
+        A JSON value.
     "#});
 
     Definitions::new()
@@ -191,6 +195,18 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     level value is not an array or object.
                 "#})
         )
+        .add_definition(
+            Definition::new("value")
+                .add_aliases(&["val", "yield"])
+                .with_description(indoc! {r#"
+                    Yields a value and discards the old one.
+
+                    This transformation is useful to replace the results of a transformation that
+                    selects values based on a jsonpath query with static values, e.g. as argument
+                    for `mutate`.
+                "#})
+                .add_arg(value_arg)
+        )
 }
 
 /// Parses expressions into a chain of transformations.
@@ -244,6 +260,7 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
             let sorter = ValueSorter::new(order, max_depth);
             Box::new(Sort::new(sorter))
         }
+        "value" => Box::new(YieldValue::new(m.value("value")?)),
         "values" => Box::new(Unparameterized::Values),
         name => panic!("unmatched transformation `{}`, please file a bug", name),
     };
@@ -365,7 +382,7 @@ where
 fn format_aliases(definition: &Definition) -> String {
     let aliases = Vec::from_iter(definition.aliases().clone());
 
-    format!("[aliases: {}]", aliases.join(","))
+    format!("[aliases: {}]", aliases.join(", "))
 }
 
 fn format_desc(desc: &str, spaces: usize) -> String {
