@@ -184,6 +184,13 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 "#})
                 .add_arg(expression_arg.clone())
         )
+        .add_definition(
+            Definition::new("values")
+                .with_description(indoc! {r#"
+                    Transforms the data into an array of values which is empty if the top
+                    level value is not an array or object.
+                "#})
+        )
 }
 
 /// Parses expressions into a chain of transformations.
@@ -236,6 +243,7 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
             let sorter = ValueSorter::new(order, max_depth);
             Box::new(Sort::new(sorter))
         }
+        "values" => Box::new(Unparameterized::Values),
         name => panic!("unmatched transformation `{}`, please file a bug", name),
     };
 

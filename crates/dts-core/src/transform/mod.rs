@@ -270,6 +270,8 @@ pub enum Unparameterized {
     Keys,
     /// Convert all arrays into objects.
     ArraysToObjects,
+    /// Extracts array and object values.
+    Values,
 }
 
 impl Transform for Unparameterized {
@@ -281,6 +283,7 @@ impl Transform for Unparameterized {
             Self::ExpandKeys => expand_keys(value),
             Self::Keys => keys(value),
             Self::ArraysToObjects => arrays_to_objects(value),
+            Self::Values => values(value),
         }
     }
 }
@@ -568,6 +571,27 @@ pub fn keys(value: Value) -> Value {
             .map(|obj| obj.keys().cloned().map(Value::String).collect())
             .unwrap_or_default(),
     )
+}
+
+/// Extracts array and object values into a new `Value`. The returned `Value` is always of variant
+/// `Value::Array`. If the input is not a `Value::Array` or `Value::Object`, the returned array is
+/// empty.
+///
+/// ```
+/// # use pretty_assertions::assert_eq;
+/// use dts_core::transform::values;
+/// use dts_json::json;
+///
+/// let value = json!({"foo": "bar", "baz": "qux"});
+///
+/// assert_eq!(values(value), json!(["bar", "qux"]));
+/// ```
+pub fn values(value: Value) -> Value {
+    match value {
+        Value::Array(array) => Value::Array(array),
+        Value::Object(object) => Value::Array(object.into_iter().map(|(_, v)| v).collect()),
+        _ => Value::Array(vec![]),
+    }
 }
 
 /// Recursively deletes all keys matching the regex pattern.
