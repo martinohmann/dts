@@ -2,6 +2,7 @@
 
 use crate::parsers::func_sig::{self, ExprTerm, FuncArg, FuncSig};
 use crate::{Error, Result};
+use dts_json::{Number, Value};
 use indexmap::{IndexMap, IndexSet};
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -150,7 +151,7 @@ impl<'a> Definition<'a> {
                     .map(|arg_def| (arg_def.name, expr_term))
                     .ok_or_else(|| {
                         Error::new(format!(
-                            "Unexpected named argument `{}=\"{}\"`",
+                            "Unexpected named argument `{}={}`",
                             name, expr_term
                         ))
                     })?,
@@ -167,7 +168,11 @@ impl<'a> Definition<'a> {
             }
 
             let arg_match = match expr_term {
-                ExprTerm::Value(value) => ArgMatch::Value(value),
+                ExprTerm::Value(value) => {
+                    ArgMatch::Value(serde_json::from_str(value).map_err(|err| {
+                        Error::new(format!("Invalid value for argument `{}`: {}", name, err))
+                    })?)
+                }
                 ExprTerm::Expr(func_sigs) => ArgMatch::Expr(
                     func_sigs
                         .iter()
@@ -184,7 +189,7 @@ impl<'a> Definition<'a> {
         for (name, arg_def) in remaining_args.into_iter() {
             match arg_def.default_value() {
                 Some(default_value) => {
-                    args.insert(name, ArgMatch::Value(default_value));
+                    args.insert(name, ArgMatch::Value(default_value.clone()));
                 }
                 None => {
                     if arg_def.is_required() {
@@ -303,13 +308,13 @@ impl<'a> Definitions<'a> {
     ///             .add_arg(Arg::new("order"))
     ///     );
     ///
-    /// let matches = definitions.parse("sort('asc')")?;
+    /// let matches = definitions.parse("sort(\"asc\")")?;
     ///
     /// for m in matches {
     ///     match m.name() {
     ///         "sort" => {
-    ///             let order: String = m.value_of("order")?;
-    ///             assert_eq!(&order, "asc");
+    ///             let order = m.str_value("order")?;
+    ///             assert_eq!(order, "asc");
     ///         }
     ///         _ => unimplemented!()
     ///     }
@@ -357,7 +362,7 @@ impl<'a> Definitions<'a> {
 pub struct Arg<'a> {
     name: &'a str,
     required: bool,
-    default_value: Option<&'a str>,
+    default_value: Option<Value>,
     description: Option<&'a str>,
 }
 
@@ -387,8 +392,8 @@ impl<'a> Arg<'a> {
     }
 
     /// Returns the default value of the argument or `None`.
-    pub fn default_value(&self) -> Option<&'a str> {
-        self.default_value
+    pub fn default_value(&self) -> Option<&Value> {
+        self.default_value.as_ref()
     }
 
     /// Marks the `Arg` as required and returns it.
@@ -404,11 +409,11 @@ impl<'a> Arg<'a> {
     }
 
     /// Sets the default value for the `Arg` and returns it.
-    ///
-    /// The default value is always a `&str` which may be converted into an appropriate type when
-    /// constructing the actual `Transformation`.
-    pub fn with_default_value(mut self, default_value: &'a str) -> Self {
-        self.default_value = Some(default_value);
+    pub fn with_default_value<V>(mut self, default_value: V) -> Self
+    where
+        V: Into<Value>,
+    {
+        self.default_value = Some(default_value.into());
         self.required = false;
         self
     }
@@ -429,8 +434,8 @@ impl<'a> Arg<'a> {
 
 impl<'a> fmt::Display for Arg<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.default_value {
-            Some(value) => write!(f, "{}=\"{}\"", self.name, value),
+        match &self.default_value {
+            Some(value) => write!(f, "{}={}", self.name, value),
             None => f.write_str(self.name),
         }
     }
@@ -466,49 +471,22 @@ impl<'a> DefinitionMatch<'a> {
         self.name
     }
 
-    /// Looks up the value for the argument with `name` from the match and attempts to convert it
-    /// to `T`.
-    ///
-    /// ## Errors
-    ///
-    /// If no argument with `name` was matched, the argument contains and expression or if the
-    /// argument value is not convertible into `T` an error is returned.
-    pub fn value_of<T>(&self, name: &str) -> Result<T>
-    where
-        T: FromStr,
-        <T as FromStr>::Err: fmt::Display,
-    {
-        self.map_value_of(name, T::from_str)
+    /// Returns true if the argument with `name` is present.
+    pub fn is_present(&self, name: &str) -> bool {
+        self.args.contains_key(name)
     }
 
-    /// Looks up the value for the argument with `name` from the match and passes it to the
-    /// `map_value` closure. Returns the value produced by the closure.
+    /// Looks up the expression for the argument with `name` from the match.
     ///
     /// ## Errors
     ///
-    /// Returns an error if no argument with `name` was matched, the argument contains an
-    /// expression or if the `map_value` closure returned an error.
-    pub fn map_value_of<F, T, E>(&self, name: &str, map_value: F) -> Result<T>
-    where
-        F: FnOnce(&str) -> Result<T, E>,
-        E: fmt::Display,
-    {
-        self.args
-            .get(name)
-            .ok_or_else(|| Error::new(format!("Argument `{}` missing for `{}`", name, self.name)))
-            .and_then(|arg_match| {
-                let res = match arg_match {
-                    ArgMatch::Value(value) => map_value(value).map_err(Error::new),
-                    ArgMatch::Expr(_) => Err(Error::new("Expected value but got expression")),
-                };
-
-                res.map_err(|err| {
-                    Error::new(format!(
-                        "Invalid argument `{}` for `{}`: {}",
-                        name, self.name, err
-                    ))
-                })
-            })
+    /// If no argument with `name` was matched or if the argument contains a value instead of an
+    /// expression an error is returned.
+    pub fn expr(&self, name: &str) -> Result<&Vec<DefinitionMatch<'a>>> {
+        self.arg(name).and_then(|arg_match| match arg_match {
+            ArgMatch::Expr(expr) => Ok(expr),
+            ArgMatch::Value(_) => Err(self.value_error(name, "expression", "value")),
+        })
     }
 
     /// Looks up the value for the argument with `name` from the match and passes it to the
@@ -518,34 +496,147 @@ impl<'a> DefinitionMatch<'a> {
     ///
     /// Returns an error if no argument with `name` was matched, the argument contains a literal
     /// value or if the `map_expr` closure returned an error.
-    pub fn map_expr_of<F, T, E>(&self, name: &str, map_expr: F) -> Result<T>
+    pub fn map_expr<F, T, E>(&self, name: &str, map_expr: F) -> Result<T>
     where
         F: FnOnce(&[DefinitionMatch<'a>]) -> Result<T, E>,
         E: fmt::Display,
     {
+        self.expr(name)
+            .and_then(|value| map_expr(value).map_err(|err| self.argument_error(name, err)))
+    }
+
+    /// Looks up the value for the argument with `name` from the match.
+    ///
+    /// ## Errors
+    ///
+    /// If no argument with `name` was matched or if the argument contains an expression an error
+    /// is returned.
+    pub fn value(&self, name: &str) -> Result<&Value> {
+        self.arg(name).and_then(|arg_match| match arg_match {
+            ArgMatch::Value(value) => Ok(value),
+            ArgMatch::Expr(_) => Err(self.value_error(name, "value", "expression")),
+        })
+    }
+
+    /// Looks up the value for the argument with `name` from the match and passes it to the
+    /// `map_value` closure. Returns the value produced by the closure.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if no argument with `name` was matched, the argument contains an
+    /// expression or if the `map_value` closure returned an error.
+    pub fn map_value<F, T, E>(&self, name: &str, map_value: F) -> Result<T>
+    where
+        F: FnOnce(&Value) -> Result<T, E>,
+        E: fmt::Display,
+    {
+        self.value(name)
+            .and_then(|value| map_value(value).map_err(|err| self.argument_error(name, err)))
+    }
+
+    /// Looks up the value for the argument with `name` from the match and returns it as a `&str`.
+    ///
+    /// ## Errors
+    ///
+    /// If no argument with `name` was matched or if the argument is not a string an error is
+    /// returned.
+    pub fn str_value(&self, name: &str) -> Result<&str> {
+        self.value(name).and_then(|value| match value {
+            Value::String(s) => Ok(s.as_str()),
+            value => Err(self.value_error(name, "string", value)),
+        })
+    }
+
+    /// Looks up the value for the argument with `name` from the match and returns it as a `bool`.
+    ///
+    /// ## Errors
+    ///
+    /// If no argument with `name` was matched or if the argument is not a bool an error is
+    /// returned.
+    pub fn bool_value(&self, name: &str) -> Result<bool> {
+        self.value(name).and_then(|value| match value {
+            Value::Bool(b) => Ok(*b),
+            value => Err(self.value_error(name, "boolean", value)),
+        })
+    }
+
+    /// Looks up the value for the argument with `name` from the match and returns it as a `Number`.
+    ///
+    /// ## Errors
+    ///
+    /// If no argument with `name` was matched or if the argument is not a number an error is
+    /// returned.
+    pub fn numeric_value(&self, name: &str) -> Result<&Number> {
+        self.value(name).and_then(|value| match value {
+            Value::Number(n) => Ok(n),
+            value => Err(self.value_error(name, "number", value)),
+        })
+    }
+
+    /// Looks up the value for the argument with `name` from the match and tries to convert it into
+    /// a `T`.
+    ///
+    /// ## Errors
+    ///
+    /// If no argument with `name` was matched or if the argument is not a string an error is
+    /// returned.
+    pub fn parse_str<T>(&self, name: &str) -> Result<T>
+    where
+        T: FromStr,
+        <T as FromStr>::Err: fmt::Display,
+    {
+        self.str_value(name)
+            .and_then(|s| s.parse::<T>().map_err(|err| self.argument_error(name, err)))
+    }
+
+    /// Looks up the value for the argument with `name` from the match and returns it as a number
+    /// of type `T`.
+    ///
+    /// ## Errors
+    ///
+    /// If no argument with `name` was matched or if the argument is not numeric an error is
+    /// returned.
+    pub fn parse_number<T>(&self, name: &str) -> Result<T>
+    where
+        T: FromStr,
+        <T as FromStr>::Err: fmt::Display,
+    {
+        self.numeric_value(name).and_then(|n| {
+            n.to_string()
+                .parse::<T>()
+                .map_err(|err| self.argument_error(name, err))
+        })
+    }
+
+    fn arg(&self, name: &str) -> Result<&ArgMatch<'a>> {
         self.args
             .get(name)
             .ok_or_else(|| Error::new(format!("Argument `{}` missing for `{}`", name, self.name)))
-            .and_then(|arg_match| {
-                let res = match arg_match {
-                    ArgMatch::Value(_) => Err(Error::new("Expected expression but got value")),
-                    ArgMatch::Expr(expr) => map_expr(expr).map_err(Error::new),
-                };
+    }
 
-                res.map_err(|err| {
-                    Error::new(format!(
-                        "Invalid argument `{}` for `{}`: {}",
-                        name, self.name, err
-                    ))
-                })
-            })
+    fn argument_error<E>(&self, name: &str, err: E) -> Error
+    where
+        E: fmt::Display,
+    {
+        Error::new(format!(
+            "Invalid argument `{}` for `{}`: {}",
+            name, self.name, err
+        ))
+    }
+
+    fn value_error<E, G>(&self, name: &str, expected: E, got: G) -> Error
+    where
+        E: fmt::Display,
+        G: fmt::Display,
+    {
+        self.argument_error(name, format!("Expected {}, got {}", expected, got))
     }
 }
 
 /// Represents a matched transformation function argument.
 pub enum ArgMatch<'a> {
-    /// A literal value.
-    Value(&'a str),
+    /// A JSON value.
+    Value(Value),
     /// An expression composed out of one or more other definition matches.
     Expr(Vec<DefinitionMatch<'a>>),
 }

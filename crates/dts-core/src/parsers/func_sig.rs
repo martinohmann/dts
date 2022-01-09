@@ -23,7 +23,7 @@ pub enum ExprTerm<'a> {
 impl<'a> fmt::Display for ExprTerm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ExprTerm::Value(value) => write!(f, "\"{}\"", value),
+            ExprTerm::Value(value) => value.fmt(f),
             ExprTerm::Expr(sigs) => {
                 for (i, sig) in sigs.iter().enumerate() {
                     if i > 0 {
@@ -206,17 +206,24 @@ mod test {
             )],
         );
         assert_parse(
-            "foo('bar')",
-            vec![FuncSig::new(
-                "foo",
-                vec![FuncArg::Positional(ExprTerm::Value("bar"))],
-            )],
-        );
-        assert_parse(
             "foo(\"bar\")",
             vec![FuncSig::new(
                 "foo",
-                vec![FuncArg::Positional(ExprTerm::Value("bar"))],
+                vec![FuncArg::Positional(ExprTerm::Value("\"bar\""))],
+            )],
+        );
+        assert_parse(
+            "foo([1, 2])",
+            vec![FuncSig::new(
+                "foo",
+                vec![FuncArg::Positional(ExprTerm::Value("[1, 2]"))],
+            )],
+        );
+        assert_parse(
+            "foo({\"one\":\"two\"})",
+            vec![FuncSig::new(
+                "foo",
+                vec![FuncArg::Positional(ExprTerm::Value("{\"one\":\"two\"}"))],
             )],
         );
     }
@@ -224,19 +231,19 @@ mod test {
     #[test]
     fn test_parse_complex() {
         assert_parse(
-            "foo(\"bar\", other = 'qux', three=4)",
+            "foo(\"bar\", other = \"qux\", three=4)",
             vec![FuncSig {
                 name: "foo",
                 args: vec![
-                    FuncArg::Positional(ExprTerm::Value("bar")),
-                    FuncArg::Named("other", ExprTerm::Value("qux")),
+                    FuncArg::Positional(ExprTerm::Value("\"bar\"")),
+                    FuncArg::Named("other", ExprTerm::Value("\"qux\"")),
                     FuncArg::Named("three", ExprTerm::Value("4")),
                 ],
             }],
         );
 
         assert_parse(
-            "foo().bar baz('qux')",
+            "foo().bar baz(\"qux\")",
             vec![
                 FuncSig {
                     name: "foo",
@@ -248,7 +255,7 @@ mod test {
                 },
                 FuncSig {
                     name: "baz",
-                    args: vec![FuncArg::Positional(ExprTerm::Value("qux"))],
+                    args: vec![FuncArg::Positional(ExprTerm::Value("\"qux\""))],
                 },
             ],
         );
@@ -257,13 +264,14 @@ mod test {
     #[test]
     fn test_parse_errors() {
         assert!(parse("foo.[").is_err());
-        assert!(parse("foo('baz)").is_err());
+        assert!(parse("foo('baz')").is_err());
+        assert!(parse("foo(\"baz)").is_err());
     }
 
     #[test]
     fn test_parse_expression() {
         assert_parse(
-            "foo(bar, baz('qux', 1), qux = fn().other_fn())",
+            "foo(bar, baz(\"qux\", 1), qux = fn().other_fn())",
             vec![FuncSig::new(
                 "foo",
                 vec![
@@ -271,7 +279,7 @@ mod test {
                     FuncArg::Positional(ExprTerm::Expr(vec![FuncSig::new(
                         "baz",
                         vec![
-                            FuncArg::Positional(ExprTerm::Value("qux")),
+                            FuncArg::Positional(ExprTerm::Value("\"qux\"")),
                             FuncArg::Positional(ExprTerm::Value("1")),
                         ],
                     )])),
