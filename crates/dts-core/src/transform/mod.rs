@@ -194,8 +194,9 @@ impl Sort {
 }
 
 impl Transform for Sort {
-    fn transform(&self, value: Value) -> Value {
-        sort(&self.0, value)
+    fn transform(&self, mut value: Value) -> Value {
+        self.0.sort(&mut value);
+        value
     }
 }
 
@@ -717,12 +718,6 @@ pub fn delete_keys(value: Value, regex: &Regex) -> Value {
         ),
         value => value,
     }
-}
-
-/// Recursively sorts all maps and arrays.
-pub fn sort(sorter: &ValueSorter, mut value: Value) -> Value {
-    sorter.sort(&mut value);
-    value
 }
 
 /// Recursively transforms all arrays into objects with the array index as key.

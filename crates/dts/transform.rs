@@ -121,13 +121,8 @@ pub fn definitions<'a>() -> Definitions<'a> {
         .add_definition(
             Definition::new("sort")
                 .with_description(indoc! {r#"
-                    Sorts collections (arrays and maps) recursively.
-
-                    Optionally accepts a `max_depth` which defines the upper bound for child
-                    collections to be visited and sorted.
-
-                    If `max_depth` is omitted, the sorter will recursively visit all child
-                    collections and sort them.
+                    Sorts arrays and objects in the specified order. Objects are sorted by key
+                    whereas arrays are sorted by value.
                 "#})
                 .add_arg(
                     Arg::new("order")
@@ -136,7 +131,6 @@ pub fn definitions<'a>() -> Definitions<'a> {
                             The sort order. Possible values are "asc" and "desc".
                         "#})
                 )
-                .add_arg(max_depth.clone())
         )
         .add_definition(
             Definition::new("arrays_to_objects")
@@ -266,9 +260,7 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         "remove_empty_values" => Box::new(Unparameterized::RemoveEmptyValues),
         "select" => Box::new(Select::new(m.parse_str("query")?)),
         "sort" => {
-            let order = m.parse_str("order")?;
-            let max_depth = parse_optional_number(m, "max_depth")?;
-            let sorter = ValueSorter::new(order, max_depth);
+            let sorter = ValueSorter::new(m.parse_str("order")?);
             Box::new(Sort::new(sorter))
         }
         "value" => Box::new(YieldValue::new(m.value("value")?)),
