@@ -3,10 +3,13 @@ use anyhow::{anyhow, Result};
 use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     sort::ValueSorter,
+    visitor::{KeyVisitor, ValueVisitor},
     Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Mutate, Remove, Select, Sort,
-    Transform, Unparameterized, YieldValue,
+    Transform, Unparameterized, Visit, YieldValue,
 };
 use indoc::indoc;
+use std::fmt;
+use std::str::FromStr;
 use termcolor::{Color, ColorSpec};
 
 pub fn definitions<'a>() -> Definitions<'a> {
@@ -23,6 +26,13 @@ pub fn definitions<'a>() -> Definitions<'a> {
     let value_arg = Arg::new("value").with_description(indoc! {r#"
         A JSON value.
     "#});
+
+    let max_depth = Arg::new("max_depth")
+        .required(false)
+        .with_description(indoc! {r#"
+            Defines the upper bound for child collections to be visited. A max depth of 0 means
+            that only the top level is visited.
+        "#});
 
     Definitions::new()
         .add_definition(
@@ -126,14 +136,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                             The sort order. Possible values are "asc" and "desc".
                         "#})
                 )
-                .add_arg(
-                    Arg::new("max_depth")
-                        .required(false)
-                        .with_description(indoc! {r#"
-                            Defines the upper bound for child collections to be visited and sorted.
-                            A max depth of 0 means that only the top level is sorted.
-                        "#})
-                )
+                .add_arg(max_depth.clone())
         )
         .add_definition(
             Definition::new("arrays_to_objects")
@@ -204,6 +207,21 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 "#})
                 .add_arg(value_arg)
         )
+        .add_definition(
+            Definition::new("visit_keys")
+                .with_description(indoc! {r#"
+                    Recursively visits object keys and applies the expression to them.
+                "#})
+                .add_args(&[expression_arg.clone(), max_depth.clone()])
+        )
+        .add_definition(
+            Definition::new("visit_values")
+                .add_alias("visit_vals")
+                .with_description(indoc! {r#"
+                    Recursively visits array and object value and applies the expression to them.
+                "#})
+                .add_args(&[expression_arg, max_depth])
+        )
 }
 
 /// Parses expressions into a chain of transformations.
@@ -249,16 +267,22 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         "select" => Box::new(Select::new(m.parse_str("query")?)),
         "sort" => {
             let order = m.parse_str("order")?;
-            let max_depth = if m.is_present("max_depth") {
-                Some(m.parse_number("max_depth")?)
-            } else {
-                None
-            };
+            let max_depth = parse_optional_number(m, "max_depth")?;
             let sorter = ValueSorter::new(order, max_depth);
             Box::new(Sort::new(sorter))
         }
         "value" => Box::new(YieldValue::new(m.value("value")?)),
         "values" => Box::new(Unparameterized::Values),
+        "visit_keys" => {
+            let visitor = KeyVisitor::new(m.map_expr("expression", parse_matches)?);
+            let max_depth = parse_optional_number(m, "max_depth")?;
+            Box::new(Visit::new(visitor, max_depth))
+        }
+        "visit_values" => {
+            let visitor = ValueVisitor::new(m.map_expr("expression", parse_matches)?);
+            let max_depth = parse_optional_number(m, "max_depth")?;
+            Box::new(Visit::new(visitor, max_depth))
+        }
         name => panic!("unmatched transformation `{}`, please file a bug", name),
     };
 
@@ -345,6 +369,18 @@ where
     printer.print()?;
 
     Ok(())
+}
+
+fn parse_optional_number<T>(m: &DefinitionMatch, name: &str) -> Result<Option<T>>
+where
+    T: FromStr,
+    <T as FromStr>::Err: fmt::Display,
+{
+    if m.is_present(name) {
+        Ok(Some(m.parse_number(name)?))
+    } else {
+        Ok(None)
+    }
 }
 
 fn filter_definitions<'a, T>(
