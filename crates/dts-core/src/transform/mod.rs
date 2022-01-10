@@ -392,7 +392,7 @@ pub enum Unparameterized {
     ExpandKeys,
     /// Extracts object keys.
     Keys,
-    /// Convert all arrays into objects.
+    /// Converts an array into an object with the array indices as keys.
     ArraysToObjects,
     /// Extracts array and object values.
     Values,
@@ -452,23 +452,21 @@ impl Transform for Unparameterized {
 /// use dts_core::transform::remove_empty_values;
 /// use dts_json::json;
 ///
-/// let value = json!({"foo": ["bar", null, {}, "baz"], "qux": {"adf": {}}});
+/// let value = json!({"foo": null, "bar": {}, "baz": "qux"});
 ///
-/// assert_eq!(remove_empty_values(value), json!({"foo": ["bar", "baz"]}));
+/// assert_eq!(remove_empty_values(value), json!({"baz": "qux"}));
 /// ```
 pub fn remove_empty_values(value: Value) -> Value {
     match value {
         Value::Array(array) => Value::Array(
             array
                 .into_iter()
-                .map(remove_empty_values)
                 .filter(|value| !value.is_empty())
                 .collect(),
         ),
         Value::Object(object) => Value::Object(
             object
                 .into_iter()
-                .map(|(key, value)| (key, remove_empty_values(value)))
                 .filter(|(_, value)| !value.is_empty())
                 .collect(),
         ),
@@ -718,7 +716,7 @@ pub fn values(value: Value) -> Value {
     }
 }
 
-/// Recursively deletes all keys matching the regex pattern.
+/// Deletes object keys matching a regex pattern.
 ///
 /// ```
 /// use dts_core::transform::delete_keys;
@@ -731,7 +729,7 @@ pub fn values(value: Value) -> Value {
 /// let value = json!({"foo": "bar", "baz": {"foobar": "qux", "one": "two"}});
 /// let regex = Regex::new("^fo")?;
 ///
-/// assert_eq!(delete_keys(value, &regex), json!({"baz": {"one": "two"}}));
+/// assert_eq!(delete_keys(value, &regex), json!({"baz": {"foobar": "qux", "one": "two"}}));
 /// #   Ok(())
 /// # }
 /// ```
@@ -741,33 +739,20 @@ pub fn delete_keys(value: Value, regex: &Regex) -> Value {
             object
                 .into_iter()
                 .filter(|(key, _)| !regex.is_match(key))
-                .map(|(key, value)| (key, delete_keys(value, regex)))
-                .collect(),
-        ),
-        Value::Array(array) => Value::Array(
-            array
-                .into_iter()
-                .map(|value| delete_keys(value, regex))
                 .collect(),
         ),
         value => value,
     }
 }
 
-/// Recursively transforms all arrays into objects with the array index as key.
+/// Transforms an array into an object with the array index as key.
 pub fn arrays_to_objects(value: Value) -> Value {
     match value {
         Value::Array(array) => Value::Object(
             array
                 .into_iter()
                 .enumerate()
-                .map(|(i, v)| (i.to_string(), arrays_to_objects(v)))
-                .collect(),
-        ),
-        Value::Object(object) => Value::Object(
-            object
-                .into_iter()
-                .map(|(k, v)| (k, arrays_to_objects(v)))
+                .map(|(i, v)| (i.to_string(), v))
                 .collect(),
         ),
         value => value,
@@ -845,7 +830,7 @@ mod tests {
     fn test_arrays_to_objects() {
         assert_eq!(
             arrays_to_objects(json!([{"foo": "bar"},{"bar": [1], "qux": null}])),
-            json!({"0": {"foo": "bar"}, "1": {"bar": {"0": 1}, "qux": null}})
+            json!({"0": {"foo": "bar"}, "1": {"bar": [1], "qux": null}})
         );
     }
 

@@ -84,9 +84,9 @@ pub fn definitions<'a>() -> Definitions<'a> {
             Definition::new("remove_empty_values")
                 .add_alias("remove_empty")
                 .with_description(indoc! {r#"
-                    Recursively removes nulls, empty arrays and empty objects from the data.
+                    Removes nulls, empty arrays and empty objects.
 
-                    Top level empty values are not removed.
+                    Empty top level values are not removed.
                 "#})
         )
         .add_definition(
@@ -114,7 +114,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         .add_definition(
             Definition::new("delete_keys")
                 .with_description(indoc! {r#"
-                    Recursively deletes all object keys matching a regex pattern.
+                    Deletes object keys matching a regex pattern.
                 "#})
                 .add_arg(regex_pattern_arg.clone())
         )
@@ -135,7 +135,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         .add_definition(
             Definition::new("arrays_to_objects")
                 .with_description(indoc! {r#"
-                    Recursively transforms all arrays into objects with the array index as key.
+                    Converts an array into an object with the array indices as keys.
                 "#})
         )
         .add_definition(
