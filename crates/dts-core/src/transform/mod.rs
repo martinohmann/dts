@@ -4,6 +4,7 @@ pub mod dsl;
 pub mod jsonpath;
 pub(crate) mod key;
 pub mod sort;
+pub mod visitor;
 
 use crate::parsers::flat_key::{self, KeyPart, KeyParts};
 use dts_json::{Map, Value};
@@ -14,6 +15,7 @@ use regex::Regex;
 use sort::ValueSorter;
 use std::fmt::Debug;
 use std::iter;
+use visitor::Visitor;
 
 /// Represents a thing that can take a value, transform it and produce a new value.
 pub trait Transform {
@@ -269,6 +271,74 @@ impl YieldValue {
 impl Transform for YieldValue {
     fn transform(&self, _: Value) -> Value {
         self.0.clone()
+    }
+}
+
+/// A transformation that visits array values and object key-value pairs recursively.
+pub struct Visit<V> {
+    visitor: V,
+    max_depth: Option<u64>,
+}
+
+impl<V> Visit<V> {
+    /// Creates a new `Visit` which uses the given visitor to recursively visit all array and
+    /// object values and object keys.
+    ///
+    /// If `max_depth` is `Some` the visitor will only descend the specified number of levels. A
+    /// `max_depth` of `Some(0)` will only visit the top level or the value. When `max_depth` is
+    /// `None`, all keys and values are visited.
+    pub fn new(visitor: V, max_depth: Option<u64>) -> Self {
+        Visit { visitor, max_depth }
+    }
+
+    fn should_descend(&self, depth: u64) -> bool {
+        self.max_depth
+            .map(|max_depth| depth < max_depth)
+            .unwrap_or(true)
+    }
+}
+
+impl<V> Visit<V>
+where
+    V: Visitor,
+{
+    fn visit(&self, value: Value, depth: u64) -> Value {
+        let descend = self.should_descend(depth);
+
+        match value {
+            Value::Array(array) => Value::Array(
+                array
+                    .into_iter()
+                    .map(|value| match descend {
+                        true => self.visit(value, depth + 1),
+                        false => value,
+                    })
+                    .map(|value| self.visitor.visit_value(value))
+                    .collect(),
+            ),
+            Value::Object(object) => Value::Object(
+                object
+                    .into_iter()
+                    .map(|(key, value)| match descend {
+                        true => (key, self.visit(value, depth + 1)),
+                        false => (key, value),
+                    })
+                    .map(|(key, value)| {
+                        (self.visitor.visit_key(key), self.visitor.visit_value(value))
+                    })
+                    .collect(),
+            ),
+            value => value,
+        }
+    }
+}
+
+impl<V> Transform for Visit<V>
+where
+    V: Visitor,
+{
+    fn transform(&self, value: Value) -> Value {
+        self.visit(value, 0)
     }
 }
 
@@ -680,6 +750,7 @@ mod tests {
     use super::*;
     use dts_json::json;
     use pretty_assertions::assert_eq;
+    use std::cell::RefCell;
 
     #[test]
     fn test_chain() {
@@ -746,6 +817,46 @@ mod tests {
         assert_eq!(
             arrays_to_objects(json!([{"foo": "bar"},{"bar": [1], "qux": null}])),
             json!({"0": {"foo": "bar"}, "1": {"bar": {"0": 1}, "qux": null}})
+        );
+    }
+
+    #[test]
+    fn test_visit() {
+        #[derive(Default)]
+        struct Tracker {
+            keys: RefCell<Vec<String>>,
+            values: RefCell<Vec<Value>>,
+        }
+
+        impl Visitor for &Tracker {
+            fn visit_key(&self, key: String) -> String {
+                self.keys.borrow_mut().push(key.clone());
+                key
+            }
+
+            fn visit_value(&self, value: Value) -> Value {
+                self.values.borrow_mut().push(value.clone());
+                value
+            }
+        }
+
+        let tracker = Tracker::default();
+        let visit = Visit::new(&tracker, None);
+        let initial = json!({"foo": ["bar", {"baz": "qux"}], "bar": 1});
+
+        let value = visit.transform(initial.clone());
+
+        assert_eq!(value, initial);
+        assert_eq!(&tracker.keys.take(), &["baz", "foo", "bar"]);
+        assert_eq!(
+            &tracker.values.take(),
+            &[
+                json!("bar"),
+                json!("qux"),
+                json!({"baz": "qux"}),
+                json!(["bar", {"baz": "qux"}]),
+                json!(1)
+            ]
         );
     }
 }
