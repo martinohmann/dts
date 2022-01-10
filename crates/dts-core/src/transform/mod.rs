@@ -343,6 +343,40 @@ where
     }
 }
 
+/// Replaces patterns in strings.
+pub struct ReplaceString {
+    regex: Regex,
+    replacement: String,
+    limit: usize,
+}
+
+impl ReplaceString {
+    /// Creates a new `ReplaceString` for a regex pattern and a replacement string which may also
+    /// reference capture groups.
+    ///
+    /// Replaces at most `limit` non-overlapping matches in text with the replacement provided. If
+    /// `limit` is 0, then all non-overlapping matches are replaced.
+    pub fn new(regex: Regex, replacement: &str, limit: usize) -> Self {
+        ReplaceString {
+            regex,
+            replacement: replacement.to_owned(),
+            limit,
+        }
+    }
+}
+
+impl Transform for ReplaceString {
+    fn transform(&self, value: Value) -> Value {
+        match value {
+            Value::String(s) => self
+                .regex
+                .replacen(&s, self.limit, &self.replacement)
+                .into(),
+            value => value,
+        }
+    }
+}
+
 /// A type that can apply unparameterized transformations to a `Value`.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
@@ -853,5 +887,13 @@ mod tests {
                 json!(1)
             ]
         );
+    }
+
+    #[test]
+    fn test_replace_string() {
+        let rs = ReplaceString::new(Regex::new("(foo|bar)baz").unwrap(), "$1", 0);
+
+        assert_eq!(rs.transform(json!("foobaz")), json!("foo"));
+        assert_eq!(rs.transform(json!(["foobaz"])), json!(["foobaz"]));
     }
 }

@@ -4,8 +4,8 @@ use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     sort::ValueSorter,
     visitor::{KeyVisitor, ValueVisitor},
-    Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Mutate, Remove, Select, Sort,
-    Transform, Unparameterized, Visit, YieldValue,
+    Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Mutate, Remove, ReplaceString,
+    Select, Sort, Transform, Unparameterized, Visit, YieldValue,
 };
 use indoc::indoc;
 use std::fmt;
@@ -25,6 +25,11 @@ pub fn definitions<'a>() -> Definitions<'a> {
 
     let value_arg = Arg::new("value").with_description(indoc! {r#"
         A JSON value.
+    "#});
+
+    let regex_pattern_arg = Arg::new("regex_pattern").with_description(indoc! {r#"
+        A regex pattern. See <https://docs.rs/regex/latest/regex/index.html>
+        for available features of the regex engine.
     "#});
 
     let max_depth = Arg::new("max_depth")
@@ -111,12 +116,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 .with_description(indoc! {r#"
                     Recursively deletes all object keys matching a regex pattern.
                 "#})
-                .add_arg(
-                    Arg::new("pattern")
-                        .with_description(indoc! {r#"
-                            A regex pattern to match the keys that should be deleted.
-                        "#})
-                )
+                .add_arg(regex_pattern_arg.clone())
         )
         .add_definition(
             Definition::new("sort")
@@ -216,6 +216,29 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 "#})
                 .add_args(&[expression_arg, max_depth])
         )
+        .add_definition(
+            Definition::new("replace_string")
+                .with_description(indoc! {r#"
+                    Replaces at most `limit` non-overlapping matches in string values with the
+                    replacement provided. If `limit` is 0, then all non-overlapping matches are
+                    replaced. For non-string values this is a no-op.
+                "#})
+                .add_arg(regex_pattern_arg)
+                .add_arg(
+                    Arg::new("replacement")
+                        .with_description(indoc! {r#"
+                            The replacement string, where `$N` and `$name` are expanded to match
+                            capture groups.
+                        "#})
+                )
+                .add_arg(
+                    Arg::new("limit")
+                        .with_default_value(0usize)
+                        .with_description(indoc! {r#"
+                            The maximum number of non-overlapping matches to replace.
+                        "#})
+                )
+        )
 }
 
 /// Parses expressions into a chain of transformations.
@@ -244,7 +267,7 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         "arrays_to_objects" => Box::new(Unparameterized::ArraysToObjects),
         "deep_merge" => Box::new(Unparameterized::DeepMerge),
         "delete" => Box::new(Delete::new(m.parse_str("query")?)),
-        "delete_keys" => Box::new(DeleteKeys::new(m.parse_str("pattern")?)),
+        "delete_keys" => Box::new(DeleteKeys::new(m.parse_str("regex_pattern")?)),
         "each_key" => Box::new(EachKey::new(m.map_expr("expression", parse_matches)?)),
         "each_value" => Box::new(EachValue::new(m.map_expr("expression", parse_matches)?)),
         "expand_keys" => Box::new(Unparameterized::ExpandKeys),
@@ -258,6 +281,12 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         }
         "remove" => Box::new(Remove::new(m.parse_str("query")?)),
         "remove_empty_values" => Box::new(Unparameterized::RemoveEmptyValues),
+        "replace_string" => {
+            let regex = m.parse_str("regex_pattern")?;
+            let replacement = m.str_value("replacement")?;
+            let limit = m.parse_number("limit")?;
+            Box::new(ReplaceString::new(regex, replacement, limit))
+        }
         "select" => Box::new(Select::new(m.parse_str("query")?)),
         "sort" => {
             let sorter = ValueSorter::new(m.parse_str("order")?);
