@@ -1,6 +1,6 @@
 //! Provides types to visit elements of collections.
 
-use super::Transform;
+use super::{State, Transform};
 use dts_json::Value;
 
 /// A trait for visiting array values and key-value pairs of objects.
@@ -8,14 +8,14 @@ pub trait Visitor {
     /// Visits a key of an object and produces a new `String`.
     ///
     /// The default implementation just returns the key unchanged.
-    fn visit_key(&self, key: String) -> String {
+    fn visit_key(&self, key: String, _state: &mut State) -> String {
         key
     }
 
     /// Visits an array or object value and produces a new `Value`.
     ///
     /// The default implementation just returns the value unchanged.
-    fn visit_value(&self, value: Value) -> Value {
+    fn visit_value(&self, value: Value, _state: &mut State) -> Value {
         value
     }
 }
@@ -34,8 +34,8 @@ impl<T> Visitor for KeyVisitor<T>
 where
     T: Transform,
 {
-    fn visit_key(&self, key: String) -> String {
-        self.0.transform(key.into()).into_string()
+    fn visit_key(&self, key: String, state: &mut State) -> String {
+        self.0.transform(key.into(), state).into_string()
     }
 }
 
@@ -53,7 +53,7 @@ impl<T> Visitor for ValueVisitor<T>
 where
     T: Transform,
 {
-    fn visit_value(&self, value: Value) -> Value {
-        self.0.transform(value)
+    fn visit_value(&self, value: Value, state: &mut State) -> Value {
+        self.0.transform(value, state)
     }
 }

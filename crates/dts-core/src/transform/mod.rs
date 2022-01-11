@@ -4,7 +4,10 @@ pub mod dsl;
 pub mod jsonpath;
 pub(crate) mod key;
 pub mod sort;
+pub mod state;
 pub mod visitor;
+
+pub use state::State;
 
 use crate::{
     parsers::flat_key::{self, KeyPart, KeyParts},
@@ -22,16 +25,17 @@ use visitor::Visitor;
 
 /// Represents a thing that can take a value, transform it and produce a new value.
 pub trait Transform {
-    /// Takes a `Value`, applies a transformation and yields a new `Value`.
-    fn transform(&self, value: Value) -> Value;
+    /// Takes a `Value` and a mutable `State` refererence, applies a transformation and yields a
+    /// new `Value`.
+    fn transform(&self, value: Value, state: &mut State) -> Value;
 }
 
 impl<T> Transform for Box<T>
 where
     T: Transform + ?Sized,
 {
-    fn transform(&self, value: Value) -> Value {
-        (**self).transform(value)
+    fn transform(&self, value: Value, state: &mut State) -> Value {
+        (**self).transform(value, state)
     }
 }
 
@@ -39,13 +43,13 @@ impl<T> Transform for &T
 where
     T: Transform + ?Sized,
 {
-    fn transform(&self, value: Value) -> Value {
-        (*self).transform(value)
+    fn transform(&self, value: Value, state: &mut State) -> Value {
+        (*self).transform(value, state)
     }
 }
 
 impl Transform for Value {
-    fn transform(&self, _: Value) -> Value {
+    fn transform(&self, _value: Value, _state: &mut State) -> Value {
         self.clone()
     }
 }
@@ -83,10 +87,10 @@ impl IntoIterator for Chain {
 }
 
 impl Transform for Chain {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, state: &mut State) -> Value {
         self.inner
             .iter()
-            .fold(value, |value, trans| trans.transform(value))
+            .fold(value, |value, trans| trans.transform(value, state))
     }
 }
 
@@ -101,7 +105,7 @@ impl Select {
 }
 
 impl Transform for Select {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, _state: &mut State) -> Value {
         self.0.select(value)
     }
 }
@@ -123,8 +127,9 @@ impl<T> Transform for Mutate<T>
 where
     T: Transform,
 {
-    fn transform(&self, value: Value) -> Value {
-        self.mutator.mutate(value, |v| Some(self.expr.transform(v)))
+    fn transform(&self, value: Value, state: &mut State) -> Value {
+        self.mutator
+            .mutate(value, |v| Some(self.expr.transform(v, state)))
     }
 }
 
@@ -140,7 +145,7 @@ impl Delete {
 }
 
 impl Transform for Delete {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, _state: &mut State) -> Value {
         self.0.mutate(value, |_| Some(Value::Null))
     }
 }
@@ -156,7 +161,7 @@ impl Remove {
 }
 
 impl Transform for Remove {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, _state: &mut State) -> Value {
         self.0.mutate(value, |_| None)
     }
 }
@@ -172,7 +177,7 @@ impl FlattenKeys {
 }
 
 impl Transform for FlattenKeys {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, _state: &mut State) -> Value {
         flatten_keys(value, &self.0)
     }
 }
@@ -188,7 +193,7 @@ impl DeleteKeys {
 }
 
 impl Transform for DeleteKeys {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, _: &mut State) -> Value {
         delete_keys(value, &self.0)
     }
 }
@@ -204,7 +209,7 @@ impl Sort {
 }
 
 impl Transform for Sort {
-    fn transform(&self, mut value: Value) -> Value {
+    fn transform(&self, mut value: Value, _: &mut State) -> Value {
         self.0.sort(&mut value);
         value
     }
@@ -225,12 +230,12 @@ impl<T> Transform for EachKey<T>
 where
     T: Transform,
 {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, state: &mut State) -> Value {
         match value {
             Value::Object(object) => Value::Object(
                 object
                     .into_iter()
-                    .map(|(key, value)| (self.0.transform(key.into()).into_string(), value))
+                    .map(|(key, value)| (self.0.transform(key.into(), state).into_string(), value))
                     .collect(),
             ),
             value => value,
@@ -253,18 +258,18 @@ impl<T> Transform for EachValue<T>
 where
     T: Transform,
 {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, state: &mut State) -> Value {
         match value {
             Value::Array(array) => Value::Array(
                 array
                     .into_iter()
-                    .map(|value| self.0.transform(value))
+                    .map(|value| self.0.transform(value, state))
                     .collect(),
             ),
             Value::Object(object) => Value::Object(
                 object
                     .into_iter()
-                    .map(|(key, value)| (key, self.0.transform(value)))
+                    .map(|(key, value)| (key, self.0.transform(value, state)))
                     .collect(),
             ),
             value => value,
@@ -300,29 +305,34 @@ impl<V> Visit<V>
 where
     V: Visitor,
 {
-    fn visit(&self, value: Value, depth: u64) -> Value {
+    fn visit(&self, value: Value, state: &mut State, depth: u64) -> Value {
         let descend = self.should_descend(depth);
 
         match value {
             Value::Array(array) => Value::Array(
                 array
                     .into_iter()
-                    .map(|value| match descend {
-                        true => self.visit(value, depth + 1),
-                        false => value,
+                    .map(|mut value| {
+                        if descend {
+                            value = self.visit(value, state, depth + 1)
+                        }
+
+                        self.visitor.visit_value(value, state)
                     })
-                    .map(|value| self.visitor.visit_value(value))
                     .collect(),
             ),
             Value::Object(object) => Value::Object(
                 object
                     .into_iter()
-                    .map(|(key, value)| match descend {
-                        true => (key, self.visit(value, depth + 1)),
-                        false => (key, value),
-                    })
-                    .map(|(key, value)| {
-                        (self.visitor.visit_key(key), self.visitor.visit_value(value))
+                    .map(|(key, mut value)| {
+                        if descend {
+                            value = self.visit(value, state, depth + 1)
+                        }
+
+                        (
+                            self.visitor.visit_key(key, state),
+                            self.visitor.visit_value(value, state),
+                        )
                     })
                     .collect(),
             ),
@@ -335,8 +345,8 @@ impl<V> Transform for Visit<V>
 where
     V: Visitor,
 {
-    fn transform(&self, value: Value) -> Value {
-        self.visit(value, 0)
+    fn transform(&self, value: Value, state: &mut State) -> Value {
+        self.visit(value, state, 0)
     }
 }
 
@@ -363,7 +373,7 @@ impl ReplaceString {
 }
 
 impl Transform for ReplaceString {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, _: &mut State) -> Value {
         match value {
             Value::String(s) => self
                 .regex
@@ -383,7 +393,7 @@ pub enum Wrap {
 }
 
 impl Transform for Wrap {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, _: &mut State) -> Value {
         match self {
             Wrap::Array => Value::from_iter(vec![value]),
             Wrap::Object(key) => Value::from_iter(iter::once((key.to_owned(), value))),
@@ -440,8 +450,8 @@ impl<T> Transform for Insert<T>
 where
     T: Transform,
 {
-    fn transform(&self, mut value: Value) -> Value {
-        let new_value = self.expr.transform(value.clone());
+    fn transform(&self, mut value: Value, state: &mut State) -> Value {
+        let new_value = self.expr.transform(value.clone(), state);
 
         match (&self.key_index, &mut value) {
             (KeyIndex::Key(key), Value::Object(object)) => {
@@ -483,7 +493,7 @@ pub enum Unparameterized {
 }
 
 impl Transform for Unparameterized {
-    fn transform(&self, value: Value) -> Value {
+    fn transform(&self, value: Value, _: &mut State) -> Value {
         match self {
             Self::Flatten => flatten(value),
             Self::RemoveEmptyValues => remove_empty_values(value),
@@ -864,7 +874,7 @@ mod tests {
         let chain = Chain::from_iter(transformations);
 
         assert_eq!(
-            chain.transform(json!([null, "foo", {"bar": "baz"}])),
+            chain.transform(json!([null, "foo", {"bar": "baz"}]), &mut State::new()),
             json!("baz")
         );
     }
@@ -927,12 +937,12 @@ mod tests {
         }
 
         impl Visitor for &Tracker {
-            fn visit_key(&self, key: String) -> String {
+            fn visit_key(&self, key: String, _: &mut State) -> String {
                 self.keys.borrow_mut().push(key.clone());
                 key
             }
 
-            fn visit_value(&self, value: Value) -> Value {
+            fn visit_value(&self, value: Value, _: &mut State) -> Value {
                 self.values.borrow_mut().push(value.clone());
                 value
             }
@@ -942,7 +952,7 @@ mod tests {
         let visit = Visit::new(&tracker, None);
         let initial = json!({"foo": ["bar", {"baz": "qux"}], "bar": 1});
 
-        let value = visit.transform(initial.clone());
+        let value = visit.transform(initial.clone(), &mut State::new());
 
         assert_eq!(value, initial);
         assert_eq!(&tracker.keys.take(), &["baz", "foo", "bar"]);
@@ -962,38 +972,53 @@ mod tests {
     fn test_replace_string() {
         let rs = ReplaceString::new(Regex::new("(foo|bar)baz").unwrap(), "$1", 0);
 
-        assert_eq!(rs.transform(json!("foobaz")), json!("foo"));
-        assert_eq!(rs.transform(json!(["foobaz"])), json!(["foobaz"]));
+        assert_eq!(
+            rs.transform(json!("foobaz"), &mut State::new()),
+            json!("foo")
+        );
+        assert_eq!(
+            rs.transform(json!(["foobaz"]), &mut State::new()),
+            json!(["foobaz"])
+        );
     }
 
     #[test]
     fn test_wrap() {
         let wrap = Wrap::Array;
-        assert_eq!(wrap.transform(json!("foo")), json!(["foo"]));
+        assert_eq!(
+            wrap.transform(json!("foo"), &mut State::new()),
+            json!(["foo"])
+        );
         let wrap = Wrap::Object("foo".into());
-        assert_eq!(wrap.transform(json!(["bar"])), json!({"foo": ["bar"]}));
+        assert_eq!(
+            wrap.transform(json!(["bar"]), &mut State::new()),
+            json!({"foo": ["bar"]})
+        );
     }
 
     #[test]
     fn test_insert() {
         let insert = Insert::new(KeyIndex::Index(2), Value::from("baz"));
-        assert_eq!(insert.transform(json!({"foo": 1})), json!({"foo": 1}));
         assert_eq!(
-            insert.transform(json!(["foo", "bar"])),
+            insert.transform(json!({"foo": 1}), &mut State::new()),
+            json!({"foo": 1})
+        );
+        assert_eq!(
+            insert.transform(json!(["foo", "bar"]), &mut State::new()),
             json!(["foo", "bar", "baz"])
         );
         assert_eq!(
-            insert.transform(json!(["foo", "bar", "qux"])),
+            insert.transform(json!(["foo", "bar", "qux"]), &mut State::new()),
             json!(["foo", "bar", "baz", "qux"])
         );
 
         let insert = Insert::new(KeyIndex::Key("bar".into()), Value::from("baz"));
         assert_eq!(
-            insert.transform(json!({"foo": 1})),
+            insert.transform(json!({"foo": 1}), &mut State::new()),
             json!({"foo": 1, "bar": "baz"})
         );
         assert_eq!(
-            insert.transform(json!(["foo", "bar"])),
+            insert.transform(json!(["foo", "bar"]), &mut State::new()),
             json!(["foo", "bar"])
         );
     }
