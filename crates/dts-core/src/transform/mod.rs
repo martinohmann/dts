@@ -410,7 +410,7 @@ pub enum Unparameterized {
     /// Extracts object keys.
     Keys,
     /// Converts an array into an object with the array indices as keys.
-    ArraysToObjects,
+    ArrayToObject,
     /// Extracts array and object values.
     Values,
 }
@@ -423,7 +423,7 @@ impl Transform for Unparameterized {
             Self::DeepMerge => deep_merge(value),
             Self::ExpandKeys => expand_keys(value),
             Self::Keys => keys(value),
-            Self::ArraysToObjects => arrays_to_objects(value),
+            Self::ArrayToObject => array_to_object(value),
             Self::Values => values(value),
         }
     }
@@ -763,7 +763,7 @@ pub fn delete_keys(value: Value, regex: &Regex) -> Value {
 }
 
 /// Transforms an array into an object with the array index as key.
-pub fn arrays_to_objects(value: Value) -> Value {
+pub fn array_to_object(value: Value) -> Value {
     match value {
         Value::Array(array) => Value::Object(
             array
@@ -844,9 +844,9 @@ mod tests {
     }
 
     #[test]
-    fn test_arrays_to_objects() {
+    fn test_array_to_object() {
         assert_eq!(
-            arrays_to_objects(json!([{"foo": "bar"},{"bar": [1], "qux": null}])),
+            array_to_object(json!([{"foo": "bar"},{"bar": [1], "qux": null}])),
             json!({"0": {"foo": "bar"}, "1": {"bar": [1], "qux": null}})
         );
     }

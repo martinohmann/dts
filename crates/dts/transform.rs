@@ -133,7 +133,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 )
         )
         .add_definition(
-            Definition::new("arrays_to_objects")
+            Definition::new("array_to_object")
                 .with_description(indoc! {r#"
                     Converts an array into an object with the array indices as keys.
                 "#})
@@ -278,7 +278,7 @@ fn parse_matches(matches: &[DefinitionMatch<'_>]) -> Result<Chain> {
 
 fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
     let transformation: Box<dyn Transform> = match m.name() {
-        "arrays_to_objects" => Box::new(Unparameterized::ArraysToObjects),
+        "array_to_object" => Box::new(Unparameterized::ArrayToObject),
         "deep_merge" => Box::new(Unparameterized::DeepMerge),
         "delete" => Box::new(Delete::new(m.parse_str("query")?)),
         "delete_keys" => Box::new(DeleteKeys::new(m.parse_str("regex_pattern")?)),
