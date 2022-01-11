@@ -4,10 +4,11 @@ use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     sort::ValueSorter,
     visitor::{KeyVisitor, ValueVisitor},
-    Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Mutate, Remove, ReplaceString,
-    Select, Sort, Transform, Unparameterized, Visit, Wrap, YieldValue,
+    Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Insert, KeyIndex, Mutate, Remove,
+    ReplaceString, Select, Sort, Transform, Unparameterized, Visit, Wrap, YieldValue,
 };
 use indoc::indoc;
+use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 use termcolor::{Color, ColorSpec};
@@ -253,6 +254,23 @@ pub fn definitions<'a>() -> Definitions<'a> {
                         "#})
                 )
         )
+        .add_definition(
+            Definition::new("insert")
+                .with_description(indoc! {r#"
+                    Inserts a value into an array or object.
+
+                    This is a no-op if the value that should be inserted into is not an array or
+                    object. If an array index is greater than the array length, the value is
+                    appended instead. If an object key already exists, it is overwritten.
+                "#})
+                .add_arg(
+                    Arg::new("key_or_index")
+                        .with_description(indoc! {r#"
+                            The object key or array index at which the value should be inserted.
+                        "#})
+                )
+                .add_arg(&value_arg)
+        )
 }
 
 /// Parses expressions into a chain of transformations.
@@ -287,6 +305,12 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         "expand_keys" => Box::new(Unparameterized::ExpandKeys),
         "flatten" => Box::new(Unparameterized::Flatten),
         "flatten_keys" => Box::new(FlattenKeys::new(m.str_value("prefix")?)),
+        "insert" => {
+            #[allow(clippy::redundant_closure)]
+            let key_or_index = m.map_value("key_or_index", |value| KeyIndex::try_from(value))?;
+            let value = m.value("value")?;
+            Box::new(Insert::new(key_or_index, value))
+        }
         "keys" => Box::new(Unparameterized::Keys),
         "mutate" => {
             let mutator = m.parse_str("query")?;

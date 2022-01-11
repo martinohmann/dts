@@ -6,7 +6,10 @@ pub(crate) mod key;
 pub mod sort;
 pub mod visitor;
 
-use crate::parsers::flat_key::{self, KeyPart, KeyParts};
+use crate::{
+    parsers::flat_key::{self, KeyPart, KeyParts},
+    Error,
+};
 use dts_json::{Map, Value};
 use jsonpath::{JsonPathMutator, JsonPathSelector};
 use key::KeyFlattener;
@@ -391,6 +394,72 @@ impl Transform for Wrap {
             Wrap::Array => Value::from_iter(vec![value]),
             Wrap::Object(key) => Value::from_iter(iter::once((key.to_owned(), value))),
         }
+    }
+}
+
+/// Holds either an object key or an array index.
+pub enum KeyIndex {
+    /// An object key.
+    Key(String),
+    /// An array index.
+    Index(usize),
+}
+
+impl TryFrom<&Value> for KeyIndex {
+    type Error = Error;
+
+    fn try_from(value: &Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::String(s) => Ok(KeyIndex::Key(s.to_owned())),
+            Value::Number(n) => n
+                .as_u64()
+                .map(|index| KeyIndex::Index(index as usize))
+                .ok_or_else(|| Error::new("Index needs to be an unsigned integer")),
+            value => Err(Error::new(format!(
+                "Expected string or unsigned integer, got {}",
+                value
+            ))),
+        }
+    }
+}
+
+/// Inserts a value into an array or object.
+pub struct Insert {
+    key_index: KeyIndex,
+    value: Value,
+}
+
+impl Insert {
+    /// Creates a new `Insert` which will insert `value` at the provided `key_index`.
+    pub fn new<K, V>(key_index: K, value: V) -> Self
+    where
+        K: Into<KeyIndex>,
+        V: Into<Value>,
+    {
+        Insert {
+            key_index: key_index.into(),
+            value: value.into(),
+        }
+    }
+}
+
+impl Transform for Insert {
+    fn transform(&self, mut value: Value) -> Value {
+        match (&self.key_index, &mut value) {
+            (KeyIndex::Key(key), Value::Object(object)) => {
+                object.insert(key.to_owned(), self.value.clone());
+            }
+            (KeyIndex::Index(index), Value::Array(array)) => {
+                if *index > array.len() {
+                    array.push(self.value.clone());
+                } else {
+                    array.insert(*index, self.value.clone());
+                }
+            }
+            (_, _) => (),
+        }
+
+        value
     }
 }
 
@@ -905,5 +974,29 @@ mod tests {
         assert_eq!(wrap.transform(json!("foo")), json!(["foo"]));
         let wrap = Wrap::Object("foo".into());
         assert_eq!(wrap.transform(json!(["bar"])), json!({"foo": ["bar"]}));
+    }
+
+    #[test]
+    fn test_insert() {
+        let insert = Insert::new(KeyIndex::Index(2), "baz");
+        assert_eq!(insert.transform(json!({"foo": 1})), json!({"foo": 1}));
+        assert_eq!(
+            insert.transform(json!(["foo", "bar"])),
+            json!(["foo", "bar", "baz"])
+        );
+        assert_eq!(
+            insert.transform(json!(["foo", "bar", "qux"])),
+            json!(["foo", "bar", "baz", "qux"])
+        );
+
+        let insert = Insert::new(KeyIndex::Key("bar".into()), "baz");
+        assert_eq!(
+            insert.transform(json!({"foo": 1})),
+            json!({"foo": 1, "bar": "baz"})
+        );
+        assert_eq!(
+            insert.transform(json!(["foo", "bar"])),
+            json!(["foo", "bar"])
+        );
     }
 }
