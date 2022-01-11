@@ -377,6 +377,23 @@ impl Transform for ReplaceString {
     }
 }
 
+/// Wraps a value into a collection.
+pub enum Wrap {
+    /// Wrap in array.
+    Array,
+    /// Wrap in object with key.
+    Object(String),
+}
+
+impl Transform for Wrap {
+    fn transform(&self, value: Value) -> Value {
+        match self {
+            Wrap::Array => Value::from_iter(vec![value]),
+            Wrap::Object(key) => Value::from_iter(iter::once((key.to_owned(), value))),
+        }
+    }
+}
+
 /// A type that can apply unparameterized transformations to a `Value`.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
@@ -880,5 +897,13 @@ mod tests {
 
         assert_eq!(rs.transform(json!("foobaz")), json!("foo"));
         assert_eq!(rs.transform(json!(["foobaz"])), json!(["foobaz"]));
+    }
+
+    #[test]
+    fn test_wrap() {
+        let wrap = Wrap::Array;
+        assert_eq!(wrap.transform(json!("foo")), json!(["foo"]));
+        let wrap = Wrap::Object("foo".into());
+        assert_eq!(wrap.transform(json!(["bar"])), json!({"foo": ["bar"]}));
     }
 }

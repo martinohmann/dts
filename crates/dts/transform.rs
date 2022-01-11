@@ -5,7 +5,7 @@ use dts_core::transform::{
     sort::ValueSorter,
     visitor::{KeyVisitor, ValueVisitor},
     Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Mutate, Remove, ReplaceString,
-    Select, Sort, Transform, Unparameterized, Visit, YieldValue,
+    Select, Sort, Transform, Unparameterized, Visit, Wrap, YieldValue,
 };
 use indoc::indoc;
 use std::fmt;
@@ -32,7 +32,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
         for available features of the regex engine.
     "#});
 
-    let max_depth = Arg::new("max_depth")
+    let max_depth_arg = Arg::new("max_depth")
         .required(false)
         .with_description(indoc! {r#"
             Defines the upper bound for child collections to be visited. A max depth of 0 means
@@ -51,7 +51,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     more elements. See `flatten` if you want to remove one level of nesting on single element
                     filter results.
                 "#})
-                .add_arg(query_arg.clone()),
+                .add_arg(&query_arg),
         )
         .add_definition(
             Definition::new("flatten")
@@ -116,7 +116,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 .with_description(indoc! {r#"
                     Deletes object keys matching a regex pattern.
                 "#})
-                .add_arg(regex_pattern_arg.clone())
+                .add_arg(&regex_pattern_arg)
         )
         .add_definition(
             Definition::new("sort")
@@ -145,7 +145,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     Applies the expression to all values matched by the query and returns the
                     mutated value.
                 "#})
-                .add_args(&[query_arg.clone(), expression_arg.clone()])
+                .add_args([&query_arg, &expression_arg])
         )
         .add_definition(
             Definition::new("delete")
@@ -154,7 +154,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     Selectively deletes values based on a jsonpath query. Deleted values are
                     represented as nulls.
                 "#})
-                .add_arg(query_arg.clone()),
+                .add_arg(&query_arg),
         )
         .add_definition(
             Definition::new("remove")
@@ -162,7 +162,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 .with_description(indoc! {r#"
                     Selectively removes values based on a jsonpath query.
                 "#})
-                .add_arg(query_arg),
+                .add_arg(&query_arg),
         )
         .add_definition(
             Definition::new("each_key")
@@ -170,7 +170,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     Applies the expression to all keys of the current object. This is a no-op for
                     non-object values.
                 "#})
-                .add_arg(expression_arg.clone())
+                .add_arg(&expression_arg)
         )
         .add_definition(
             Definition::new("each_value")
@@ -179,7 +179,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     Applies the expression to all values of the current array or object. This is a
                     no-op for non-array and non-object values.
                 "#})
-                .add_arg(expression_arg.clone())
+                .add_arg(&expression_arg)
         )
         .add_definition(
             Definition::new("values")
@@ -199,14 +199,14 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     selects values based on a jsonpath query with static values, e.g. as argument
                     for `mutate`.
                 "#})
-                .add_arg(value_arg)
+                .add_arg(&value_arg)
         )
         .add_definition(
             Definition::new("visit_keys")
                 .with_description(indoc! {r#"
                     Recursively visits object keys and applies the expression to them.
                 "#})
-                .add_args(&[expression_arg.clone(), max_depth.clone()])
+                .add_args([&expression_arg, &max_depth_arg])
         )
         .add_definition(
             Definition::new("visit_values")
@@ -214,7 +214,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 .with_description(indoc! {r#"
                     Recursively visits array and object value and applies the expression to them.
                 "#})
-                .add_args(&[expression_arg, max_depth])
+                .add_args([&expression_arg, &max_depth_arg])
         )
         .add_definition(
             Definition::new("replace_string")
@@ -223,7 +223,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                     replacement provided. If `limit` is 0, then all non-overlapping matches are
                     replaced. For non-string values this is a no-op.
                 "#})
-                .add_arg(regex_pattern_arg)
+                .add_arg(&regex_pattern_arg)
                 .add_arg(
                     Arg::new("replacement")
                         .with_description(indoc! {r#"
@@ -236,6 +236,20 @@ pub fn definitions<'a>() -> Definitions<'a> {
                         .with_default_value(0usize)
                         .with_description(indoc! {r#"
                             The maximum number of non-overlapping matches to replace.
+                        "#})
+                )
+        )
+        .add_definition(
+            Definition::new("wrap_array")
+                .with_description("Wraps a value into an array.")
+        )
+        .add_definition(
+            Definition::new("wrap_object")
+                .with_description("Wraps a value into an object with the given key.")
+                .add_arg(
+                    Arg::new("key")
+                        .with_description(indoc! {r#"
+                            The key used to insert the value into the new object.
                         "#})
                 )
         )
@@ -304,6 +318,8 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
             let max_depth = parse_optional_number(m, "max_depth")?;
             Box::new(Visit::new(visitor, max_depth))
         }
+        "wrap_array" => Box::new(Wrap::Array),
+        "wrap_object" => Box::new(Wrap::Object(m.str_value("key")?.to_owned())),
         name => panic!("unmatched transformation `{}`, please file a bug", name),
     };
 
