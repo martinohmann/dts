@@ -485,6 +485,10 @@ pub enum RingBuffer {
     PeekBack,
     /// Pop value from the back of the buffer.
     PopBack,
+    /// Peek all values from front-to-back.
+    PeekAll,
+    /// Pop all values from front-to-back.
+    PopAll,
 }
 
 impl Transform for RingBuffer {
@@ -504,6 +508,14 @@ impl Transform for RingBuffer {
             }
             RingBuffer::PeekBack => ringbuf.back().cloned(),
             RingBuffer::PopBack => ringbuf.pop_back(),
+            RingBuffer::PeekAll => Some(ringbuf.iter().cloned().collect()),
+            RingBuffer::PopAll => {
+                let mut vec = Vec::with_capacity(ringbuf.len());
+                while let Some(value) = ringbuf.pop_front() {
+                    vec.push(value);
+                }
+                Some(Value::Array(vec))
+            }
         };
 
         value.unwrap_or_default()

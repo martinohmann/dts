@@ -213,6 +213,11 @@ impl<'a> Definition<'a> {
 impl<'a> fmt::Display for Definition<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.name)?;
+
+        if self.args.is_empty() {
+            return Ok(());
+        }
+
         f.write_char('(')?;
 
         let mut optional_args = 0;
