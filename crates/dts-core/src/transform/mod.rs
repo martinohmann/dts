@@ -44,6 +44,12 @@ where
     }
 }
 
+impl Transform for Value {
+    fn transform(&self, _: Value) -> Value {
+        self.clone()
+    }
+}
+
 /// Represents a chain of transformation operations.
 pub struct Chain {
     inner: Vec<Box<dyn Transform>>,
@@ -259,25 +265,6 @@ impl Transform for EachValue {
     }
 }
 
-/// Yields a value and discards the old one.
-pub struct YieldValue(Value);
-
-impl YieldValue {
-    /// Creates a new `YieldValue`.
-    pub fn new<V>(value: V) -> Self
-    where
-        V: Into<Value>,
-    {
-        YieldValue(value.into())
-    }
-}
-
-impl Transform for YieldValue {
-    fn transform(&self, _: Value) -> Value {
-        self.0.clone()
-    }
-}
-
 /// A transformation that visits array values and object key-value pairs recursively.
 pub struct Visit<V> {
     visitor: V,
@@ -424,36 +411,43 @@ impl TryFrom<&Value> for KeyIndex {
 }
 
 /// Inserts a value into an array or object.
-pub struct Insert {
+pub struct Insert<T> {
     key_index: KeyIndex,
-    value: Value,
+    expr: T,
 }
 
-impl Insert {
-    /// Creates a new `Insert` which will insert `value` at the provided `key_index`.
-    pub fn new<K, V>(key_index: K, value: V) -> Self
+impl<T> Insert<T>
+where
+    T: Transform,
+{
+    /// Creates a new `Insert` which will insert the result of `expr` at the provided `key_index`.
+    pub fn new<K>(key_index: K, expr: T) -> Self
     where
         K: Into<KeyIndex>,
-        V: Into<Value>,
     {
         Insert {
             key_index: key_index.into(),
-            value: value.into(),
+            expr,
         }
     }
 }
 
-impl Transform for Insert {
+impl<T> Transform for Insert<T>
+where
+    T: Transform,
+{
     fn transform(&self, mut value: Value) -> Value {
+        let new_value = self.expr.transform(value.clone());
+
         match (&self.key_index, &mut value) {
             (KeyIndex::Key(key), Value::Object(object)) => {
-                object.insert(key.to_owned(), self.value.clone());
+                object.insert(key.to_owned(), new_value);
             }
             (KeyIndex::Index(index), Value::Array(array)) => {
                 if *index > array.len() {
-                    array.push(self.value.clone());
+                    array.push(new_value);
                 } else {
-                    array.insert(*index, self.value.clone());
+                    array.insert(*index, new_value);
                 }
             }
             (_, _) => (),
@@ -978,7 +972,7 @@ mod tests {
 
     #[test]
     fn test_insert() {
-        let insert = Insert::new(KeyIndex::Index(2), "baz");
+        let insert = Insert::new(KeyIndex::Index(2), Value::from("baz"));
         assert_eq!(insert.transform(json!({"foo": 1})), json!({"foo": 1}));
         assert_eq!(
             insert.transform(json!(["foo", "bar"])),
@@ -989,7 +983,7 @@ mod tests {
             json!(["foo", "bar", "baz", "qux"])
         );
 
-        let insert = Insert::new(KeyIndex::Key("bar".into()), "baz");
+        let insert = Insert::new(KeyIndex::Key("bar".into()), Value::from("baz"));
         assert_eq!(
             insert.transform(json!({"foo": 1})),
             json!({"foo": 1, "bar": "baz"})

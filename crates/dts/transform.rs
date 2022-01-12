@@ -5,7 +5,7 @@ use dts_core::transform::{
     sort::ValueSorter,
     visitor::{KeyVisitor, ValueVisitor},
     Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Insert, KeyIndex, Mutate, Remove,
-    ReplaceString, Select, Sort, Transform, Unparameterized, Visit, Wrap, YieldValue,
+    ReplaceString, Select, Sort, Transform, Unparameterized, Visit, Wrap,
 };
 use indoc::indoc;
 use std::convert::TryFrom;
@@ -269,7 +269,7 @@ pub fn definitions<'a>() -> Definitions<'a> {
                             The object key or array index at which the value should be inserted.
                         "#})
                 )
-                .add_arg(&value_arg)
+                .add_arg(&expression_arg)
         )
 }
 
@@ -308,8 +308,8 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         "insert" => {
             #[allow(clippy::redundant_closure)]
             let key_or_index = m.map_value("key_or_index", |value| KeyIndex::try_from(value))?;
-            let value = m.value("value")?;
-            Box::new(Insert::new(key_or_index, value))
+            let expression = m.map_expr("expression", parse_matches)?;
+            Box::new(Insert::new(key_or_index, expression))
         }
         "keys" => Box::new(Unparameterized::Keys),
         "mutate" => {
@@ -330,7 +330,7 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
             let sorter = ValueSorter::new(m.parse_str("order")?);
             Box::new(Sort::new(sorter))
         }
-        "value" => Box::new(YieldValue::new(m.value("value")?)),
+        "value" => Box::new(m.value("value")?.clone()),
         "values" => Box::new(Unparameterized::Values),
         "visit_keys" => {
             let visitor = KeyVisitor::new(m.map_expr("expression", parse_matches)?);
