@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 /// Represents the transform state.
 #[derive(Default)]
 pub struct State {
-    queue: VecDeque<Value>,
+    ringbuf: VecDeque<Value>,
 }
 
 impl State {
@@ -15,8 +15,8 @@ impl State {
         State::default()
     }
 
-    /// Returns a mutable reference to the underlying value queue.
-    pub fn queue_mut(&mut self) -> &mut VecDeque<Value> {
-        &mut self.queue
+    /// Returns a mutable reference to the underlying value ring buf.
+    pub fn ringbuf_mut(&mut self) -> &mut VecDeque<Value> {
+        &mut self.ringbuf
     }
 }

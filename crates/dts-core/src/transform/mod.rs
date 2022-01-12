@@ -193,7 +193,7 @@ impl DeleteKeys {
 }
 
 impl Transform for DeleteKeys {
-    fn transform(&self, value: Value, _: &mut State) -> Value {
+    fn transform(&self, value: Value, _state: &mut State) -> Value {
         delete_keys(value, &self.0)
     }
 }
@@ -209,7 +209,7 @@ impl Sort {
 }
 
 impl Transform for Sort {
-    fn transform(&self, mut value: Value, _: &mut State) -> Value {
+    fn transform(&self, mut value: Value, _state: &mut State) -> Value {
         self.0.sort(&mut value);
         value
     }
@@ -373,7 +373,7 @@ impl ReplaceString {
 }
 
 impl Transform for ReplaceString {
-    fn transform(&self, value: Value, _: &mut State) -> Value {
+    fn transform(&self, value: Value, _state: &mut State) -> Value {
         match value {
             Value::String(s) => self
                 .regex
@@ -393,7 +393,7 @@ pub enum Wrap {
 }
 
 impl Transform for Wrap {
-    fn transform(&self, value: Value, _: &mut State) -> Value {
+    fn transform(&self, value: Value, _state: &mut State) -> Value {
         match self {
             Wrap::Array => Value::from_iter(vec![value]),
             Wrap::Object(key) => Value::from_iter(iter::once((key.to_owned(), value))),
@@ -471,6 +471,45 @@ where
     }
 }
 
+/// A transformation that can push and pop values from the ring buffer.
+pub enum RingBuffer {
+    /// Push value to the front of the buffer.
+    PushFront,
+    /// Peek value at the front of the buffer.
+    PeekFront,
+    /// Pop value from the front of the buffer.
+    PopFront,
+    /// Push value to the back of the buffer.
+    PushBack,
+    /// Peek value at the back of the buffer.
+    PeekBack,
+    /// Pop value from the back of the buffer.
+    PopBack,
+}
+
+impl Transform for RingBuffer {
+    fn transform(&self, value: Value, state: &mut State) -> Value {
+        let ringbuf = state.ringbuf_mut();
+
+        let value = match self {
+            RingBuffer::PushFront => {
+                ringbuf.push_front(value.clone());
+                Some(value)
+            }
+            RingBuffer::PeekFront => ringbuf.front().cloned(),
+            RingBuffer::PopFront => ringbuf.pop_front(),
+            RingBuffer::PushBack => {
+                ringbuf.push_back(value.clone());
+                Some(value)
+            }
+            RingBuffer::PeekBack => ringbuf.back().cloned(),
+            RingBuffer::PopBack => ringbuf.pop_back(),
+        };
+
+        value.unwrap_or_default()
+    }
+}
+
 /// A type that can apply unparameterized transformations to a `Value`.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
@@ -493,7 +532,7 @@ pub enum Unparameterized {
 }
 
 impl Transform for Unparameterized {
-    fn transform(&self, value: Value, _: &mut State) -> Value {
+    fn transform(&self, value: Value, _state: &mut State) -> Value {
         match self {
             Self::Flatten => flatten(value),
             Self::RemoveEmptyValues => remove_empty_values(value),
@@ -937,12 +976,12 @@ mod tests {
         }
 
         impl Visitor for &Tracker {
-            fn visit_key(&self, key: String, _: &mut State) -> String {
+            fn visit_key(&self, key: String, _state: &mut State) -> String {
                 self.keys.borrow_mut().push(key.clone());
                 key
             }
 
-            fn visit_value(&self, value: Value, _: &mut State) -> Value {
+            fn visit_value(&self, value: Value, _state: &mut State) -> Value {
                 self.values.borrow_mut().push(value.clone());
                 value
             }

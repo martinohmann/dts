@@ -5,7 +5,7 @@ use dts_core::transform::{
     sort::ValueSorter,
     visitor::{KeyVisitor, ValueVisitor},
     Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Insert, KeyIndex, Mutate, Remove,
-    ReplaceString, Select, Sort, Transform, Unparameterized, Visit, Wrap,
+    ReplaceString, RingBuffer, Select, Sort, Transform, Unparameterized, Visit, Wrap,
 };
 use indoc::indoc;
 use std::convert::TryFrom;
@@ -271,6 +271,46 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 )
                 .add_arg(&expression_arg)
         )
+        .add_definition(
+            Definition::new("push_front")
+                .with_description(indoc! {r#"
+                    Pushes the current value to the front of the ring buffer.
+                "#})
+        )
+        .add_definition(
+            Definition::new("peek_front")
+                .with_description(indoc! {r#"
+                    Peeks the value from the front of the ring buffer without taking it out. If the
+                    buffer is empty, the value will be null.
+                "#})
+        )
+        .add_definition(
+            Definition::new("pop_front")
+                .with_description(indoc! {r#"
+                    Pops the value from the front of the ring buffer. If the buffer is empty, the
+                    value will be null.
+                "#})
+        )
+        .add_definition(
+            Definition::new("push_back")
+                .with_description(indoc! {r#"
+                    Pushes the current value to the back of the ring buffer.
+                "#})
+        )
+        .add_definition(
+            Definition::new("peek_back")
+                .with_description(indoc! {r#"
+                    Peeks the value from the back of the ring buffer without taking it out. If the
+                    buffer is empty, the value will be null.
+                "#})
+        )
+        .add_definition(
+            Definition::new("pop_back")
+                .with_description(indoc! {r#"
+                    Pops the value from the back of the ring buffer. If the buffer is empty, the
+                    value will be null.
+                "#})
+        )
 }
 
 /// Parses expressions into a chain of transformations.
@@ -317,6 +357,12 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
             let chain = m.map_expr("expression", parse_matches)?;
             Box::new(Mutate::new(mutator, chain))
         }
+        "push_front" => Box::new(RingBuffer::PushFront),
+        "peek_front" => Box::new(RingBuffer::PeekFront),
+        "pop_front" => Box::new(RingBuffer::PopFront),
+        "push_back" => Box::new(RingBuffer::PushBack),
+        "peek_back" => Box::new(RingBuffer::PeekBack),
+        "pop_back" => Box::new(RingBuffer::PopBack),
         "remove" => Box::new(Remove::new(m.parse_str("query")?)),
         "remove_empty_values" => Box::new(Unparameterized::RemoveEmptyValues),
         "replace_string" => {
