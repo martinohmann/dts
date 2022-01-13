@@ -94,7 +94,7 @@ impl Transform for Chain {
 pub struct Select(JsonPathSelector);
 
 impl Select {
-    /// Creates a new `Mutate`.
+    /// Creates a new `Select` transformation.
     pub fn new(selector: JsonPathSelector) -> Self {
         Select(selector)
     }
@@ -106,24 +106,25 @@ impl Transform for Select {
     }
 }
 
-/// A type that can selectively mutate a value based on a jsonpath query and a chain of
-/// transformations.
-pub struct Mutate {
+/// A type that can selectively mutate a value based on a jsonpath query and a transformation.
+pub struct Mutate<T> {
     mutator: JsonPathMutator,
-    chain: Chain,
+    expr: T,
 }
 
-impl Mutate {
+impl<T> Mutate<T> {
     /// Creates a new `Mutate`.
-    pub fn new(mutator: JsonPathMutator, chain: Chain) -> Self {
-        Mutate { mutator, chain }
+    pub fn new(mutator: JsonPathMutator, expr: T) -> Self {
+        Mutate { mutator, expr }
     }
 }
 
-impl Transform for Mutate {
+impl<T> Transform for Mutate<T>
+where
+    T: Transform,
+{
     fn transform(&self, value: Value) -> Value {
-        self.mutator
-            .mutate(value, |v| Some(self.chain.transform(v)))
+        self.mutator.mutate(value, |v| Some(self.expr.transform(v)))
     }
 }
 
@@ -209,18 +210,21 @@ impl Transform for Sort {
     }
 }
 
-/// EachKey applies a chain of transformations to every key of an object. For values of any other
-/// type this is a no-op.
-pub struct EachKey(Chain);
+/// EachKey applies a transformation to every key of an object. For values of any other type this
+/// is a no-op.
+pub struct EachKey<T>(T);
 
-impl EachKey {
-    /// Creates a new `EachKey` which applies the `Chain` to every key of an object.
-    pub fn new(chain: Chain) -> Self {
-        EachKey(chain)
+impl<T> EachKey<T> {
+    /// Creates a new `EachKey` which applies the expression to every key of an object.
+    pub fn new(expr: T) -> Self {
+        EachKey(expr)
     }
 }
 
-impl Transform for EachKey {
+impl<T> Transform for EachKey<T>
+where
+    T: Transform,
+{
     fn transform(&self, value: Value) -> Value {
         match value {
             Value::Object(object) => Value::Object(
@@ -234,18 +238,21 @@ impl Transform for EachKey {
     }
 }
 
-/// EachValue applies a chain of transformations to every value of an array or object. For values
-/// of any other type this is a no-op.
-pub struct EachValue(Chain);
+/// EachValue applies a transformations to every value of an array or object. For values of any
+/// other type this is a no-op.
+pub struct EachValue<T>(T);
 
-impl EachValue {
-    /// Creates a new `EachValue` which applies the `Chain` to every value of an array or object.
-    pub fn new(chain: Chain) -> Self {
-        EachValue(chain)
+impl<T> EachValue<T> {
+    /// Creates a new `EachValue` which applies the expression to every value of an array or object.
+    pub fn new(expr: T) -> Self {
+        EachValue(expr)
     }
 }
 
-impl Transform for EachValue {
+impl<T> Transform for EachValue<T>
+where
+    T: Transform,
+{
     fn transform(&self, value: Value) -> Value {
         match value {
             Value::Array(array) => Value::Array(
@@ -416,10 +423,7 @@ pub struct Insert<T> {
     expr: T,
 }
 
-impl<T> Insert<T>
-where
-    T: Transform,
-{
+impl<T> Insert<T> {
     /// Creates a new `Insert` which will insert the result of `expr` at the provided `key_index`.
     pub fn new<K>(key_index: K, expr: T) -> Self
     where
