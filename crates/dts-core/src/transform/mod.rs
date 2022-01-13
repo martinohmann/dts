@@ -473,22 +473,26 @@ where
 
 /// A transformation that can push and pop values from the ring buffer.
 pub enum RingBuffer {
-    /// Push value to the front of the buffer.
-    PushFront,
+    /// Peek all values back-to-front.
+    PeekAllBack,
+    /// Peek all values from front-to-back.
+    PeekAllFront,
+    /// Peek value at the back of the buffer.
+    PeekBack,
     /// Peek value at the front of the buffer.
     PeekFront,
+    /// Pop all values back-to-front.
+    PopAllBack,
+    /// Pop all values front-to-back.
+    PopAllFront,
+    /// Pop value from the back of the buffer.
+    PopBack,
     /// Pop value from the front of the buffer.
     PopFront,
     /// Push value to the back of the buffer.
     PushBack,
-    /// Peek value at the back of the buffer.
-    PeekBack,
-    /// Pop value from the back of the buffer.
-    PopBack,
-    /// Peek all values from front-to-back.
-    PeekAll,
-    /// Pop all values from front-to-back.
-    PopAll,
+    /// Push value to the front of the buffer.
+    PushFront,
 }
 
 impl Transform for RingBuffer {
@@ -496,25 +500,33 @@ impl Transform for RingBuffer {
         let ringbuf = state.ringbuf_mut();
 
         let value = match self {
-            RingBuffer::PushFront => {
-                ringbuf.push_front(value.clone());
-                Some(value)
-            }
-            RingBuffer::PeekFront => ringbuf.front().cloned(),
-            RingBuffer::PopFront => ringbuf.pop_front(),
-            RingBuffer::PushBack => {
-                ringbuf.push_back(value.clone());
-                Some(value)
-            }
+            RingBuffer::PeekAllBack => Some(ringbuf.iter().rev().cloned().collect()),
+            RingBuffer::PeekAllFront => Some(ringbuf.iter().cloned().collect()),
             RingBuffer::PeekBack => ringbuf.back().cloned(),
-            RingBuffer::PopBack => ringbuf.pop_back(),
-            RingBuffer::PeekAll => Some(ringbuf.iter().cloned().collect()),
-            RingBuffer::PopAll => {
+            RingBuffer::PeekFront => ringbuf.front().cloned(),
+            RingBuffer::PopAllBack => {
+                let mut vec = Vec::with_capacity(ringbuf.len());
+                while let Some(value) = ringbuf.pop_back() {
+                    vec.push(value);
+                }
+                Some(Value::Array(vec))
+            }
+            RingBuffer::PopAllFront => {
                 let mut vec = Vec::with_capacity(ringbuf.len());
                 while let Some(value) = ringbuf.pop_front() {
                     vec.push(value);
                 }
                 Some(Value::Array(vec))
+            }
+            RingBuffer::PopBack => ringbuf.pop_back(),
+            RingBuffer::PopFront => ringbuf.pop_front(),
+            RingBuffer::PushBack => {
+                ringbuf.push_back(value.clone());
+                Some(value)
+            }
+            RingBuffer::PushFront => {
+                ringbuf.push_front(value.clone());
+                Some(value)
             }
         };
 
@@ -1072,5 +1084,51 @@ mod tests {
             insert.transform(json!(["foo", "bar"]), &mut State::new()),
             json!(["foo", "bar"])
         );
+    }
+
+    #[test]
+    fn test_ring_buffer() {
+        use RingBuffer::*;
+        use Value::Null;
+
+        #[track_caller]
+        fn fill_buf<T: Transform>(t: T, state: &mut State) {
+            for i in 0..3 {
+                let value = t.transform(json!(i), state);
+                assert_eq!(value, json!(i));
+            }
+        }
+
+        let state = &mut State::new();
+
+        fill_buf(PushFront, state);
+        assert_eq!(PeekAllFront.transform(Null, state), json!([2, 1, 0]));
+        assert_eq!(state.ringbuf.len(), 3);
+
+        for i in 0..3 {
+            let value = PopBack.transform(Null, state);
+            assert_eq!(value, json!(i));
+        }
+
+        assert!(state.ringbuf.is_empty());
+
+        fill_buf(PushBack, state);
+        assert_eq!(PeekAllBack.transform(Null, state), json!([2, 1, 0]));
+        assert_eq!(state.ringbuf.len(), 3);
+
+        for i in 0..3 {
+            let value = PopFront.transform(Null, state);
+            assert_eq!(value, json!(i));
+        }
+
+        assert!(state.ringbuf.is_empty());
+
+        fill_buf(PushFront, state);
+        assert_eq!(PopAllFront.transform(Null, state), json!([2, 1, 0]));
+        assert!(state.ringbuf.is_empty());
+
+        fill_buf(PushBack, state);
+        assert_eq!(PopAllBack.transform(Null, state), json!([2, 1, 0]));
+        assert!(state.ringbuf.is_empty());
     }
 }

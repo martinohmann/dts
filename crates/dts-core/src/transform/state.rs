@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 /// Represents the transform state.
 #[derive(Default)]
 pub struct State {
-    ringbuf: VecDeque<Value>,
+    pub(crate) ringbuf: VecDeque<Value>,
 }
 
 impl State {

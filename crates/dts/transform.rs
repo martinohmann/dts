@@ -272,10 +272,24 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 .add_arg(&expression_arg)
         )
         .add_definition(
-            Definition::new("push_front")
+            Definition::new("peek_all_back")
                 .with_description(indoc! {r#"
-                    Pushes the current value to the front of the ring buffer. Returns the current
-                    value unaltered.
+                    Peeks all values from the ring buffer back-to-front without taking them out and
+                    returns them as an array.
+                "#})
+        )
+        .add_definition(
+            Definition::new("peek_all_front")
+                .with_description(indoc! {r#"
+                    Peeks all values from the ring buffer front-to-back without taking them out and
+                    returns them as an array.
+                "#})
+        )
+        .add_definition(
+            Definition::new("peek_back")
+                .with_description(indoc! {r#"
+                    Peeks the value from the back of the ring buffer without taking it out. If the
+                    buffer is empty, the value will be null.
                 "#})
         )
         .add_definition(
@@ -283,6 +297,25 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 .with_description(indoc! {r#"
                     Peeks the value from the front of the ring buffer without taking it out. If the
                     buffer is empty, the value will be null.
+                "#})
+        )
+        .add_definition(
+            Definition::new("pop_all_back")
+                .with_description(indoc !{r#"
+                    Pops all values from the ring buffer back-to-front and returns them as an array.
+                "#})
+        )
+        .add_definition(
+            Definition::new("pop_all_front")
+                .with_description(indoc !{r#"
+                    Pops all values from the ring buffer front-to-back and returns them as an array.
+                "#})
+        )
+        .add_definition(
+            Definition::new("pop_back")
+                .with_description(indoc! {r#"
+                    Pops the value from the back of the ring buffer. If the buffer is empty, the
+                    value will be null.
                 "#})
         )
         .add_definition(
@@ -300,30 +333,10 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 "#})
         )
         .add_definition(
-            Definition::new("peek_back")
+            Definition::new("push_front")
                 .with_description(indoc! {r#"
-                    Peeks the value from the back of the ring buffer without taking it out. If the
-                    buffer is empty, the value will be null.
-                "#})
-        )
-        .add_definition(
-            Definition::new("pop_back")
-                .with_description(indoc! {r#"
-                    Pops the value from the back of the ring buffer. If the buffer is empty, the
-                    value will be null.
-                "#})
-        )
-        .add_definition(
-            Definition::new("peek_all")
-                .with_description(indoc! {r#"
-                    Peeks all values from the ring buffer front-to-back without taking them out and
-                    returns them as an array.
-                "#})
-        )
-        .add_definition(
-            Definition::new("pop_all")
-                .with_description(indoc !{r#"
-                    Pops all values from the ring buffer front-to-back and returns them as an array.
+                    Pushes the current value to the front of the ring buffer. Returns the current
+                    value unaltered.
                 "#})
         )
 }
@@ -372,14 +385,16 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
             let chain = m.map_expr("expression", parse_matches)?;
             Box::new(Mutate::new(mutator, chain))
         }
-        "push_front" => Box::new(RingBuffer::PushFront),
+        "peek_all_back" => Box::new(RingBuffer::PeekAllBack),
+        "peek_all_front" => Box::new(RingBuffer::PeekAllFront),
+        "peek_back" => Box::new(RingBuffer::PeekBack),
         "peek_front" => Box::new(RingBuffer::PeekFront),
+        "pop_all_back" => Box::new(RingBuffer::PopAllBack),
+        "pop_all_front" => Box::new(RingBuffer::PopAllFront),
+        "pop_back" => Box::new(RingBuffer::PopBack),
         "pop_front" => Box::new(RingBuffer::PopFront),
         "push_back" => Box::new(RingBuffer::PushBack),
-        "peek_back" => Box::new(RingBuffer::PeekBack),
-        "pop_back" => Box::new(RingBuffer::PopBack),
-        "peek_all" => Box::new(RingBuffer::PeekAll),
-        "pop_all" => Box::new(RingBuffer::PopAll),
+        "push_front" => Box::new(RingBuffer::PushFront),
         "remove" => Box::new(Remove::new(m.parse_str("query")?)),
         "remove_empty_values" => Box::new(Unparameterized::RemoveEmptyValues),
         "replace_string" => {
