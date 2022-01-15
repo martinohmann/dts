@@ -1,40 +1,21 @@
 use dts_json::{Map, Number, Value};
-use regex::Regex;
 
 #[derive(Debug, PartialEq)]
-pub struct JsonPath(pub(super) Vec<JsonPathSelector>);
+pub struct JsonPath(pub(super) Vec<Selector>);
 
 #[derive(Debug, PartialEq)]
-pub struct RelPath(Vec<RelPathSelector>);
-
-#[derive(Debug, PartialEq)]
-pub enum Path {
-    JsonPath(JsonPath),
-    RelPath(RelPath),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum JsonPathSelector {
+pub enum Selector {
     Root,
+    Current,
     Dot(String),
     Wildcard,
     Index(IndexSelector),
     IndexWildcard,
-    Union(UnionSelector),
+    Union(Vec<UnionEntry>),
     Slice(Slice),
-    Descendant(DescendantSelector),
-    Filter(FilterSelector),
+    Descendant(Descendant),
+    Filter(FilterExpr),
 }
-
-#[derive(Debug, PartialEq)]
-pub enum RelPathSelector {
-    Current,
-    Dot(String),
-    IndexSelector(IndexSelector),
-}
-
-#[derive(Debug, PartialEq)]
-pub struct UnionSelector(pub(super) Vec<UnionEntry>);
 
 #[derive(Debug, PartialEq)]
 pub enum IndexSelector {
@@ -57,7 +38,7 @@ pub struct Slice {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum DescendantSelector {
+pub enum Descendant {
     Key(String),
     Index(IndexSelector),
     IndexWildcard,
@@ -65,34 +46,14 @@ pub enum DescendantSelector {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct FilterSelector(FilterExpr);
-
-#[derive(Debug, PartialEq)]
 pub enum FilterExpr {
-    NotExpr,
-    LogicalOrExpr(Vec<FilterExpr>),
-    LogicalAndExpr(Vec<FilterExpr>),
-    ParenExpr(ParenExpr),
-    ExistExpr(ExistExpr),
-    CompExpr(CompExpr),
-    RegexExpr(RegexExpr),
-    ContainExpr(ContainExpr),
-}
-
-#[derive(Debug, PartialEq)]
-pub struct NotExpr(Box<FilterExpr>);
-
-#[derive(Debug, PartialEq)]
-pub struct ParenExpr(Box<FilterExpr>);
-
-#[derive(Debug, PartialEq)]
-pub struct ExistExpr(Path);
-
-#[derive(Debug, PartialEq)]
-pub struct CompExpr {
-    lhs: Comparable,
-    rhs: Comparable,
-    op: CompOp,
+    Not(Box<FilterExpr>),
+    Or(Vec<FilterExpr>),
+    And(Vec<FilterExpr>),
+    Exist(JsonPath),
+    Comp(Comparable, CompOp, Comparable),
+    Regex(Regex),
+    Contain(Containable, Container),
 }
 
 #[derive(Debug, PartialEq)]
@@ -111,34 +72,39 @@ pub enum Comparable {
     String(String),
     Boolean(bool),
     Null,
-    Path(Path),
+    Path(JsonPath),
 }
 
 #[derive(Debug)]
-pub struct RegexExpr(Regex);
-
-impl PartialEq for RegexExpr {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.to_string().eq(&other.0.to_string())
-    }
+pub enum Regex {
+    String(String, regex::Regex),
+    Path(JsonPath, regex::Regex),
 }
 
-#[derive(Debug, PartialEq)]
-pub struct ContainExpr {
-    containable: Containable,
-    container: Container,
+impl PartialEq for Regex {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Regex::String(s1, re1), Regex::String(s2, re2)) => {
+                s1 == s2 && re1.to_string() == re2.to_string()
+            }
+            (Regex::Path(p1, re1), Regex::Path(p2, re2)) => {
+                p1 == p2 && re1.to_string() == re2.to_string()
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Containable {
     Number(Number),
     String(String),
-    Path(Box<Path>),
+    Path(JsonPath),
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Container {
     Array(Vec<Value>),
     Object(Map<String, Value>),
-    Path(Box<Path>),
+    Path(JsonPath),
 }

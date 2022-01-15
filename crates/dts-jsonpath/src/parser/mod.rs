@@ -4,7 +4,7 @@ mod ast;
 
 use ast::*;
 
-use crate::Result;
+use crate::{Error, Result};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as ParserTrait;
 use pest_derive::Parser;
@@ -14,56 +14,67 @@ use pest_derive::Parser;
 struct JsonPathParser;
 
 pub fn parse(input: &str) -> Result<JsonPath> {
-    let path = JsonPathParser::parse(Rule::Root, input)?
-        .take_while(|pair| pair.as_rule() != Rule::EOI)
-        .map(|pair| match pair.as_rule() {
-            Rule::RootSelector => Ok(JsonPathSelector::Root),
-            Rule::DotSelector => Ok(JsonPathSelector::Dot(parse_dot_member_name(pair))),
-            Rule::DotWildSelector => Ok(JsonPathSelector::Wildcard),
-            Rule::IndexSelector => Ok(JsonPathSelector::Index(parse_index_selector(pair))),
-            Rule::IndexWildSelector => Ok(JsonPathSelector::IndexWildcard),
-            Rule::UnionSelector => Ok(JsonPathSelector::Union(parse_union_selector(pair))),
-            Rule::SliceSelector => Ok(JsonPathSelector::Slice(parse_slice(
-                pair.into_inner().next().unwrap(),
-            ))),
-            Rule::DescendantSelector => Ok(JsonPathSelector::Descendant(
-                parse_descendant_selector(pair),
-            )),
-            Rule::FilterSelector => unimplemented!(),
-            _ => unreachable!(),
-        })
-        .collect::<Result<Vec<_>>>()?;
+    let pairs = JsonPathParser::parse(Rule::Root, input)?;
 
-    Ok(JsonPath(path))
+    parse_jsonpath(pairs)
 }
 
-fn parse_dot_member_name(pair: Pair<Rule>) -> String {
-    pair.into_inner().next().unwrap().as_str().to_owned()
+fn parse_jsonpath(pairs: Pairs<Rule>) -> Result<JsonPath> {
+    Ok(JsonPath(
+        pairs
+            .take_while(|pair| pair.as_rule() != Rule::EOI)
+            .map(parse_selector)
+            .collect::<Result<Vec<_>>>()?,
+    ))
 }
 
-fn parse_quoted_member_name(pair: Pair<Rule>) -> String {
-    parse_dot_member_name(pair.into_inner().next().unwrap())
-}
-
-fn parse_index_selector(pair: Pair<Rule>) -> IndexSelector {
-    let pair = pair.into_inner().next().unwrap();
-
+fn parse_selector(pair: Pair<Rule>) -> Result<Selector> {
     match pair.as_rule() {
-        Rule::ElementIndex => IndexSelector::Index(pair.as_str().parse().unwrap()),
-        Rule::QuotedMemberName => IndexSelector::Key(parse_quoted_member_name(pair)),
-        _ => unreachable!(),
+        Rule::RootSelector => Ok(Selector::Root),
+        Rule::CurrentSelector => Ok(Selector::Current),
+        Rule::DotSelector => Ok(Selector::Dot(parse_dot(pair))),
+        Rule::DotWildSelector => Ok(Selector::Wildcard),
+        Rule::IndexSelector => Ok(Selector::Index(parse_index(pair))),
+        Rule::IndexWildSelector => Ok(Selector::IndexWildcard),
+        Rule::UnionSelector => Ok(Selector::Union(parse_union(pair))),
+        Rule::SliceSelector => Ok(Selector::Slice(parse_slice(
+            pair.into_inner().next().unwrap(),
+        ))),
+        Rule::DescendantSelector => Ok(Selector::Descendant(parse_descendant(pair))),
+        Rule::FilterSelector => Ok(Selector::Filter(parse_filter_expr(
+            pair.into_inner().next().unwrap(),
+        )?)),
+        rule => unreachable_rule(rule),
     }
 }
 
-fn parse_descendant_selector(pair: Pair<Rule>) -> DescendantSelector {
-    let pair = pair.into_inner().next().unwrap();
+fn parse_dot(pair: Pair<Rule>) -> String {
+    inner_pair(pair).as_str().to_owned()
+}
+
+fn parse_quoted_string(pair: Pair<Rule>) -> String {
+    parse_dot(inner_pair(pair))
+}
+
+fn parse_index(pair: Pair<Rule>) -> IndexSelector {
+    let pair = inner_pair(pair);
 
     match pair.as_rule() {
-        Rule::DotMemberName => DescendantSelector::Key(parse_dot_member_name(pair)),
-        Rule::IndexSelector => DescendantSelector::Index(parse_index_selector(pair)),
-        Rule::IndexWildSelector => DescendantSelector::IndexWildcard,
-        Rule::Wildcard => DescendantSelector::Wildcard,
-        _ => unreachable!(),
+        Rule::ElementIndex => IndexSelector::Index(pair.as_str().parse().unwrap()),
+        Rule::QuotedMemberName => IndexSelector::Key(parse_quoted_string(pair)),
+        rule => unreachable_rule(rule),
+    }
+}
+
+fn parse_descendant(pair: Pair<Rule>) -> Descendant {
+    let pair = inner_pair(pair);
+
+    match pair.as_rule() {
+        Rule::DotMemberName => Descendant::Key(parse_dot(pair)),
+        Rule::IndexSelector => Descendant::Index(parse_index(pair)),
+        Rule::IndexWildSelector => Descendant::IndexWildcard,
+        Rule::Wildcard => Descendant::Wildcard,
+        rule => unreachable_rule(rule),
     }
 }
 
@@ -103,19 +114,66 @@ fn parse_slice_index(pair: Pair<Rule>) -> i64 {
     pair.as_str().parse().unwrap()
 }
 
-fn parse_union_selector(pair: Pair<Rule>) -> UnionSelector {
-    UnionSelector(pair.into_inner().map(parse_union_entry).collect())
+fn parse_union(pair: Pair<Rule>) -> Vec<UnionEntry> {
+    pair.into_inner()
+        .map(|pair| {
+            let pair = pair.into_inner().next().unwrap();
+
+            match pair.as_rule() {
+                Rule::ElementIndex => UnionEntry::Index(pair.as_str().parse().unwrap()),
+                Rule::QuotedMemberName => UnionEntry::Key(parse_quoted_string(pair)),
+                Rule::SliceIndex => UnionEntry::Slice(parse_slice(pair)),
+                rule => unreachable_rule(rule),
+            }
+        })
+        .collect()
 }
 
-fn parse_union_entry(pair: Pair<Rule>) -> UnionEntry {
-    let pair = pair.into_inner().next().unwrap();
+fn parse_filter_expr(pair: Pair<Rule>) -> Result<FilterExpr> {
+    let expr = match pair.as_rule() {
+        Rule::LogicalOrExpr => FilterExpr::Or(parse_filter_exprs(pair)?),
+        Rule::LogicalAndExpr => FilterExpr::And(parse_filter_exprs(pair)?),
+        Rule::ExistExpr => panic!("exist"),
+        Rule::NegExpr => FilterExpr::Not(Box::new(parse_filter_expr(pair)?)),
+        Rule::CompExpr => panic!("comp"),
+        Rule::RegexExpr => FilterExpr::Regex(parse_regex_expr(pair)?),
+        Rule::ContainExpr => panic!("contain"),
+        rule => panic!("unexpected filter expr: {:?}", rule),
+    };
 
-    match pair.as_rule() {
-        Rule::ElementIndex => UnionEntry::Index(pair.as_str().parse().unwrap()),
-        Rule::QuotedMemberName => UnionEntry::Key(parse_quoted_member_name(pair)),
-        Rule::SliceIndex => UnionEntry::Slice(parse_slice(pair)),
-        _ => unreachable!(),
+    Ok(expr)
+}
+
+fn parse_filter_exprs(pair: Pair<Rule>) -> Result<Vec<FilterExpr>> {
+    pair.into_inner()
+        .map(parse_filter_expr)
+        .collect::<Result<Vec<_>>>()
+}
+
+fn parse_regex_expr(pair: Pair<Rule>) -> Result<Regex> {
+    let mut pairs = pair.into_inner();
+
+    let operand = pairs.next().unwrap();
+    let re = parse_regex(inner_pair(pairs.next().unwrap()))?;
+
+    match operand.as_rule() {
+        Rule::Path => Ok(Regex::Path(parse_jsonpath(operand.into_inner())?, re)),
+        Rule::String => Ok(Regex::String(parse_quoted_string(operand), re)),
+        rule => unreachable_rule(rule),
     }
+}
+
+fn parse_regex(pair: Pair<Rule>) -> Result<regex::Regex> {
+    // @TODO(mohmann): add custom regex variant to `Error`
+    regex::Regex::new(pair.as_str()).map_err(Error::new)
+}
+
+fn inner_pair(pair: Pair<Rule>) -> Pair<Rule> {
+    pair.into_inner().next().unwrap()
+}
+
+fn unreachable_rule(rule: Rule) -> ! {
+    panic!("unreachable rule: {:?}", rule)
 }
 
 #[cfg(test)]
@@ -125,7 +183,7 @@ mod test {
     #[test]
     fn test_parse_root() {
         let parsed = parse("$").unwrap();
-        assert_eq!(parsed, JsonPath(vec![JsonPathSelector::Root]))
+        assert_eq!(parsed, JsonPath(vec![Selector::Root]))
     }
 
     #[test]
@@ -133,26 +191,17 @@ mod test {
         let parsed = parse("$.foo").unwrap();
         assert_eq!(
             parsed,
-            JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::Dot("foo".into())
-            ])
+            JsonPath(vec![Selector::Root, Selector::Dot("foo".into())])
         );
 
         let parsed = parse("$.*").unwrap();
-        assert_eq!(
-            parsed,
-            JsonPath(vec![JsonPathSelector::Root, JsonPathSelector::Wildcard])
-        )
+        assert_eq!(parsed, JsonPath(vec![Selector::Root, Selector::Wildcard]))
     }
 
     #[test]
     fn test_parse_wildcard() {
         let parsed = parse("$.*").unwrap();
-        assert_eq!(
-            parsed,
-            JsonPath(vec![JsonPathSelector::Root, JsonPathSelector::Wildcard])
-        )
+        assert_eq!(parsed, JsonPath(vec![Selector::Root, Selector::Wildcard]))
     }
 
     #[test]
@@ -161,8 +210,8 @@ mod test {
         assert_eq!(
             parsed,
             JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::Index(IndexSelector::Index(1))
+                Selector::Root,
+                Selector::Index(IndexSelector::Index(1))
             ])
         );
 
@@ -170,8 +219,8 @@ mod test {
         assert_eq!(
             parsed,
             JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::Index(IndexSelector::Key(r#"foo\""#.into()))
+                Selector::Root,
+                Selector::Index(IndexSelector::Key(r#"foo\""#.into()))
             ])
         );
     }
@@ -181,10 +230,7 @@ mod test {
         let parsed = parse("$[*]").unwrap();
         assert_eq!(
             parsed,
-            JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::IndexWildcard
-            ])
+            JsonPath(vec![Selector::Root, Selector::IndexWildcard])
         )
     }
 
@@ -194,8 +240,8 @@ mod test {
         assert_eq!(
             parsed,
             JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::Descendant(DescendantSelector::Index(IndexSelector::Index(1)))
+                Selector::Root,
+                Selector::Descendant(Descendant::Index(IndexSelector::Index(1)))
             ])
         );
 
@@ -203,10 +249,8 @@ mod test {
         assert_eq!(
             parsed,
             JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::Descendant(DescendantSelector::Index(IndexSelector::Key(
-                    "foo".into()
-                )))
+                Selector::Root,
+                Selector::Descendant(Descendant::Index(IndexSelector::Key("foo".into())))
             ])
         );
 
@@ -214,8 +258,8 @@ mod test {
         assert_eq!(
             parsed,
             JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::Descendant(DescendantSelector::Wildcard)
+                Selector::Root,
+                Selector::Descendant(Descendant::Wildcard)
             ])
         );
 
@@ -223,8 +267,8 @@ mod test {
         assert_eq!(
             parsed,
             JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::Descendant(DescendantSelector::IndexWildcard)
+                Selector::Root,
+                Selector::Descendant(Descendant::IndexWildcard)
             ])
         );
     }
@@ -235,8 +279,8 @@ mod test {
         assert_eq!(
             parsed,
             JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::Slice(Slice {
+                Selector::Root,
+                Selector::Slice(Slice {
                     start: Some(1),
                     end: Some(2),
                     step: Some(3),
@@ -251,8 +295,8 @@ mod test {
         assert_eq!(
             parsed,
             JsonPath(vec![
-                JsonPathSelector::Root,
-                JsonPathSelector::Union(UnionSelector(vec![
+                Selector::Root,
+                Selector::Union(vec![
                     UnionEntry::Slice(Slice {
                         start: Some(1),
                         end: Some(2),
@@ -260,7 +304,24 @@ mod test {
                     }),
                     UnionEntry::Key("foo".into()),
                     UnionEntry::Index(1),
-                ]))
+                ])
+            ])
+        );
+    }
+
+    #[test]
+    fn test_parse_filter() {
+        let parsed = parse("$[?(@ =~ /foo/)]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![
+                Selector::Root,
+                Selector::Filter(FilterExpr::Or(vec![FilterExpr::And(vec![FilterExpr::Or(
+                    vec![FilterExpr::And(vec![FilterExpr::Regex(Regex::Path(
+                        JsonPath(vec![Selector::Current]),
+                        regex::Regex::new("foo").unwrap()
+                    ))])]
+                )])]))
             ])
         );
     }
