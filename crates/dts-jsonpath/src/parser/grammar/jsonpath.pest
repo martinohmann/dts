@@ -1,0 +1,128 @@
+// Specs:
+// - https://ietf-wg-jsonpath.github.io/draft-ietf-jsonpath-base/draft-ietf-jsonpath-base.html
+// - https://www.ietf.org/id/draft-ietf-jsonpath-base-02.html
+
+Root = _{ SOI ~ JsonPath ~ EOI }
+
+JsonPath = _{
+    RootSelector ~ (
+        DotSelector |
+        DotWildSelector |
+        IndexSelector |
+        IndexWildSelector |
+        UnionSelector |
+        SliceSelector |
+        DescendantSelector |
+        FilterSelector
+    )*
+}
+
+// Root selector
+RootSelector = { "$" }
+
+// Dot selector
+DotSelector   =  { "." ~ DotMemberName }
+DotMemberName = @{ NameFirst ~ NameChar* }
+NameFirst     =  { ASCII_ALPHA | "_" }
+NameChar      =  { ASCII_ALPHANUMERIC }
+
+// Dot wildcard selector
+DotWildSelector = { "." ~ "*" }
+
+// Index selector
+IndexSelector = { "[" ~ (QuotedMemberName | ElementIndex) ~ "]" }
+QuotedMemberName = { StringLiteral }
+ElementIndex     = { Int }
+
+// Index wildcard selector
+IndexWildSelector = { "[" ~ "*" ~ "]" }
+
+// Slice selector
+SliceSelector = { ("[" ~ "]") | ("[" ~ SliceIndex ~ "]") }
+SliceIndex = {
+    (SliceStart? ~ ":" ~ SliceEnd?) |
+    (SliceStart? ~ ":" ~ SliceEnd? ~ ":" ~ SliceStep?)
+}
+SliceStart    = { Int }
+SliceEnd      = { Int }
+SliceStep     = { Int }
+
+// Descendant selector
+DescendantSelector = { ".." ~ (DotMemberName | IndexSelector | IndexWildSelector | "*") }
+
+// Union selector
+UnionSelector = { "[" ~ UnionEntry ~ ("," ~ UnionEntry){1,} ~ "]" }
+UnionEntry    = { QuotedMemberName | ElementIndex | SliceIndex }
+
+// Filter selector
+FilterSelector = { "[" ~ "?" ~ BooleanExpr ~ "]" }
+
+// Expressions
+BooleanExpr    = { LogicalOrExpr }
+LogicalOrExpr  = { LogicalAndExpr ~ ("||" ~ LogicalAndExpr)* }
+LogicalAndExpr = { BasicExpr ~ ("&&" ~ BasicExpr)* }
+BasicExpr      = { ParenExpr | RelationExpr | ExistExpr }
+ExistExpr      = { NegOp? ~ Path }
+ParenExpr      = { NegOp? ~ "(" ~ BooleanExpr ~ ")" }
+RelationExpr   = { CompExpr | RegexExpr | ContainExpr }
+CompExpr       = { Comparable ~ CompOp ~ Comparable }
+RegexExpr      = { (Path | StringLiteral) ~ RegexOp ~ Regex }
+ContainExpr    = { Containable ~ InOp ~ Container }
+
+// Paths
+Path    = { RelPath | JsonPath }
+RelPath = { "@" ~ (DotSelector | IndexSelector)* }
+
+// Operations
+NegOp   = { "!" }
+CompOp  = { "==" | "!=" | "<=" | "<" | ">=" | ">" }
+RegexOp = { "=~" }
+InOp    = { "in" }
+
+// Other
+Comparable  = { Number | StringLiteral | Boolean | Null | Path }
+Containable = { RelPath | JsonPath | Number | StringLiteral }
+Container   = { RelPath | JsonPath | Array }
+
+// ArrayLiteral
+Array = { "[" ~ "]" | "[" ~ ArrayValue ~ ("," ~ ArrayValue)* ~ "]" }
+ArrayValue = { StringLiteral | Number | Boolean | Null}
+
+// Simple regex
+Regex          = { "/" ~ RegexInner ~ "/" }
+RegexInner     = { (("\\" ~ ("/" | "\\")) | (!"/" ~ ANY))* }
+
+// Boolean and null literals
+Boolean = { "true" | "false" }
+Null    = { "null" }
+
+// Numbers
+Number     =  { Float | Int }
+Float      = @{ "-"? ~ Decimal ~ (("." ~ Decimal ~ (ExpMark ~ Decimal)?) | (ExpMark ~ Decimal)) }
+Int        = @{ "-"? ~ Decimal }
+ExpMark    = ${ ("e" | "E") ~ ("+" | "-")? }
+Decimal    = ${ ("0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)) }
+
+// String literals
+StringLiteral   =  { StringLiteralSq | StringLiteralDq }
+StringLiteralSq = ${ "\'" ~ StringInnerSq ~ "\'" }
+StringLiteralDq = ${ "\"" ~ StringInnerDq ~ "\"" }
+StringInnerSq   = @{ CharSq* }
+StringInnerDq   = @{ CharDq* }
+
+// Chars allowed in single quoted strings
+CharSq = {
+    !("\'" | "\\") ~ ANY
+    | "\\" ~ ("\'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+// Chars allowed in double quoted strings
+CharDq = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+// Whitespace between tokens
+WHITESPACE = _{ " " | "\t" | NEWLINE }

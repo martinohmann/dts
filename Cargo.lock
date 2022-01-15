@@ -512,6 +512,10 @@ dependencies = [
 [[package]]
 name = "dts-jsonpath"
 version = "0.1.0"
+dependencies = [
+ "pest",
+ "pest_derive",
+]
 
 [[package]]
 name = "either"
