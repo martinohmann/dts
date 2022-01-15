@@ -19,6 +19,7 @@ JsonPath = _{
 
 // Root selector
 RootSelector = { "$" }
+CurrentSelector = { "@" }
 
 // Dot selector
 DotSelector   =  { "." ~ DotMemberName }
@@ -42,13 +43,13 @@ IndexWildSelector = { "[" ~ Wildcard ~ "]" }
 
 // Union selector
 UnionSelector = { "[" ~ UnionEntry ~ ("," ~ UnionEntry){1,} ~ "]" }
-UnionEntry    = { QuotedMemberName | ElementIndex | SliceIndex }
+UnionEntry    = { QuotedMemberName | SliceIndex | ElementIndex }
 
 // Slice selector
 SliceSelector = { ("[" ~ "]") | ("[" ~ SliceIndex ~ "]") }
 SliceIndex = {
-    (SliceStart? ~ ":" ~ SliceEnd?) |
-    (SliceStart? ~ ":" ~ SliceEnd? ~ ":" ~ SliceStep?)
+    (SliceStart? ~ ":" ~ SliceEnd? ~ ":" ~ SliceStep?) |
+    (SliceStart? ~ ":" ~ SliceEnd?)
 }
 SliceStart    = { Int }
 SliceEnd      = { Int }
@@ -64,9 +65,10 @@ FilterSelector = { "[" ~ "?" ~ BooleanExpr ~ "]" }
 BooleanExpr    = { LogicalOrExpr }
 LogicalOrExpr  = { LogicalAndExpr ~ ("||" ~ LogicalAndExpr)* }
 LogicalAndExpr = { BasicExpr ~ ("&&" ~ BasicExpr)* }
-BasicExpr      = { ParenExpr | RelationExpr | ExistExpr }
-ExistExpr      = { NegOp? ~ Path }
-ParenExpr      = { NegOp? ~ "(" ~ BooleanExpr ~ ")" }
+BasicExpr      = { RelationExpr | NegExpr | ParenExpr | ExistExpr }
+ExistExpr      = { Path }
+ParenExpr      = { "(" ~ BooleanExpr ~ ")" }
+NegExpr        = { NegOp ~ (ParenExpr | ExistExpr) }
 RelationExpr   = { CompExpr | RegexExpr | ContainExpr }
 CompExpr       = { Comparable ~ CompOp ~ Comparable }
 RegexExpr      = { (Path | String) ~ RegexOp ~ Regex }
@@ -74,7 +76,7 @@ ContainExpr    = { Containable ~ InOp ~ Container }
 
 // Paths
 Path    = { RelPath | JsonPath }
-RelPath = { "@" ~ (DotSelector | IndexSelector)* }
+RelPath = { CurrentSelector ~ (DotSelector | IndexSelector)* }
 
 // Operations
 NegOp   = { "!" }
@@ -110,7 +112,7 @@ ExpMark    = ${ ("e" | "E") ~ ("+" | "-")? }
 Decimal    = ${ ("0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)) }
 
 // String literals
-String          =  { StringSq | StringDq }
+String          = _{ StringSq | StringDq }
 StringSq        = ${ "\'" ~ StringInnerSq ~ "\'" }
 StringDq        = ${ "\"" ~ StringInnerDq ~ "\"" }
 StringInnerSq   = @{ CharSq* }

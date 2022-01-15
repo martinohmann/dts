@@ -7,7 +7,7 @@ edition = "2021"
 thiserror = "1.0.30"
 
 [dependencies.indexmap]
-features = ["rayon"]
+features = ["rayon", "serde"]
 version = "1.7.0"
 
 [dependencies.serde]

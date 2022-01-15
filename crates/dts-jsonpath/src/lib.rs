@@ -1,5 +1,5 @@
 #![doc = include_str!("../README.md")]
-#![warn(missing_docs)]
+#![allow(missing_docs, dead_code)]
 
 mod error;
 mod parser;

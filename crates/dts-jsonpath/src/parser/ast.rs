@@ -1,61 +1,77 @@
 use dts_json::{Map, Number, Value};
 use regex::Regex;
 
-struct Path(Vec<Selector>);
+#[derive(Debug, PartialEq)]
+pub struct JsonPath(pub(super) Vec<JsonPathSelector>);
 
-enum Selector {
-    Root(RootSelector),
-    Current(CurrentSelector),
-    Dot(DotSelector),
+#[derive(Debug, PartialEq)]
+pub struct RelPath(Vec<RelPathSelector>);
+
+#[derive(Debug, PartialEq)]
+pub enum Path {
+    JsonPath(JsonPath),
+    RelPath(RelPath),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum JsonPathSelector {
+    Root,
+    Dot(String),
     Wildcard,
     Index(IndexSelector),
     IndexWildcard,
     Union(UnionSelector),
-    Slice(SliceSelector),
-    Descendant,
-    Filter(Expr),
+    Slice(Slice),
+    Descendant(DescendantSelector),
+    Filter(FilterSelector),
 }
 
-struct RootSelector;
+#[derive(Debug, PartialEq)]
+pub enum RelPathSelector {
+    Current,
+    Dot(String),
+    IndexSelector(IndexSelector),
+}
 
-struct CurrentSelector(Box<Path>);
+#[derive(Debug, PartialEq)]
+pub struct UnionSelector(pub(super) Vec<UnionEntry>);
 
-struct DotSelector(String);
-
-struct UnionSelector(Vec<UnionEntry>);
-
-struct SliceSelector(Option<SliceIndex>);
-
-enum IndexSelector {
+#[derive(Debug, PartialEq)]
+pub enum IndexSelector {
     Index(i64),
     Key(String),
 }
 
-enum UnionEntry {
+#[derive(Debug, PartialEq)]
+pub enum UnionEntry {
     Key(String),
     Index(i64),
-    SliceIndex(SliceIndex),
+    Slice(Slice),
 }
 
-struct SliceIndex {
-    start: Option<i64>,
-    end: Option<i64>,
-    step: Option<i64>,
+#[derive(Debug, PartialEq)]
+pub struct Slice {
+    pub(super) start: Option<i64>,
+    pub(super) end: Option<i64>,
+    pub(super) step: Option<i64>,
 }
 
-enum DescendantSelector {
+#[derive(Debug, PartialEq)]
+pub enum DescendantSelector {
     Key(String),
-    Index(i64),
+    Index(IndexSelector),
     IndexWildcard,
     Wildcard,
 }
 
-struct FilterSelector(Expr);
+#[derive(Debug, PartialEq)]
+pub struct FilterSelector(FilterExpr);
 
-enum Expr {
+#[derive(Debug, PartialEq)]
+pub enum FilterExpr {
     NotExpr,
-    LogicalOrExpr(Vec<Expr>),
-    LogicalAndExpr(Vec<Expr>),
+    LogicalOrExpr(Vec<FilterExpr>),
+    LogicalAndExpr(Vec<FilterExpr>),
     ParenExpr(ParenExpr),
     ExistExpr(ExistExpr),
     CompExpr(CompExpr),
@@ -63,19 +79,24 @@ enum Expr {
     ContainExpr(ContainExpr),
 }
 
-struct NotExpr(Box<Expr>);
+#[derive(Debug, PartialEq)]
+pub struct NotExpr(Box<FilterExpr>);
 
-struct ParenExpr(Box<Expr>);
+#[derive(Debug, PartialEq)]
+pub struct ParenExpr(Box<FilterExpr>);
 
-struct ExistExpr(Box<Path>);
+#[derive(Debug, PartialEq)]
+pub struct ExistExpr(Path);
 
-struct CompExpr {
+#[derive(Debug, PartialEq)]
+pub struct CompExpr {
     lhs: Comparable,
     rhs: Comparable,
     op: CompOp,
 }
 
-enum CompOp {
+#[derive(Debug, PartialEq)]
+pub enum CompOp {
     Eq,
     NotEq,
     LessEq,
@@ -84,28 +105,39 @@ enum CompOp {
     Greater,
 }
 
-enum Comparable {
+#[derive(Debug, PartialEq)]
+pub enum Comparable {
     Number(Number),
     String(String),
     Boolean(bool),
     Null,
-    Path(Box<Path>),
+    Path(Path),
 }
 
-struct RegexExpr(Regex);
+#[derive(Debug)]
+pub struct RegexExpr(Regex);
 
-struct ContainExpr {
+impl PartialEq for RegexExpr {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_string().eq(&other.0.to_string())
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ContainExpr {
     containable: Containable,
     container: Container,
 }
 
-enum Containable {
+#[derive(Debug, PartialEq)]
+pub enum Containable {
     Number(Number),
     String(String),
     Path(Box<Path>),
 }
 
-enum Container {
+#[derive(Debug, PartialEq)]
+pub enum Container {
     Array(Vec<Value>),
     Object(Map<String, Value>),
     Path(Box<Path>),
