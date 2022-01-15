@@ -78,7 +78,6 @@ fn parse_descendant(pair: Pair<Rule>) -> Descendant {
 fn parse_slice(pair: Pair<Rule>) -> Slice {
     let indices = pair
         .into_inner()
-        .map(|pair| pair.into_inner().next().unwrap())
         .map(parse_slice_index)
         .collect::<Vec<i64>>();
 
@@ -92,7 +91,7 @@ fn parse_slice(pair: Pair<Rule>) -> Slice {
             .with_start(indices[0])
             .with_end(indices[1])
             .with_step(indices[2]),
-        _ => unreachable!(),
+        n => panic!("expected slice with <= 3 indices, got {}", n),
     }
 }
 
@@ -129,7 +128,9 @@ fn parse_filter_expr(pair: Pair<Rule>) -> Result<FilterExpr> {
 
     // Unwrap single expr or/and exprs.
     let expr = match expr {
-        FilterExpr::Or(mut es) | FilterExpr::And(mut es) if es.len() == 1 => es.swap_remove(0),
+        FilterExpr::Or(mut exprs) | FilterExpr::And(mut exprs) if exprs.len() == 1 => {
+            exprs.swap_remove(0)
+        }
         expr => expr,
     };
 
