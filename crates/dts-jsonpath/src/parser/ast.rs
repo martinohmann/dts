@@ -32,11 +32,32 @@ pub enum UnionEntry {
     Slice(Slice),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct Slice {
     pub(super) start: Option<i64>,
     pub(super) end: Option<i64>,
     pub(super) step: Option<i64>,
+}
+
+impl Slice {
+    pub fn new() -> Self {
+        Slice::default()
+    }
+
+    pub fn with_start(mut self, start: i64) -> Self {
+        self.start = Some(start);
+        self
+    }
+
+    pub fn with_end(mut self, end: i64) -> Self {
+        self.end = Some(end);
+        self
+    }
+
+    pub fn with_step(mut self, step: i64) -> Self {
+        self.step = Some(step);
+        self
+    }
 }
 
 #[derive(Debug, PartialEq)]

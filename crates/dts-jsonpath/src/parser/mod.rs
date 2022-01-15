@@ -82,27 +82,16 @@ fn parse_slice(pair: Pair<Rule>) -> Slice {
         .map(parse_slice_index)
         .collect::<Vec<i64>>();
 
+    let slice = Slice::new();
+
     match &indices.len() {
-        0 => Slice {
-            start: None,
-            end: None,
-            step: None,
-        },
-        1 => Slice {
-            start: Some(indices[0]),
-            end: None,
-            step: None,
-        },
-        2 => Slice {
-            start: Some(indices[0]),
-            end: Some(indices[1]),
-            step: None,
-        },
-        3 => Slice {
-            start: Some(indices[0]),
-            end: Some(indices[1]),
-            step: Some(indices[2]),
-        },
+        0 => slice,
+        1 => slice.with_start(indices[0]),
+        2 => slice.with_start(indices[0]).with_end(indices[1]),
+        3 => slice
+            .with_start(indices[0])
+            .with_end(indices[1])
+            .with_step(indices[2]),
         _ => unreachable!(),
     }
 }
