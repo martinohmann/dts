@@ -134,7 +134,7 @@ fn parse_filter_expr(pair: Pair<Rule>) -> Result<FilterExpr> {
         Rule::LogicalOrExpr => FilterExpr::Or(parse_filter_exprs(pair)?),
         Rule::LogicalAndExpr => FilterExpr::And(parse_filter_exprs(pair)?),
         Rule::ExistExpr => panic!("exist"),
-        Rule::NegExpr => FilterExpr::Not(Box::new(parse_filter_expr(pair)?)),
+        Rule::NegExpr => FilterExpr::Not(Box::new(parse_filter_expr(inner_pair(pair))?)),
         Rule::CompExpr => panic!("comp"),
         Rule::RegexExpr => FilterExpr::Regex(parse_regex_expr(pair)?),
         Rule::ContainExpr => panic!("contain"),
@@ -320,6 +320,24 @@ mod test {
                     vec![FilterExpr::And(vec![FilterExpr::Regex(Regex::Path(
                         JsonPath(vec![Selector::Current]),
                         regex::Regex::new("foo").unwrap()
+                    ))])]
+                )])]))
+            ])
+        );
+
+        let parsed = parse("$[?(!(@ =~ /foo/))]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![
+                Selector::Root,
+                Selector::Filter(FilterExpr::Or(vec![FilterExpr::And(vec![FilterExpr::Or(
+                    vec![FilterExpr::And(vec![FilterExpr::Not(Box::new(
+                        FilterExpr::Or(vec![FilterExpr::And(vec![FilterExpr::Regex(
+                            Regex::Path(
+                                JsonPath(vec![Selector::Current]),
+                                regex::Regex::new("foo").unwrap()
+                            )
+                        )])])
                     ))])]
                 )])]))
             ])
