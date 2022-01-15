@@ -8,6 +8,7 @@ use crate::{Error, Result};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as ParserTrait;
 use pest_derive::Parser;
+use std::str::FromStr;
 
 #[derive(Parser)]
 #[grammar = "parser/grammar/jsonpath.pest"]
@@ -131,9 +132,9 @@ fn parse_filter_expr(pair: Pair<Rule>) -> Result<FilterExpr> {
         Rule::LogicalAndExpr => FilterExpr::And(parse_filter_exprs(pair)?),
         Rule::ExistExpr => FilterExpr::Exist(parse_jsonpath(inner(pair).into_inner())?),
         Rule::NegExpr => FilterExpr::Not(Box::new(parse_filter_expr(inner(pair))?)),
-        Rule::CompExpr => panic!("comp"),
+        Rule::CompExpr => FilterExpr::Comp(parse_comp_expr(pair)?),
         Rule::RegexExpr => FilterExpr::Regex(parse_regex_expr(pair)?),
-        Rule::ContainExpr => panic!("contain"),
+        Rule::ContainExpr => FilterExpr::Contain(parse_contain_expr(pair)?),
         rule => panic!("unexpected filter expr: {:?}", rule),
     };
 
@@ -170,6 +171,44 @@ fn parse_regex_expr(pair: Pair<Rule>) -> Result<Regex> {
 fn parse_regex(pair: Pair<Rule>) -> Result<regex::Regex> {
     // @TODO(mohmann): add custom regex variant to `Error`
     regex::Regex::new(pair.as_str()).map_err(Error::new)
+}
+
+fn parse_comp_expr(pair: Pair<Rule>) -> Result<CompExpr> {
+    let mut pairs = pair.into_inner();
+
+    let lhs = parse_comparable(pairs.next().unwrap())?;
+    let op = parse_comp_op(pairs.next().unwrap())?;
+    let rhs = parse_comparable(pairs.next().unwrap())?;
+
+    Ok(CompExpr { lhs, op, rhs })
+}
+
+fn parse_comparable(_pair: Pair<Rule>) -> Result<Comparable> {
+    unimplemented!()
+}
+
+fn parse_comp_op(pair: Pair<Rule>) -> Result<CompOp> {
+    CompOp::from_str(pair.as_str())
+}
+
+fn parse_contain_expr(pair: Pair<Rule>) -> Result<ContainExpr> {
+    let mut pairs = pair.into_inner();
+
+    let containable = parse_containable(pairs.next().unwrap())?;
+    let container = parse_container(pairs.next().unwrap())?;
+
+    Ok(ContainExpr {
+        containable,
+        container,
+    })
+}
+
+fn parse_containable(_pair: Pair<Rule>) -> Result<Containable> {
+    unimplemented!()
+}
+
+fn parse_container(_pair: Pair<Rule>) -> Result<Container> {
+    unimplemented!()
 }
 
 fn inner(pair: Pair<Rule>) -> Pair<Rule> {

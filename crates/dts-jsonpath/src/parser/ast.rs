@@ -1,4 +1,6 @@
+use crate::Error;
 use dts_json::{Map, Number, Value};
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 pub struct JsonPath(pub(super) Vec<Selector>);
@@ -51,9 +53,16 @@ pub enum FilterExpr {
     Or(Vec<FilterExpr>),
     And(Vec<FilterExpr>),
     Exist(JsonPath),
-    Comp(Comparable, CompOp, Comparable),
+    Comp(CompExpr),
     Regex(Regex),
-    Contain(Containable, Container),
+    Contain(ContainExpr),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct CompExpr {
+    pub(super) lhs: Comparable,
+    pub(super) op: CompOp,
+    pub(super) rhs: Comparable,
 }
 
 #[derive(Debug, PartialEq)]
@@ -64,6 +73,25 @@ pub enum CompOp {
     Less,
     GreaterEq,
     Greater,
+}
+
+impl FromStr for CompOp {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "==" => Ok(CompOp::Eq),
+            "!=" => Ok(CompOp::NotEq),
+            "<=" => Ok(CompOp::LessEq),
+            "<" => Ok(CompOp::Less),
+            ">=" => Ok(CompOp::GreaterEq),
+            ">" => Ok(CompOp::Greater),
+            other => Err(Error::new(format!(
+                "not a comparision operation: {}",
+                other
+            ))),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -93,6 +121,12 @@ impl PartialEq for Regex {
             _ => false,
         }
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ContainExpr {
+    pub(super) containable: Containable,
+    pub(super) container: Container,
 }
 
 #[derive(Debug, PartialEq)]
