@@ -26,16 +26,23 @@ DotMemberName = @{ NameFirst ~ NameChar* }
 NameFirst     =  { ASCII_ALPHA | "_" }
 NameChar      =  { ASCII_ALPHANUMERIC }
 
+// Wildcard
+Wildcard = { "*" }
+
 // Dot wildcard selector
-DotWildSelector = { "." ~ "*" }
+DotWildSelector = { "." ~ Wildcard }
 
 // Index selector
 IndexSelector = { "[" ~ (QuotedMemberName | ElementIndex) ~ "]" }
-QuotedMemberName = { StringLiteral }
+QuotedMemberName = { String }
 ElementIndex     = { Int }
 
 // Index wildcard selector
-IndexWildSelector = { "[" ~ "*" ~ "]" }
+IndexWildSelector = { "[" ~ Wildcard ~ "]" }
+
+// Union selector
+UnionSelector = { "[" ~ UnionEntry ~ ("," ~ UnionEntry){1,} ~ "]" }
+UnionEntry    = { QuotedMemberName | ElementIndex | SliceIndex }
 
 // Slice selector
 SliceSelector = { ("[" ~ "]") | ("[" ~ SliceIndex ~ "]") }
@@ -48,11 +55,7 @@ SliceEnd      = { Int }
 SliceStep     = { Int }
 
 // Descendant selector
-DescendantSelector = { ".." ~ (DotMemberName | IndexSelector | IndexWildSelector | "*") }
-
-// Union selector
-UnionSelector = { "[" ~ UnionEntry ~ ("," ~ UnionEntry){1,} ~ "]" }
-UnionEntry    = { QuotedMemberName | ElementIndex | SliceIndex }
+DescendantSelector = { ".." ~ (DotMemberName | IndexSelector | IndexWildSelector | Wildcard) }
 
 // Filter selector
 FilterSelector = { "[" ~ "?" ~ BooleanExpr ~ "]" }
@@ -66,7 +69,7 @@ ExistExpr      = { NegOp? ~ Path }
 ParenExpr      = { NegOp? ~ "(" ~ BooleanExpr ~ ")" }
 RelationExpr   = { CompExpr | RegexExpr | ContainExpr }
 CompExpr       = { Comparable ~ CompOp ~ Comparable }
-RegexExpr      = { (Path | StringLiteral) ~ RegexOp ~ Regex }
+RegexExpr      = { (Path | String) ~ RegexOp ~ Regex }
 ContainExpr    = { Containable ~ InOp ~ Container }
 
 // Paths
@@ -80,13 +83,16 @@ RegexOp = { "=~" }
 InOp    = { "in" }
 
 // Other
-Comparable  = { Number | StringLiteral | Boolean | Null | Path }
-Containable = { RelPath | JsonPath | Number | StringLiteral }
-Container   = { RelPath | JsonPath | Array }
+Comparable  = { Number | String | Boolean | Null | Path }
+Containable = { Path | Number | String }
+Container   = { Path | Array | Object }
 
-// ArrayLiteral
-Array = { "[" ~ "]" | "[" ~ ArrayValue ~ ("," ~ ArrayValue)* ~ "]" }
-ArrayValue = { StringLiteral | Number | Boolean | Null}
+// Collections
+Object       = { "{" ~ "}" | "{" ~ KeyValuePair ~ ("," ~ KeyValuePair)* ~ "}" }
+KeyValuePair = { String ~ ":" ~ Value }
+Array        = { "[" ~ "]" | "[" ~ Value ~ ("," ~ Value)* ~ "]" }
+
+Value = { Object | Array | String | Number | Boolean | Null }
 
 // Simple regex
 Regex          = { "/" ~ RegexInner ~ "/" }
@@ -104,9 +110,9 @@ ExpMark    = ${ ("e" | "E") ~ ("+" | "-")? }
 Decimal    = ${ ("0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)) }
 
 // String literals
-StringLiteral   =  { StringLiteralSq | StringLiteralDq }
-StringLiteralSq = ${ "\'" ~ StringInnerSq ~ "\'" }
-StringLiteralDq = ${ "\"" ~ StringInnerDq ~ "\"" }
+String          =  { StringSq | StringDq }
+StringSq        = ${ "\'" ~ StringInnerSq ~ "\'" }
+StringDq        = ${ "\"" ~ StringInnerDq ~ "\"" }
 StringInnerSq   = @{ CharSq* }
 StringInnerDq   = @{ CharDq* }
 

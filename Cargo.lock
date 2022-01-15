@@ -513,8 +513,10 @@ dependencies = [
 name = "dts-jsonpath"
 version = "0.1.0"
 dependencies = [
+ "dts-json",
  "pest",
  "pest_derive",
+ "regex",
 ]
 
 [[package]]
