@@ -32,32 +32,28 @@ fn parse_selector(pair: Pair<Rule>) -> Result<Selector> {
     match pair.as_rule() {
         Rule::RootSelector => Ok(Selector::Root),
         Rule::CurrentSelector => Ok(Selector::Current),
-        Rule::DotSelector => Ok(Selector::Dot(parse_dot(pair))),
+        Rule::DotSelector => Ok(Selector::Key(parse_dot(pair))),
         Rule::DotWildSelector => Ok(Selector::Wildcard),
         Rule::IndexSelector => Ok(Selector::Index(parse_index(pair))),
         Rule::IndexWildSelector => Ok(Selector::IndexWildcard),
         Rule::UnionSelector => Ok(Selector::Union(parse_union(pair))),
-        Rule::SliceSelector => Ok(Selector::Slice(parse_slice(
-            pair.into_inner().next().unwrap(),
-        ))),
+        Rule::SliceSelector => Ok(Selector::Slice(parse_slice(inner(pair)))),
         Rule::DescendantSelector => Ok(Selector::Descendant(parse_descendant(pair))),
-        Rule::FilterSelector => Ok(Selector::Filter(parse_filter_expr(
-            pair.into_inner().next().unwrap(),
-        )?)),
+        Rule::FilterSelector => Ok(Selector::Filter(parse_filter_expr(inner(pair))?)),
         rule => unreachable_rule(rule),
     }
 }
 
 fn parse_dot(pair: Pair<Rule>) -> String {
-    inner_pair(pair).as_str().to_owned()
+    inner(pair).as_str().to_owned()
 }
 
 fn parse_quoted_string(pair: Pair<Rule>) -> String {
-    parse_dot(inner_pair(pair))
+    parse_dot(inner(pair))
 }
 
 fn parse_index(pair: Pair<Rule>) -> IndexSelector {
-    let pair = inner_pair(pair);
+    let pair = inner(pair);
 
     match pair.as_rule() {
         Rule::ElementIndex => IndexSelector::Index(pair.as_str().parse().unwrap()),
@@ -67,7 +63,7 @@ fn parse_index(pair: Pair<Rule>) -> IndexSelector {
 }
 
 fn parse_descendant(pair: Pair<Rule>) -> Descendant {
-    let pair = inner_pair(pair);
+    let pair = inner(pair);
 
     match pair.as_rule() {
         Rule::DotMemberName => Descendant::Key(parse_dot(pair)),
@@ -133,12 +129,18 @@ fn parse_filter_expr(pair: Pair<Rule>) -> Result<FilterExpr> {
     let expr = match pair.as_rule() {
         Rule::LogicalOrExpr => FilterExpr::Or(parse_filter_exprs(pair)?),
         Rule::LogicalAndExpr => FilterExpr::And(parse_filter_exprs(pair)?),
-        Rule::ExistExpr => panic!("exist"),
-        Rule::NegExpr => FilterExpr::Not(Box::new(parse_filter_expr(inner_pair(pair))?)),
+        Rule::ExistExpr => FilterExpr::Exist(parse_jsonpath(inner(pair).into_inner())?),
+        Rule::NegExpr => FilterExpr::Not(Box::new(parse_filter_expr(inner(pair))?)),
         Rule::CompExpr => panic!("comp"),
         Rule::RegexExpr => FilterExpr::Regex(parse_regex_expr(pair)?),
         Rule::ContainExpr => panic!("contain"),
         rule => panic!("unexpected filter expr: {:?}", rule),
+    };
+
+    // Unwrap single expr or/and exprs.
+    let expr = match expr {
+        FilterExpr::Or(mut es) | FilterExpr::And(mut es) if es.len() == 1 => es.swap_remove(0),
+        expr => expr,
     };
 
     Ok(expr)
@@ -154,10 +156,12 @@ fn parse_regex_expr(pair: Pair<Rule>) -> Result<Regex> {
     let mut pairs = pair.into_inner();
 
     let operand = pairs.next().unwrap();
-    let re = parse_regex(inner_pair(pairs.next().unwrap()))?;
+    let re = parse_regex(inner(pairs.next().unwrap()))?;
 
     match operand.as_rule() {
-        Rule::Path => Ok(Regex::Path(parse_jsonpath(operand.into_inner())?, re)),
+        Rule::RelPath | Rule::JsonPath => {
+            Ok(Regex::Path(parse_jsonpath(operand.into_inner())?, re))
+        }
         Rule::String => Ok(Regex::String(parse_quoted_string(operand), re)),
         rule => unreachable_rule(rule),
     }
@@ -168,10 +172,11 @@ fn parse_regex(pair: Pair<Rule>) -> Result<regex::Regex> {
     regex::Regex::new(pair.as_str()).map_err(Error::new)
 }
 
-fn inner_pair(pair: Pair<Rule>) -> Pair<Rule> {
+fn inner(pair: Pair<Rule>) -> Pair<Rule> {
     pair.into_inner().next().unwrap()
 }
 
+#[track_caller]
 fn unreachable_rule(rule: Rule) -> ! {
     panic!("unreachable rule: {:?}", rule)
 }
@@ -191,7 +196,7 @@ mod test {
         let parsed = parse("$.foo").unwrap();
         assert_eq!(
             parsed,
-            JsonPath(vec![Selector::Root, Selector::Dot("foo".into())])
+            JsonPath(vec![Selector::Root, Selector::Key("foo".into())])
         );
 
         let parsed = parse("$.*").unwrap();
@@ -316,12 +321,10 @@ mod test {
             parsed,
             JsonPath(vec![
                 Selector::Root,
-                Selector::Filter(FilterExpr::Or(vec![FilterExpr::And(vec![FilterExpr::Or(
-                    vec![FilterExpr::And(vec![FilterExpr::Regex(Regex::Path(
-                        JsonPath(vec![Selector::Current]),
-                        regex::Regex::new("foo").unwrap()
-                    ))])]
-                )])]))
+                Selector::Filter(FilterExpr::Regex(Regex::Path(
+                    JsonPath(vec![Selector::Current]),
+                    regex::Regex::new("foo").unwrap()
+                )))
             ])
         );
 
@@ -330,16 +333,40 @@ mod test {
             parsed,
             JsonPath(vec![
                 Selector::Root,
-                Selector::Filter(FilterExpr::Or(vec![FilterExpr::And(vec![FilterExpr::Or(
-                    vec![FilterExpr::And(vec![FilterExpr::Not(Box::new(
-                        FilterExpr::Or(vec![FilterExpr::And(vec![FilterExpr::Regex(
-                            Regex::Path(
-                                JsonPath(vec![Selector::Current]),
-                                regex::Regex::new("foo").unwrap()
-                            )
-                        )])])
-                    ))])]
-                )])]))
+                Selector::Filter(FilterExpr::Not(Box::new(FilterExpr::Regex(Regex::Path(
+                    JsonPath(vec![Selector::Current]),
+                    regex::Regex::new("foo").unwrap()
+                )))))
+            ])
+        );
+
+        let parsed = parse("$[?(@ =~ /foo/ && @.bar =~ /qux/)]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![
+                Selector::Root,
+                Selector::Filter(FilterExpr::And(vec![
+                    FilterExpr::Regex(Regex::Path(
+                        JsonPath(vec![Selector::Current]),
+                        regex::Regex::new("foo").unwrap()
+                    )),
+                    FilterExpr::Regex(Regex::Path(
+                        JsonPath(vec![Selector::Current, Selector::Key("bar".into())]),
+                        regex::Regex::new("qux").unwrap()
+                    ))
+                ]))
+            ])
+        );
+
+        let parsed = parse("$[?(@.foo)]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![
+                Selector::Root,
+                Selector::Filter(FilterExpr::Exist(JsonPath(vec![
+                    Selector::Current,
+                    Selector::Key("foo".into())
+                ])))
             ])
         );
     }

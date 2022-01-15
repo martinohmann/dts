@@ -7,7 +7,7 @@ pub struct JsonPath(pub(super) Vec<Selector>);
 pub enum Selector {
     Root,
     Current,
-    Dot(String),
+    Key(String),
     Wildcard,
     Index(IndexSelector),
     IndexWildcard,

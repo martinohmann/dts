@@ -75,8 +75,8 @@ RegexExpr      =  { (Path | String) ~ RegexOp ~ Regex }
 ContainExpr    =  { Containable ~ InOp ~ Container }
 
 // Paths
-Path    =  { RelPath | JsonPath }
-RelPath = _{ CurrentSelector ~ (DotSelector | IndexSelector)* }
+Path    = _{ RelPath | JsonPath }
+RelPath =  { CurrentSelector ~ (DotSelector | IndexSelector)* }
 
 // Operations
 NegOp   = _{ "!" }
