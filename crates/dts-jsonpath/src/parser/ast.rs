@@ -1,5 +1,6 @@
 use crate::Error;
 use dts_json::{Map, Number, Value};
+use regex::Regex;
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
@@ -75,7 +76,7 @@ pub enum FilterExpr {
     And(Vec<FilterExpr>),
     Exist(JsonPath),
     Comp(CompExpr),
-    Regex(Regex),
+    Regex(RegexExpr),
     Contain(ContainExpr),
 }
 
@@ -125,18 +126,18 @@ pub enum Comparable {
 }
 
 #[derive(Debug)]
-pub enum Regex {
-    String(String, regex::Regex),
-    Path(JsonPath, regex::Regex),
+pub enum RegexExpr {
+    String(String, Regex),
+    Path(JsonPath, Regex),
 }
 
-impl PartialEq for Regex {
+impl PartialEq for RegexExpr {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Regex::String(s1, re1), Regex::String(s2, re2)) => {
+            (RegexExpr::String(s1, re1), RegexExpr::String(s2, re2)) => {
                 s1 == s2 && re1.to_string() == re2.to_string()
             }
-            (Regex::Path(p1, re1), Regex::Path(p2, re2)) => {
+            (RegexExpr::Path(p1, re1), RegexExpr::Path(p2, re2)) => {
                 p1 == p2 && re1.to_string() == re2.to_string()
             }
             _ => false,

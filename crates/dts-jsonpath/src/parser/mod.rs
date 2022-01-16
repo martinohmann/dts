@@ -8,6 +8,7 @@ use crate::{Error, Result};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as ParserTrait;
 use pest_derive::Parser;
+use regex::Regex;
 use std::str::FromStr;
 
 #[derive(Parser)]
@@ -143,7 +144,7 @@ fn parse_filter_exprs(pair: Pair<Rule>) -> Result<Vec<FilterExpr>> {
         .collect::<Result<Vec<_>>>()
 }
 
-fn parse_regex_expr(pair: Pair<Rule>) -> Result<Regex> {
+fn parse_regex_expr(pair: Pair<Rule>) -> Result<RegexExpr> {
     let mut pairs = pair.into_inner();
 
     let operand = pairs.next().unwrap();
@@ -151,16 +152,16 @@ fn parse_regex_expr(pair: Pair<Rule>) -> Result<Regex> {
 
     match operand.as_rule() {
         Rule::RelPath | Rule::JsonPath => {
-            Ok(Regex::Path(parse_jsonpath(operand.into_inner())?, re))
+            Ok(RegexExpr::Path(parse_jsonpath(operand.into_inner())?, re))
         }
-        Rule::String => Ok(Regex::String(parse_quoted_string(operand), re)),
+        Rule::String => Ok(RegexExpr::String(parse_quoted_string(operand), re)),
         rule => unreachable_rule(rule),
     }
 }
 
-fn parse_regex(pair: Pair<Rule>) -> Result<regex::Regex> {
+fn parse_regex(pair: Pair<Rule>) -> Result<Regex> {
     // @TODO(mohmann): add custom regex variant to `Error`
-    regex::Regex::new(pair.as_str()).map_err(Error::new)
+    Regex::new(pair.as_str()).map_err(Error::new)
 }
 
 fn parse_comp_expr(pair: Pair<Rule>) -> Result<CompExpr> {
@@ -350,7 +351,7 @@ mod test {
             parsed,
             JsonPath(vec![
                 Selector::Root,
-                Selector::Filter(FilterExpr::Regex(Regex::Path(
+                Selector::Filter(FilterExpr::Regex(RegexExpr::Path(
                     JsonPath(vec![Selector::Current]),
                     regex::Regex::new("foo").unwrap()
                 )))
@@ -362,10 +363,12 @@ mod test {
             parsed,
             JsonPath(vec![
                 Selector::Root,
-                Selector::Filter(FilterExpr::Not(Box::new(FilterExpr::Regex(Regex::Path(
-                    JsonPath(vec![Selector::Current]),
-                    regex::Regex::new("foo").unwrap()
-                )))))
+                Selector::Filter(FilterExpr::Not(Box::new(FilterExpr::Regex(
+                    RegexExpr::Path(
+                        JsonPath(vec![Selector::Current]),
+                        regex::Regex::new("foo").unwrap()
+                    )
+                ))))
             ])
         );
 
@@ -375,11 +378,11 @@ mod test {
             JsonPath(vec![
                 Selector::Root,
                 Selector::Filter(FilterExpr::And(vec![
-                    FilterExpr::Regex(Regex::Path(
+                    FilterExpr::Regex(RegexExpr::Path(
                         JsonPath(vec![Selector::Current]),
                         regex::Regex::new("foo").unwrap()
                     )),
-                    FilterExpr::Regex(Regex::Path(
+                    FilterExpr::Regex(RegexExpr::Path(
                         JsonPath(vec![Selector::Current, Selector::Key("bar".into())]),
                         regex::Regex::new("qux").unwrap()
                     ))
