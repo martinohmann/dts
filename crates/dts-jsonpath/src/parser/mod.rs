@@ -5,7 +5,7 @@ mod ast;
 use ast::*;
 
 use crate::{Error, Result};
-use dts_json::Number;
+use dts_json::{json, Map, Value};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as ParserTrait;
 use pest_derive::Parser;
@@ -18,7 +18,6 @@ struct JsonPathParser;
 
 pub fn parse(input: &str) -> Result<JsonPath> {
     let pairs = JsonPathParser::parse(Rule::Root, input)?;
-
     parse_jsonpath(pairs)
 }
 
@@ -41,7 +40,7 @@ fn parse_selector(pair: Pair<Rule>) -> Result<Selector> {
         Rule::SliceSelector => Ok(Selector::Slice(parse_slice_selector(pair))),
         Rule::DescendantSelector => Ok(Selector::Descendant(parse_descendant_selector(pair))),
         Rule::FilterSelector => Ok(Selector::Filter(parse_filter_expr(inner(pair))?)),
-        rule => unreachable_rule(rule),
+        rule => unmatched_rule(rule),
     }
 }
 
@@ -51,7 +50,7 @@ fn parse_index_selector(pair: Pair<Rule>) -> IndexSelector {
     match pair.as_rule() {
         Rule::ElementIndex => IndexSelector::Index(parse_int(pair)),
         Rule::QuotedMemberName => IndexSelector::Key(parse_quoted_string(pair)),
-        rule => unreachable_rule(rule),
+        rule => unmatched_rule(rule),
     }
 }
 
@@ -66,7 +65,7 @@ fn parse_descendant_selector(pair: Pair<Rule>) -> DescendantSelector {
         },
         Rule::IndexWildSelector => DescendantSelector::IndexWildcard,
         Rule::Wildcard => DescendantSelector::Wildcard,
-        rule => unreachable_rule(rule),
+        rule => unmatched_rule(rule),
     }
 }
 
@@ -85,7 +84,7 @@ fn parse_slice_index(pair: Pair<Rule>) -> SliceSelector {
             Rule::SliceStart => slice.start = pair.as_str().parse().ok(),
             Rule::SliceEnd => slice.end = pair.as_str().parse().ok(),
             Rule::SliceStep => slice.step = pair.as_str().parse().ok(),
-            rule => unreachable_rule(rule),
+            rule => unmatched_rule(rule),
         }
     }
 
@@ -101,7 +100,7 @@ fn parse_union_selector(pair: Pair<Rule>) -> UnionSelector {
                 Rule::ElementIndex => UnionEntry::Index(parse_int(pair)),
                 Rule::QuotedMemberName => UnionEntry::Key(parse_quoted_string(pair)),
                 Rule::SliceIndex => UnionEntry::Slice(parse_slice_index(pair)),
-                rule => unreachable_rule(rule),
+                rule => unmatched_rule(rule),
             }
         })
         .collect()
@@ -116,7 +115,7 @@ fn parse_filter_expr(pair: Pair<Rule>) -> Result<FilterExpr> {
         Rule::CompExpr => FilterExpr::Comp(parse_comp_expr(pair)?),
         Rule::RegexExpr => FilterExpr::Regex(parse_regex_expr(pair)?),
         Rule::ContainExpr => FilterExpr::Contain(parse_contain_expr(pair)?),
-        rule => panic!("unexpected filter expr: {:?}", rule),
+        rule => unmatched_rule(rule),
     };
 
     // Unwrap single expr or/and exprs.
@@ -147,12 +146,11 @@ fn parse_regex_expr(pair: Pair<Rule>) -> Result<RegexExpr> {
             Ok(RegexExpr::Path(parse_jsonpath(operand.into_inner())?, re))
         }
         Rule::String => Ok(RegexExpr::String(parse_quoted_string(operand), re)),
-        rule => unreachable_rule(rule),
+        rule => unmatched_rule(rule),
     }
 }
 
 fn parse_regex(pair: Pair<Rule>) -> Result<Regex> {
-    // @TODO(mohmann): add custom regex variant to `Error`
     Regex::new(pair.as_str()).map_err(Error::new)
 }
 
@@ -175,7 +173,7 @@ fn parse_comparable(pair: Pair<Rule>) -> Result<Comparable> {
         Rule::String => Ok(Comparable::String(parse_string(pair))),
         Rule::Boolean => Ok(Comparable::Boolean(parse_bool(pair))),
         Rule::Null => Ok(Comparable::Null),
-        rule => unreachable_rule(rule),
+        rule => unmatched_rule(rule),
     }
 }
 
@@ -192,12 +190,30 @@ fn parse_contain_expr(pair: Pair<Rule>) -> Result<ContainExpr> {
     })
 }
 
-fn parse_containable(_pair: Pair<Rule>) -> Result<Containable> {
-    unimplemented!()
+fn parse_containable(pair: Pair<Rule>) -> Result<Containable> {
+    let pair = inner(pair);
+
+    match pair.as_rule() {
+        Rule::RelPath | Rule::JsonPath => Ok(Containable::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Number => Ok(Containable::Number(parse_float(pair))),
+        Rule::String => Ok(Containable::String(parse_string(pair))),
+        rule => unmatched_rule(rule),
+    }
 }
 
-fn parse_container(_pair: Pair<Rule>) -> Result<Container> {
-    unimplemented!()
+fn parse_container(pair: Pair<Rule>) -> Result<Container> {
+    let pair = inner(pair);
+
+    match pair.as_rule() {
+        Rule::RelPath | Rule::JsonPath => Ok(Container::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Array => Ok(Container::Array(
+            serde_json::from_str(pair.as_str()).map_err(Error::new)?,
+        )),
+        Rule::Object => Ok(Container::Object(
+            serde_json::from_str(pair.as_str()).map_err(Error::new)?,
+        )),
+        rule => unmatched_rule(rule),
+    }
 }
 
 fn parse_string(pair: Pair<Rule>) -> String {
@@ -225,8 +241,8 @@ fn inner(pair: Pair<Rule>) -> Pair<Rule> {
 }
 
 #[track_caller]
-fn unreachable_rule(rule: Rule) -> ! {
-    panic!("unreachable rule: {:?}", rule)
+fn unmatched_rule(rule: Rule) -> ! {
+    panic!("unmatched rule: {:?}", rule)
 }
 
 #[cfg(test)]
@@ -481,6 +497,21 @@ mod test {
                     lhs: Comparable::Path(vec![Selector::Current, Selector::Key("foo".into())]),
                     op: CompOp::Eq,
                     rhs: Comparable::String("bar".into())
+                }))
+            ]
+        );
+
+        let parsed = parse("$[?(@.foo in [1, 2])]").unwrap();
+        assert_eq!(
+            parsed,
+            vec![
+                Selector::Root,
+                Selector::Filter(FilterExpr::Contain(ContainExpr {
+                    containable: Containable::Path(vec![
+                        Selector::Current,
+                        Selector::Key("foo".into())
+                    ]),
+                    container: Container::Array(vec![json!(1), json!(2)])
                 }))
             ]
         );

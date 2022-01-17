@@ -517,6 +517,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "regex",
+ "serde_json",
 ]
 
 [[package]]

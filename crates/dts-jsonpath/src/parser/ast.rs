@@ -120,7 +120,7 @@ impl PartialEq for RegexExpr {
             (RegexExpr::Path(p1, re1), RegexExpr::Path(p2, re2)) => {
                 p1 == p2 && re1.to_string() == re2.to_string()
             }
-            _ => false,
+            (_, _) => false,
         }
     }
 }
