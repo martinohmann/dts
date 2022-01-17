@@ -1,11 +1,9 @@
-#![allow(unused_imports)]
+//! Provides a jsonpath parser and types for the AST elements of a jsonpath query.
 
 mod ast;
 
-use ast::*;
-
 use crate::{Error, Result};
-use dts_json::{json, Map, Value};
+pub use ast::*;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as ParserTrait;
 use pest_derive::Parser;
@@ -16,6 +14,8 @@ use std::str::FromStr;
 #[grammar = "parser/grammar/jsonpath.pest"]
 struct JsonPathParser;
 
+/// Parses a `JsonPath` from an input string or returns an error if the input is not a value
+/// jsonpath query.
 pub fn parse(input: &str) -> Result<JsonPath> {
     let pairs = JsonPathParser::parse(Rule::Root, input)?;
     parse_jsonpath(pairs)
@@ -250,6 +250,7 @@ fn unmatched_rule(rule: Rule) -> ! {
 #[cfg(test)]
 mod test {
     use super::*;
+    use dts_json::json;
 
     #[test]
     fn test_parse_root() {

@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
-#![allow(missing_docs, dead_code)]
 
-mod error;
-mod parser;
+pub mod error;
+pub mod parser;
 
 pub use error::{Error, Result};
+pub use parser::parse;

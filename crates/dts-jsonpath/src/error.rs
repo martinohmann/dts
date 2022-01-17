@@ -1,4 +1,5 @@
 //! The `Error` and `Result` types used by this crate.
+
 use crate::parser::Rule;
 use std::fmt::{self, Display};
 
