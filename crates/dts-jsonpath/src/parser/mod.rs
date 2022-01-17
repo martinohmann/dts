@@ -39,7 +39,7 @@ fn parse_selector(pair: Pair<Rule>) -> Result<Selector> {
         Rule::IndexSelector => Ok(Selector::Index(parse_index(pair))),
         Rule::IndexWildSelector => Ok(Selector::IndexWildcard),
         Rule::UnionSelector => Ok(Selector::Union(parse_union(pair))),
-        Rule::SliceSelector => Ok(Selector::Slice(parse_slice(inner(pair)))),
+        Rule::SliceSelector => Ok(Selector::Slice(parse_slice(pair))),
         Rule::DescendantSelector => Ok(Selector::Descendant(parse_descendant(pair))),
         Rule::FilterSelector => Ok(Selector::Filter(parse_filter_expr(inner(pair))?)),
         rule => unreachable_rule(rule),
@@ -77,27 +77,25 @@ fn parse_descendant(pair: Pair<Rule>) -> Descendant {
 }
 
 fn parse_slice(pair: Pair<Rule>) -> Slice {
-    let indices = pair
-        .into_inner()
+    pair.into_inner()
+        .next()
         .map(parse_slice_index)
-        .collect::<Vec<i64>>();
-
-    let slice = Slice::new();
-
-    match &indices.len() {
-        0 => slice,
-        1 => slice.with_start(indices[0]),
-        2 => slice.with_start(indices[0]).with_end(indices[1]),
-        3 => slice
-            .with_start(indices[0])
-            .with_end(indices[1])
-            .with_step(indices[2]),
-        n => panic!("expected slice with <= 3 indices, got {}", n),
-    }
+        .unwrap_or_default()
 }
 
-fn parse_slice_index(pair: Pair<Rule>) -> i64 {
-    pair.as_str().parse().unwrap()
+fn parse_slice_index(pair: Pair<Rule>) -> Slice {
+    let mut slice = Slice::default();
+
+    for pair in pair.into_inner() {
+        match pair.as_rule() {
+            Rule::SliceStart => slice.start = pair.as_str().parse().ok(),
+            Rule::SliceEnd => slice.end = pair.as_str().parse().ok(),
+            Rule::SliceStep => slice.step = pair.as_str().parse().ok(),
+            rule => unreachable_rule(rule),
+        }
+    }
+
+    slice
 }
 
 fn parse_union(pair: Pair<Rule>) -> Vec<UnionEntry> {
@@ -108,7 +106,7 @@ fn parse_union(pair: Pair<Rule>) -> Vec<UnionEntry> {
             match pair.as_rule() {
                 Rule::ElementIndex => UnionEntry::Index(pair.as_str().parse().unwrap()),
                 Rule::QuotedMemberName => UnionEntry::Key(parse_quoted_string(pair)),
-                Rule::SliceIndex => UnionEntry::Slice(parse_slice(pair)),
+                Rule::SliceIndex => UnionEntry::Slice(parse_slice_index(pair)),
                 rule => unreachable_rule(rule),
             }
         })
@@ -310,6 +308,57 @@ mod test {
 
     #[test]
     fn test_parse_slice() {
+        let parsed = parse("$[]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![Selector::Root, Selector::Slice(Slice::default())])
+        );
+        let parsed = parse("$[:]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![Selector::Root, Selector::Slice(Slice::default())])
+        );
+        let parsed = parse("$[::]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![Selector::Root, Selector::Slice(Slice::default())])
+        );
+        let parsed = parse("$[1:]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![
+                Selector::Root,
+                Selector::Slice(Slice {
+                    start: Some(1),
+                    end: None,
+                    step: None
+                })
+            ])
+        );
+        let parsed = parse("$[1:2]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![
+                Selector::Root,
+                Selector::Slice(Slice {
+                    start: Some(1),
+                    end: Some(2),
+                    step: None
+                })
+            ])
+        );
+        let parsed = parse("$[:-1]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![
+                Selector::Root,
+                Selector::Slice(Slice {
+                    start: None,
+                    end: Some(-1),
+                    step: None
+                })
+            ])
+        );
         let parsed = parse("$[1:2:3]").unwrap();
         assert_eq!(
             parsed,

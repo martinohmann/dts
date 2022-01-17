@@ -51,9 +51,9 @@ SliceIndex = {
     (SliceStart? ~ ":" ~ SliceEnd? ~ ":" ~ SliceStep?) |
     (SliceStart? ~ ":" ~ SliceEnd?)
 }
-SliceStart    = _{ Int }
-SliceEnd      = _{ Int }
-SliceStep     = _{ Int }
+SliceStart    = @{ Int }
+SliceEnd      = @{ Int }
+SliceStep     = @{ Int }
 
 // Descendant selector
 DescendantSelector = { ".." ~ (DotMemberName | IndexSelector | IndexWildSelector | Wildcard) }

@@ -35,30 +35,9 @@ pub enum UnionEntry {
 
 #[derive(Debug, PartialEq, Default)]
 pub struct Slice {
-    pub(super) start: Option<i64>,
-    pub(super) end: Option<i64>,
-    pub(super) step: Option<i64>,
-}
-
-impl Slice {
-    pub fn new() -> Self {
-        Slice::default()
-    }
-
-    pub fn with_start(mut self, start: i64) -> Self {
-        self.start = Some(start);
-        self
-    }
-
-    pub fn with_end(mut self, end: i64) -> Self {
-        self.end = Some(end);
-        self
-    }
-
-    pub fn with_step(mut self, step: i64) -> Self {
-        self.step = Some(step);
-        self
-    }
+    pub start: Option<i64>,
+    pub end: Option<i64>,
+    pub step: Option<i64>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -82,9 +61,9 @@ pub enum FilterExpr {
 
 #[derive(Debug, PartialEq)]
 pub struct CompExpr {
-    pub(super) lhs: Comparable,
-    pub(super) op: CompOp,
-    pub(super) rhs: Comparable,
+    pub lhs: Comparable,
+    pub op: CompOp,
+    pub rhs: Comparable,
 }
 
 #[derive(Debug, PartialEq)]
@@ -147,8 +126,8 @@ impl PartialEq for RegexExpr {
 
 #[derive(Debug, PartialEq)]
 pub struct ContainExpr {
-    pub(super) containable: Containable,
-    pub(super) container: Container,
+    pub containable: Containable,
+    pub container: Container,
 }
 
 #[derive(Debug, PartialEq)]
