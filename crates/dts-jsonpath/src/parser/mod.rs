@@ -5,6 +5,7 @@ mod ast;
 use ast::*;
 
 use crate::{Error, Result};
+use dts_json::Number;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as ParserTrait;
 use pest_derive::Parser;
@@ -34,7 +35,7 @@ fn parse_selector(pair: Pair<Rule>) -> Result<Selector> {
     match pair.as_rule() {
         Rule::RootSelector => Ok(Selector::Root),
         Rule::CurrentSelector => Ok(Selector::Current),
-        Rule::DotSelector => Ok(Selector::Key(parse_dot(pair))),
+        Rule::DotSelector => Ok(Selector::Key(parse_string(pair))),
         Rule::DotWildSelector => Ok(Selector::Wildcard),
         Rule::IndexSelector => Ok(Selector::Index(parse_index(pair))),
         Rule::IndexWildSelector => Ok(Selector::IndexWildcard),
@@ -46,12 +47,12 @@ fn parse_selector(pair: Pair<Rule>) -> Result<Selector> {
     }
 }
 
-fn parse_dot(pair: Pair<Rule>) -> String {
+fn parse_string(pair: Pair<Rule>) -> String {
     inner(pair).as_str().to_owned()
 }
 
 fn parse_quoted_string(pair: Pair<Rule>) -> String {
-    parse_dot(inner(pair))
+    parse_string(inner(pair))
 }
 
 fn parse_index(pair: Pair<Rule>) -> IndexSelector {
@@ -68,7 +69,7 @@ fn parse_descendant(pair: Pair<Rule>) -> Descendant {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::DotMemberName => Descendant::Key(parse_dot(pair)),
+        Rule::DotMemberName => Descendant::Key(parse_string(pair)),
         Rule::IndexSelector => Descendant::Index(parse_index(pair)),
         Rule::IndexWildSelector => Descendant::IndexWildcard,
         Rule::Wildcard => Descendant::Wildcard,
@@ -165,15 +166,32 @@ fn parse_regex(pair: Pair<Rule>) -> Result<Regex> {
 fn parse_comp_expr(pair: Pair<Rule>) -> Result<CompExpr> {
     let mut pairs = pair.into_inner();
 
-    let lhs = parse_comparable(pairs.next().unwrap())?;
-    let op = parse_comp_op(pairs.next().unwrap())?;
-    let rhs = parse_comparable(pairs.next().unwrap())?;
-
-    Ok(CompExpr { lhs, op, rhs })
+    Ok(CompExpr {
+        lhs: parse_comparable(pairs.next().unwrap())?,
+        op: parse_comp_op(pairs.next().unwrap())?,
+        rhs: parse_comparable(pairs.next().unwrap())?,
+    })
 }
 
-fn parse_comparable(_pair: Pair<Rule>) -> Result<Comparable> {
-    unimplemented!()
+fn parse_comparable(pair: Pair<Rule>) -> Result<Comparable> {
+    let pair = inner(pair);
+
+    match pair.as_rule() {
+        Rule::RelPath | Rule::JsonPath => Ok(Comparable::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Number => Ok(Comparable::Number(parse_float(pair)?)),
+        Rule::String => Ok(Comparable::String(parse_string(pair))),
+        Rule::Boolean => Ok(Comparable::Boolean(parse_bool(pair)?)),
+        Rule::Null => Ok(Comparable::Null),
+        rule => unreachable_rule(rule),
+    }
+}
+
+fn parse_bool(pair: Pair<Rule>) -> Result<bool> {
+    pair.as_str().parse().map_err(Error::new)
+}
+
+fn parse_float(pair: Pair<Rule>) -> Result<f64> {
+    pair.as_str().parse().map_err(Error::new)
 }
 
 fn parse_comp_op(pair: Pair<Rule>) -> Result<CompOp> {
@@ -183,12 +201,9 @@ fn parse_comp_op(pair: Pair<Rule>) -> Result<CompOp> {
 fn parse_contain_expr(pair: Pair<Rule>) -> Result<ContainExpr> {
     let mut pairs = pair.into_inner();
 
-    let containable = parse_containable(pairs.next().unwrap())?;
-    let container = parse_container(pairs.next().unwrap())?;
-
     Ok(ContainExpr {
-        containable,
-        container,
+        containable: parse_containable(pairs.next().unwrap())?,
+        container: parse_container(pairs.next().unwrap())?,
     })
 }
 
@@ -448,6 +463,38 @@ mod test {
                     Selector::Current,
                     Selector::Key("foo".into())
                 ])))
+            ])
+        );
+
+        let parsed = parse("$[?(@.foo >= 1)]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![
+                Selector::Root,
+                Selector::Filter(FilterExpr::Comp(CompExpr {
+                    lhs: Comparable::Path(JsonPath(vec![
+                        Selector::Current,
+                        Selector::Key("foo".into())
+                    ])),
+                    op: CompOp::GreaterEq,
+                    rhs: Comparable::Number(1.0)
+                }))
+            ])
+        );
+
+        let parsed = parse("$[?(@.foo == 'bar')]").unwrap();
+        assert_eq!(
+            parsed,
+            JsonPath(vec![
+                Selector::Root,
+                Selector::Filter(FilterExpr::Comp(CompExpr {
+                    lhs: Comparable::Path(JsonPath(vec![
+                        Selector::Current,
+                        Selector::Key("foo".into())
+                    ])),
+                    op: CompOp::Eq,
+                    rhs: Comparable::String("bar".into())
+                }))
             ])
         );
     }

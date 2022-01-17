@@ -1,5 +1,5 @@
 use crate::Error;
-use dts_json::{Map, Number, Value};
+use dts_json::{Map, Value};
 use regex::Regex;
 use std::str::FromStr;
 
@@ -97,7 +97,7 @@ impl FromStr for CompOp {
 
 #[derive(Debug, PartialEq)]
 pub enum Comparable {
-    Number(Number),
+    Number(f64),
     String(String),
     Boolean(bool),
     Null,
@@ -132,7 +132,7 @@ pub struct ContainExpr {
 
 #[derive(Debug, PartialEq)]
 pub enum Containable {
-    Number(Number),
+    Number(f64),
     String(String),
     Path(JsonPath),
 }
