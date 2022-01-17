@@ -106,19 +106,25 @@ pub enum Comparable {
 }
 
 #[derive(Debug)]
-pub enum RegexExpr {
-    String(String, Regex),
-    Path(JsonPath, Regex),
+pub struct RegexExpr {
+    pub matchable: RegexMatchable,
+    pub regex: Regex,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum RegexMatchable {
+    String(String),
+    Path(JsonPath),
 }
 
 impl PartialEq for RegexExpr {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (RegexExpr::String(s1, re1), RegexExpr::String(s2, re2)) => {
-                s1 == s2 && re1.to_string() == re2.to_string()
+        match (&self.matchable, &other.matchable) {
+            (RegexMatchable::String(s1), RegexMatchable::String(s2)) => {
+                s1 == s2 && self.regex.to_string() == other.regex.to_string()
             }
-            (RegexExpr::Path(p1, re1), RegexExpr::Path(p2, re2)) => {
-                p1 == p2 && re1.to_string() == re2.to_string()
+            (RegexMatchable::Path(p1), RegexMatchable::Path(p2)) => {
+                p1 == p2 && self.regex.to_string() == other.regex.to_string()
             }
             (_, _) => false,
         }

@@ -71,7 +71,7 @@ ParenExpr      = _{ "(" ~ BooleanExpr ~ ")" }
 NegExpr        =  { NegOp ~ (ParenExpr | ExistExpr) }
 RelationExpr   = _{ CompExpr | RegexExpr | ContainExpr }
 CompExpr       =  { Comparable ~ CompOp ~ Comparable }
-RegexExpr      =  { (Path | String) ~ RegexOp ~ Regex }
+RegexExpr      =  { RegexMatchable ~ RegexOp ~ Regex }
 ContainExpr    =  { Containable ~ InOp ~ Container }
 
 // Paths
@@ -97,6 +97,7 @@ Array        = { "[" ~ "]" | "[" ~ Value ~ ("," ~ Value)* ~ "]" }
 Value = { Object | Array | String | Number | Boolean | Null }
 
 // Simple regex
+RegexMatchable = { Path | String }
 Regex          = { "/" ~ RegexInner ~ "/" }
 RegexInner     = { (("\\" ~ ("/" | "\\")) | (!"/" ~ ANY))* }
 

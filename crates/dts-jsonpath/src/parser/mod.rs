@@ -94,7 +94,7 @@ fn parse_slice_index(pair: Pair<Rule>) -> SliceSelector {
 fn parse_union_selector(pair: Pair<Rule>) -> UnionSelector {
     pair.into_inner()
         .map(|pair| {
-            let pair = pair.into_inner().next().unwrap();
+            let pair = inner(pair);
 
             match pair.as_rule() {
                 Rule::ElementIndex => UnionEntry::Index(parse_int(pair)),
@@ -119,14 +119,12 @@ fn parse_filter_expr(pair: Pair<Rule>) -> Result<FilterExpr> {
     };
 
     // Unwrap single expr or/and exprs.
-    let expr = match expr {
+    match expr {
         FilterExpr::Or(mut exprs) | FilterExpr::And(mut exprs) if exprs.len() == 1 => {
-            exprs.swap_remove(0)
+            Ok(exprs.swap_remove(0))
         }
-        expr => expr,
-    };
-
-    Ok(expr)
+        expr => Ok(expr),
+    }
 }
 
 fn parse_filter_exprs(pair: Pair<Rule>) -> Result<Vec<FilterExpr>> {
@@ -138,14 +136,18 @@ fn parse_filter_exprs(pair: Pair<Rule>) -> Result<Vec<FilterExpr>> {
 fn parse_regex_expr(pair: Pair<Rule>) -> Result<RegexExpr> {
     let mut pairs = pair.into_inner();
 
-    let operand = pairs.next().unwrap();
-    let re = parse_regex(inner(pairs.next().unwrap()))?;
+    Ok(RegexExpr {
+        matchable: parse_regex_matchable(inner(pairs.next().unwrap()))?,
+        regex: parse_regex(inner(pairs.next().unwrap()))?,
+    })
+}
 
-    match operand.as_rule() {
+fn parse_regex_matchable(pair: Pair<Rule>) -> Result<RegexMatchable> {
+    match pair.as_rule() {
+        Rule::String => Ok(RegexMatchable::String(parse_quoted_string(pair))),
         Rule::RelPath | Rule::JsonPath => {
-            Ok(RegexExpr::Path(parse_jsonpath(operand.into_inner())?, re))
+            Ok(RegexMatchable::Path(parse_jsonpath(pair.into_inner())?))
         }
-        Rule::String => Ok(RegexExpr::String(parse_quoted_string(operand), re)),
         rule => unmatched_rule(rule),
     }
 }
@@ -427,10 +429,10 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Filter(FilterExpr::Regex(RegexExpr::Path(
-                    vec![Selector::Current],
-                    regex::Regex::new("foo").unwrap()
-                )))
+                Selector::Filter(FilterExpr::Regex(RegexExpr {
+                    matchable: RegexMatchable::Path(vec![Selector::Current]),
+                    regex: regex::Regex::new("foo").unwrap()
+                }))
             ]
         );
 
@@ -439,9 +441,10 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Filter(FilterExpr::Not(Box::new(FilterExpr::Regex(
-                    RegexExpr::Path(vec![Selector::Current], regex::Regex::new("foo").unwrap())
-                ))))
+                Selector::Filter(FilterExpr::Not(Box::new(FilterExpr::Regex(RegexExpr {
+                    matchable: RegexMatchable::Path(vec![Selector::Current]),
+                    regex: regex::Regex::new("foo").unwrap()
+                }))))
             ]
         );
 
@@ -451,14 +454,17 @@ mod test {
             vec![
                 Selector::Root,
                 Selector::Filter(FilterExpr::And(vec![
-                    FilterExpr::Regex(RegexExpr::Path(
-                        vec![Selector::Current],
-                        regex::Regex::new("foo").unwrap()
-                    )),
-                    FilterExpr::Regex(RegexExpr::Path(
-                        vec![Selector::Current, Selector::Key("bar".into())],
-                        regex::Regex::new("qux").unwrap()
-                    ))
+                    FilterExpr::Regex(RegexExpr {
+                        matchable: RegexMatchable::Path(vec![Selector::Current]),
+                        regex: regex::Regex::new("foo").unwrap()
+                    }),
+                    FilterExpr::Regex(RegexExpr {
+                        matchable: RegexMatchable::Path(vec![
+                            Selector::Current,
+                            Selector::Key("bar".into())
+                        ]),
+                        regex: regex::Regex::new("qux").unwrap()
+                    }),
                 ]))
             ]
         );
