@@ -3,8 +3,7 @@ use dts_json::{Map, Value};
 use regex::Regex;
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq)]
-pub struct JsonPath(pub(super) Vec<Selector>);
+pub type JsonPath = Vec<Selector>;
 
 #[derive(Debug, PartialEq)]
 pub enum Selector {
@@ -14,9 +13,9 @@ pub enum Selector {
     Wildcard,
     Index(IndexSelector),
     IndexWildcard,
-    Union(Vec<UnionEntry>),
-    Slice(Slice),
-    Descendant(Descendant),
+    Union(UnionSelector),
+    Slice(SliceSelector),
+    Descendant(DescendantSelector),
     Filter(FilterExpr),
 }
 
@@ -26,24 +25,26 @@ pub enum IndexSelector {
     Key(String),
 }
 
+pub type UnionSelector = Vec<UnionEntry>;
+
 #[derive(Debug, PartialEq)]
 pub enum UnionEntry {
     Key(String),
     Index(i64),
-    Slice(Slice),
+    Slice(SliceSelector),
 }
 
 #[derive(Debug, PartialEq, Default)]
-pub struct Slice {
+pub struct SliceSelector {
     pub start: Option<i64>,
     pub end: Option<i64>,
     pub step: Option<i64>,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Descendant {
+pub enum DescendantSelector {
     Key(String),
-    Index(IndexSelector),
+    Index(i64),
     IndexWildcard,
     Wildcard,
 }
