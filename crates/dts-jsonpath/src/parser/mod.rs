@@ -1,6 +1,6 @@
 //! Provides a jsonpath parser and types for the AST elements of a jsonpath query.
 
-mod ast;
+pub(crate) mod ast;
 
 use crate::{Error, Result};
 pub use ast::*;
@@ -34,37 +34,36 @@ fn parse_selector(pair: Pair<Rule>) -> Result<Selector> {
         Rule::CurrentSelector => Ok(Selector::Current),
         Rule::DotSelector => Ok(Selector::Key(parse_string(pair))),
         Rule::DotWildSelector => Ok(Selector::Wildcard),
-        Rule::IndexSelector => Ok(Selector::Index(parse_index_selector(pair))),
+        Rule::IndexSelector => Ok(parse_index_selector(pair)),
         Rule::IndexWildSelector => Ok(Selector::IndexWildcard),
         Rule::UnionSelector => Ok(Selector::Union(parse_union_selector(pair))),
         Rule::SliceSelector => Ok(Selector::Slice(parse_slice_selector(pair))),
-        Rule::DescendantSelector => Ok(Selector::Descendant(parse_descendant_selector(pair))),
+        Rule::DescendantSelector => Ok(Selector::Descendant(Box::new(parse_descendant_selector(
+            pair,
+        )))),
         Rule::FilterSelector => Ok(Selector::Filter(parse_filter_expr(inner(pair))?)),
         rule => unmatched_rule(rule),
     }
 }
 
-fn parse_index_selector(pair: Pair<Rule>) -> IndexSelector {
+fn parse_index_selector(pair: Pair<Rule>) -> Selector {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::ElementIndex => IndexSelector::Index(parse_int(pair)),
-        Rule::QuotedMemberName => IndexSelector::Key(parse_quoted_string(pair)),
+        Rule::ElementIndex => Selector::Index(parse_int(pair)),
+        Rule::QuotedMemberName => Selector::Key(parse_quoted_string(pair)),
         rule => unmatched_rule(rule),
     }
 }
 
-fn parse_descendant_selector(pair: Pair<Rule>) -> DescendantSelector {
+fn parse_descendant_selector(pair: Pair<Rule>) -> Selector {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::DotMemberName => DescendantSelector::Key(parse_string(pair)),
-        Rule::IndexSelector => match parse_index_selector(pair) {
-            IndexSelector::Index(i) => DescendantSelector::Index(i),
-            IndexSelector::Key(s) => DescendantSelector::Key(s),
-        },
-        Rule::IndexWildSelector => DescendantSelector::IndexWildcard,
-        Rule::Wildcard => DescendantSelector::Wildcard,
+        Rule::DotMemberName => Selector::Key(parse_string(pair)),
+        Rule::IndexSelector => parse_index_selector(pair),
+        Rule::IndexWildSelector => Selector::IndexWildcard,
+        Rule::Wildcard => Selector::Wildcard,
         rule => unmatched_rule(rule),
     }
 }
@@ -91,15 +90,15 @@ fn parse_slice_index(pair: Pair<Rule>) -> SliceSelector {
     slice
 }
 
-fn parse_union_selector(pair: Pair<Rule>) -> UnionSelector {
+fn parse_union_selector(pair: Pair<Rule>) -> JsonPath {
     pair.into_inner()
         .map(|pair| {
             let pair = inner(pair);
 
             match pair.as_rule() {
-                Rule::ElementIndex => UnionEntry::Index(parse_int(pair)),
-                Rule::QuotedMemberName => UnionEntry::Key(parse_quoted_string(pair)),
-                Rule::SliceIndex => UnionEntry::Slice(parse_slice_index(pair)),
+                Rule::ElementIndex => Selector::Index(parse_int(pair)),
+                Rule::QuotedMemberName => Selector::Key(parse_quoted_string(pair)),
+                Rule::SliceIndex => Selector::Slice(parse_slice_index(pair)),
                 rule => unmatched_rule(rule),
             }
         })
@@ -276,18 +275,12 @@ mod test {
     #[test]
     fn test_parse_index() {
         let parsed = parse("$[1]").unwrap();
-        assert_eq!(
-            parsed,
-            vec![Selector::Root, Selector::Index(IndexSelector::Index(1))]
-        );
+        assert_eq!(parsed, vec![Selector::Root, Selector::Index(1)]);
 
         let parsed = parse(r#"$["foo\""]"#).unwrap();
         assert_eq!(
             parsed,
-            vec![
-                Selector::Root,
-                Selector::Index(IndexSelector::Key(r#"foo\""#.into()))
-            ]
+            vec![Selector::Root, Selector::Key(r#"foo\""#.into())]
         );
     }
 
@@ -304,7 +297,7 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Descendant(DescendantSelector::Index(1))
+                Selector::Descendant(Box::new(Selector::Index(1)))
             ]
         );
 
@@ -313,7 +306,7 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Descendant(DescendantSelector::Key("foo".into()))
+                Selector::Descendant(Box::new(Selector::Key("foo".into())))
             ]
         );
 
@@ -322,7 +315,7 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Descendant(DescendantSelector::Wildcard)
+                Selector::Descendant(Box::new(Selector::Wildcard))
             ]
         );
 
@@ -331,7 +324,7 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Descendant(DescendantSelector::IndexWildcard)
+                Selector::Descendant(Box::new(Selector::IndexWildcard))
             ]
         );
     }
@@ -411,13 +404,13 @@ mod test {
             vec![
                 Selector::Root,
                 Selector::Union(vec![
-                    UnionEntry::Slice(SliceSelector {
+                    Selector::Slice(SliceSelector {
                         start: Some(1),
                         end: Some(2),
                         step: Some(3),
                     }),
-                    UnionEntry::Key("foo".into()),
-                    UnionEntry::Index(1),
+                    Selector::Key("foo".into()),
+                    Selector::Index(1),
                 ])
             ]
         );

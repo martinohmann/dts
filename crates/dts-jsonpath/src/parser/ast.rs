@@ -11,27 +11,12 @@ pub enum Selector {
     Current,
     Key(String),
     Wildcard,
-    Index(IndexSelector),
+    Index(i64),
     IndexWildcard,
-    Union(UnionSelector),
+    Union(JsonPath),
     Slice(SliceSelector),
-    Descendant(DescendantSelector),
+    Descendant(Box<Selector>),
     Filter(FilterExpr),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum IndexSelector {
-    Index(i64),
-    Key(String),
-}
-
-pub type UnionSelector = Vec<UnionEntry>;
-
-#[derive(Debug, PartialEq)]
-pub enum UnionEntry {
-    Key(String),
-    Index(i64),
-    Slice(SliceSelector),
 }
 
 #[derive(Debug, PartialEq, Default)]
@@ -39,14 +24,6 @@ pub struct SliceSelector {
     pub start: Option<i64>,
     pub end: Option<i64>,
     pub step: Option<i64>,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum DescendantSelector {
-    Key(String),
-    Index(i64),
-    IndexWildcard,
-    Wildcard,
 }
 
 #[derive(Debug, PartialEq)]
