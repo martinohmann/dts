@@ -1,51 +1,51 @@
 use super::filter::Filter;
 use dts_json::Value;
 
-pub struct Values<'a> {
+pub struct PathPointer<'a> {
     pub root: &'a Value,
     pub current: &'a Value,
 }
 
-impl<'a> Values<'a> {
+impl<'a> PathPointer<'a> {
     pub(crate) fn new(root: &'a Value, current: &'a Value) -> Self {
-        Values { root, current }
+        PathPointer { root, current }
     }
 
     pub(crate) fn new_root(root: &'a Value) -> Self {
-        Values::new(root, root)
+        PathPointer::new(root, root)
     }
 }
 
-pub trait Selector {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value>;
+pub trait PathSelector {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value>;
 }
 
-impl<T> Selector for Box<T>
+impl<T> PathSelector for Box<T>
 where
-    T: Selector + ?Sized,
+    T: PathSelector + ?Sized,
 {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
-        (**self).select(values)
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        (**self).select(pointer)
     }
 }
 
-impl<T> Selector for &T
+impl<T> PathSelector for &T
 where
-    T: Selector + ?Sized,
+    T: PathSelector + ?Sized,
 {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
-        (*self).select(values)
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        (*self).select(pointer)
     }
 }
 
 pub struct JsonPath {
-    chain: Vec<Box<dyn Selector>>,
+    chain: Vec<Box<dyn PathSelector>>,
 }
 
 impl JsonPath {
     pub(crate) fn new<I>(chain: I) -> Self
     where
-        I: IntoIterator<Item = Box<dyn Selector>>,
+        I: IntoIterator<Item = Box<dyn PathSelector>>,
     {
         JsonPath {
             chain: chain.into_iter().collect(),
@@ -53,14 +53,14 @@ impl JsonPath {
     }
 }
 
-impl FromIterator<Box<dyn Selector>> for JsonPath {
-    fn from_iter<I: IntoIterator<Item = Box<dyn Selector>>>(iter: I) -> Self {
+impl FromIterator<Box<dyn PathSelector>> for JsonPath {
+    fn from_iter<I: IntoIterator<Item = Box<dyn PathSelector>>>(iter: I) -> Self {
         JsonPath::new(iter)
     }
 }
 
 impl<'a> IntoIterator for JsonPath {
-    type Item = Box<dyn Selector>;
+    type Item = Box<dyn PathSelector>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -68,15 +68,15 @@ impl<'a> IntoIterator for JsonPath {
     }
 }
 
-impl Selector for JsonPath {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
+impl PathSelector for JsonPath {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
         self.chain
             .iter()
-            .fold(vec![values.current], |acc, selector| {
+            .fold(vec![pointer.current], |acc, selector| {
                 acc.iter()
                     .flat_map(|value| {
-                        let values = Values::new(values.root, value);
-                        selector.select(&values)
+                        let pointer = PathPointer::new(pointer.root, value);
+                        selector.select(&pointer)
                     })
                     .collect()
             })
@@ -85,17 +85,17 @@ impl Selector for JsonPath {
 
 pub struct RootSelector;
 
-impl Selector for RootSelector {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
-        vec![values.root]
+impl PathSelector for RootSelector {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        vec![pointer.root]
     }
 }
 
 pub struct CurrentSelector;
 
-impl Selector for CurrentSelector {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
-        vec![values.current]
+impl PathSelector for CurrentSelector {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        vec![pointer.current]
     }
 }
 
@@ -109,9 +109,9 @@ impl KeySelector {
     }
 }
 
-impl Selector for KeySelector {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
-        values
+impl PathSelector for KeySelector {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        pointer
             .current
             .as_object()
             .and_then(|object| object.get(&self.key))
@@ -122,9 +122,9 @@ impl Selector for KeySelector {
 
 pub struct WildcardSelector;
 
-impl Selector for WildcardSelector {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
-        match values.current {
+impl PathSelector for WildcardSelector {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        match pointer.current {
             Value::Array(array) => array.iter().collect(),
             Value::Object(object) => object.values().collect(),
             _ => vec![],
@@ -156,9 +156,9 @@ impl IndexSelector {
     }
 }
 
-impl Selector for IndexSelector {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
-        values
+impl PathSelector for IndexSelector {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        pointer
             .current
             .as_array()
             .and_then(|array| {
@@ -170,13 +170,13 @@ impl Selector for IndexSelector {
 }
 
 pub struct UnionSelector {
-    entries: Vec<Box<dyn Selector>>,
+    entries: Vec<Box<dyn PathSelector>>,
 }
 
 impl UnionSelector {
     pub(crate) fn new<I>(entries: I) -> Self
     where
-        I: IntoIterator<Item = Box<dyn Selector>>,
+        I: IntoIterator<Item = Box<dyn PathSelector>>,
     {
         UnionSelector {
             entries: entries.into_iter().collect(),
@@ -184,17 +184,17 @@ impl UnionSelector {
     }
 }
 
-impl FromIterator<Box<dyn Selector>> for UnionSelector {
-    fn from_iter<I: IntoIterator<Item = Box<dyn Selector>>>(iter: I) -> Self {
+impl FromIterator<Box<dyn PathSelector>> for UnionSelector {
+    fn from_iter<I: IntoIterator<Item = Box<dyn PathSelector>>>(iter: I) -> Self {
         UnionSelector::new(iter)
     }
 }
 
-impl Selector for UnionSelector {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
+impl PathSelector for UnionSelector {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
         self.entries
             .iter()
-            .flat_map(|selector| selector.select(values))
+            .flat_map(|selector| selector.select(pointer))
             .collect()
     }
 }
@@ -285,9 +285,9 @@ impl SliceSelector {
     }
 }
 
-impl Selector for SliceSelector {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
-        match values.current.as_array() {
+impl PathSelector for SliceSelector {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        match pointer.current.as_array() {
             Some(array) => self.slice_array(array),
             None => vec![],
         }
@@ -295,19 +295,19 @@ impl Selector for SliceSelector {
 }
 
 pub struct DescendantSelector {
-    _selector: Box<dyn Selector>,
+    _selector: Box<dyn PathSelector>,
 }
 
 impl DescendantSelector {
-    pub(crate) fn new(selector: Box<dyn Selector>) -> Self {
+    pub(crate) fn new(selector: Box<dyn PathSelector>) -> Self {
         DescendantSelector {
             _selector: selector,
         }
     }
 }
 
-impl Selector for DescendantSelector {
-    fn select<'a>(&self, _values: &Values<'a>) -> Vec<&'a Value> {
+impl PathSelector for DescendantSelector {
+    fn select<'a>(&self, _pointer: &PathPointer<'a>) -> Vec<&'a Value> {
         unimplemented!()
     }
 }
@@ -322,21 +322,21 @@ impl FilterSelector {
     }
 }
 
-impl Selector for FilterSelector {
-    fn select<'a>(&self, values: &Values<'a>) -> Vec<&'a Value> {
-        match values.current {
+impl PathSelector for FilterSelector {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        match pointer.current {
             Value::Array(array) => array
                 .iter()
                 .filter(|value| {
-                    let values = Values::new(values.root, value);
-                    self.filter.matches(&values)
+                    let pointer = PathPointer::new(pointer.root, value);
+                    self.filter.matches(&pointer)
                 })
                 .collect(),
             Value::Object(object) => object
                 .values()
                 .filter(|value| {
-                    let values = Values::new(values.root, value);
-                    self.filter.matches(&values)
+                    let pointer = PathPointer::new(pointer.root, value);
+                    self.filter.matches(&pointer)
                 })
                 .collect(),
             _ => vec![],
@@ -352,10 +352,10 @@ mod test {
     #[track_caller]
     fn assert_selects<T>(selector: T, root: &Value, expected: Vec<&Value>)
     where
-        T: Selector,
+        T: PathSelector,
     {
-        let values = Values::new_root(root);
-        assert_eq!(selector.select(&values), expected);
+        let pointer = PathPointer::new_root(root);
+        assert_eq!(selector.select(&pointer), expected);
     }
 
     #[test]

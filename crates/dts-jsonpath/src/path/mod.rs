@@ -5,13 +5,13 @@ use crate::parser::ast;
 use filter::*;
 use selector::*;
 
-pub(crate) use selector::{JsonPath, Selector, Values};
+pub(crate) use selector::{JsonPath, PathPointer, PathSelector};
 
 pub fn compile(ast: ast::JsonPath) -> JsonPath {
     ast.into_iter().map(compile_selector).collect()
 }
 
-fn compile_selector(selector: ast::Selector) -> Box<dyn Selector> {
+fn compile_selector(selector: ast::Selector) -> Box<dyn PathSelector> {
     match selector {
         ast::Selector::Root => Box::new(RootSelector),
         ast::Selector::Current => Box::new(CurrentSelector),

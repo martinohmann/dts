@@ -1,4 +1,4 @@
-use super::selector::{JsonPath, Selector, Values};
+use super::selector::{JsonPath, PathPointer, PathSelector};
 use regex::Regex;
 
 pub enum Filter {
@@ -10,13 +10,13 @@ pub enum Filter {
 }
 
 impl Filter {
-    pub(crate) fn matches<'a>(&self, values: &Values<'a>) -> bool {
+    pub(crate) fn matches<'a>(&self, pointer: &PathPointer<'a>) -> bool {
         match self {
-            Filter::Not(filter) => !filter.matches(values),
-            Filter::Or(filters) => filters.iter().any(|filter| filter.matches(values)),
-            Filter::And(filters) => filters.iter().all(|filter| filter.matches(values)),
-            Filter::Exist(path) => !path.select(values).is_empty(),
-            Filter::Regex(re) => re.matches(values),
+            Filter::Not(filter) => !filter.matches(pointer),
+            Filter::Or(filters) => filters.iter().any(|filter| filter.matches(pointer)),
+            Filter::And(filters) => filters.iter().all(|filter| filter.matches(pointer)),
+            Filter::Exist(path) => !path.select(pointer).is_empty(),
+            Filter::Regex(re) => re.matches(pointer),
         }
     }
 }
@@ -31,8 +31,8 @@ impl RegexFilter {
         RegexFilter { path, regex }
     }
 
-    pub(crate) fn matches<'a>(&self, values: &Values<'a>) -> bool {
-        self.path.select(values).iter().any(|value| {
+    pub(crate) fn matches<'a>(&self, pointer: &PathPointer<'a>) -> bool {
+        self.path.select(pointer).iter().any(|value| {
             value
                 .as_str()
                 .map(|s| self.regex.is_match(s))

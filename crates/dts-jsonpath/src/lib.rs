@@ -8,7 +8,7 @@ pub use error::{Error, Result};
 pub use parser::parse;
 
 use dts_json::Value;
-use path::{JsonPath, Selector as SelectorTrait, Values};
+use path::{JsonPath, PathPointer, PathSelector};
 
 pub struct Selector {
     path: JsonPath,
@@ -22,8 +22,8 @@ impl Selector {
     }
 
     pub fn select<'a>(&self, value: &'a Value) -> Vec<&'a Value> {
-        let values = Values::new_root(value);
-        self.path.select(&values)
+        let pointer = PathPointer::new_root(value);
+        self.path.select(&pointer)
     }
 }
 
