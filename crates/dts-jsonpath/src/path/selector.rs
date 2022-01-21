@@ -295,20 +295,44 @@ impl PathSelector for SliceSelector {
 }
 
 pub struct DescendantSelector {
-    _selector: Box<dyn PathSelector>,
+    selector: Box<dyn PathSelector>,
 }
 
 impl DescendantSelector {
     pub(crate) fn new(selector: Box<dyn PathSelector>) -> Self {
-        DescendantSelector {
-            _selector: selector,
-        }
+        DescendantSelector { selector }
     }
 }
 
 impl PathSelector for DescendantSelector {
-    fn select<'a>(&self, _pointer: &PathPointer<'a>) -> Vec<&'a Value> {
-        unimplemented!()
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        let mut values = self.selector.select(pointer);
+
+        match &pointer.current {
+            Value::Array(array) => {
+                let mut children = array
+                    .iter()
+                    .flat_map(|value| {
+                        let pointer = PathPointer::new(pointer.root, value);
+                        self.selector.select(&pointer)
+                    })
+                    .collect();
+                values.append(&mut children);
+                values
+            }
+            Value::Object(object) => {
+                let mut children = object
+                    .values()
+                    .flat_map(|value| {
+                        let pointer = PathPointer::new(pointer.root, value);
+                        self.selector.select(&pointer)
+                    })
+                    .collect();
+                values.append(&mut children);
+                values
+            }
+            _ => values,
+        }
     }
 }
 
