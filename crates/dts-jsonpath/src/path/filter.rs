@@ -1,4 +1,5 @@
 use super::selector::{JsonPath, PathPointer, PathSelector};
+use crate::parser::CompOp;
 use dts_json::Value;
 use regex::Regex;
 
@@ -25,12 +26,12 @@ impl Filter {
 }
 
 pub struct RegexFilter {
-    lhs: Comparable,
+    lhs: Operand,
     regex: Regex,
 }
 
 impl RegexFilter {
-    pub(crate) fn new(lhs: Comparable, regex: Regex) -> Self {
+    pub(crate) fn new(lhs: Operand, regex: Regex) -> Self {
         RegexFilter { lhs, regex }
     }
 
@@ -44,38 +45,28 @@ impl RegexFilter {
     }
 }
 
-pub enum CompOp {
-    Eq,
-    NotEq,
-    LessEq,
-    Less,
-    GreaterEq,
-    Greater,
-    In,
-}
-
-pub enum Comparable {
+pub enum Operand {
     Value(Value),
     Path(JsonPath),
 }
 
-impl Comparable {
+impl Operand {
     fn select<'a>(&'a self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
         match self {
-            Comparable::Value(value) => vec![value],
-            Comparable::Path(path) => path.select(pointer),
+            Operand::Value(value) => vec![value],
+            Operand::Path(path) => path.select(pointer),
         }
     }
 }
 
 pub struct CompFilter {
-    lhs: Comparable,
+    lhs: Operand,
     op: CompOp,
-    rhs: Comparable,
+    rhs: Operand,
 }
 
 impl CompFilter {
-    pub(crate) fn new(lhs: Comparable, op: CompOp, rhs: Comparable) -> Self {
+    pub(crate) fn new(lhs: Operand, op: CompOp, rhs: Operand) -> Self {
         CompFilter { lhs, op, rhs }
     }
 

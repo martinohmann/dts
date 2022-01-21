@@ -2,7 +2,6 @@ mod filter;
 mod selector;
 
 use crate::parser::ast;
-use dts_json::Value;
 use filter::*;
 use selector::*;
 
@@ -38,55 +37,19 @@ fn compile_filter(expr: ast::FilterExpr) -> Filter {
         ast::FilterExpr::And(exprs) => Filter::And(exprs.into_iter().map(compile_filter).collect()),
         ast::FilterExpr::Exist(path) => Filter::Exist(compile(path)),
         ast::FilterExpr::Regex(expr) => {
-            let lhs = match expr.matchable {
-                ast::RegexMatchable::String(s) => Comparable::Value(s.into()),
-                ast::RegexMatchable::Path(path) => Comparable::Path(compile(path)),
-            };
-
-            Filter::Regex(RegexFilter::new(lhs, expr.regex))
-        }
-        ast::FilterExpr::Contain(expr) => {
-            let lhs = match expr.containable {
-                ast::Containable::String(s) => Comparable::Value(s.into()),
-                ast::Containable::Number(f) => Comparable::Value(f.into()),
-                ast::Containable::Path(path) => Comparable::Path(compile(path)),
-            };
-
-            let rhs = match expr.container {
-                ast::Container::Array(array) => Comparable::Value(array.into()),
-                ast::Container::Object(object) => Comparable::Value(object.into()),
-                ast::Container::Path(path) => Comparable::Path(compile(path)),
-            };
-
-            Filter::Comp(CompFilter::new(lhs, CompOp::In, rhs))
+            Filter::Regex(RegexFilter::new(expr.lhs.into(), expr.regex))
         }
         ast::FilterExpr::Comp(expr) => {
-            let lhs = match expr.lhs {
-                ast::Comparable::String(s) => Comparable::Value(s.into()),
-                ast::Comparable::Number(f) => Comparable::Value(f.into()),
-                ast::Comparable::Boolean(b) => Comparable::Value(b.into()),
-                ast::Comparable::Null => Comparable::Value(Value::Null),
-                ast::Comparable::Path(path) => Comparable::Path(compile(path)),
-            };
+            Filter::Comp(CompFilter::new(expr.lhs.into(), expr.op, expr.rhs.into()))
+        }
+    }
+}
 
-            let rhs = match expr.rhs {
-                ast::Comparable::String(s) => Comparable::Value(s.into()),
-                ast::Comparable::Number(f) => Comparable::Value(f.into()),
-                ast::Comparable::Boolean(b) => Comparable::Value(b.into()),
-                ast::Comparable::Null => Comparable::Value(Value::Null),
-                ast::Comparable::Path(path) => Comparable::Path(compile(path)),
-            };
-
-            let op = match expr.op {
-                ast::CompOp::Eq => CompOp::Eq,
-                ast::CompOp::NotEq => CompOp::NotEq,
-                ast::CompOp::LessEq => CompOp::LessEq,
-                ast::CompOp::Less => CompOp::Less,
-                ast::CompOp::GreaterEq => CompOp::GreaterEq,
-                ast::CompOp::Greater => CompOp::Greater,
-            };
-
-            Filter::Comp(CompFilter::new(lhs, op, rhs))
+impl From<ast::Operand> for Operand {
+    fn from(oper: ast::Operand) -> Self {
+        match oper {
+            ast::Operand::Value(v) => Operand::Value(v),
+            ast::Operand::Path(path) => Operand::Path(compile(path)),
         }
     }
 }

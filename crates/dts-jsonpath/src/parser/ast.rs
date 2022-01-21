@@ -1,5 +1,5 @@
 use crate::Error;
-use dts_json::{Map, Value};
+use dts_json::Value;
 use regex::Regex;
 use std::str::FromStr;
 
@@ -34,14 +34,19 @@ pub enum FilterExpr {
     Exist(JsonPath),
     Comp(CompExpr),
     Regex(RegexExpr),
-    Contain(ContainExpr),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Operand {
+    Value(Value),
+    Path(JsonPath),
 }
 
 #[derive(Debug, PartialEq)]
 pub struct CompExpr {
-    pub lhs: Comparable,
+    pub lhs: Operand,
     pub op: CompOp,
-    pub rhs: Comparable,
+    pub rhs: Operand,
 }
 
 #[derive(Debug, PartialEq)]
@@ -52,6 +57,7 @@ pub enum CompOp {
     Less,
     GreaterEq,
     Greater,
+    In,
 }
 
 impl FromStr for CompOp {
@@ -65,6 +71,7 @@ impl FromStr for CompOp {
             "<" => Ok(CompOp::Less),
             ">=" => Ok(CompOp::GreaterEq),
             ">" => Ok(CompOp::Greater),
+            "in" => Ok(CompOp::In),
             other => Err(Error::new(format!(
                 "not a comparision operation: {}",
                 other
@@ -73,57 +80,14 @@ impl FromStr for CompOp {
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Comparable {
-    Number(f64),
-    String(String),
-    Boolean(bool),
-    Null,
-    Path(JsonPath),
-}
-
 #[derive(Debug)]
 pub struct RegexExpr {
-    pub matchable: RegexMatchable,
+    pub lhs: Operand,
     pub regex: Regex,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum RegexMatchable {
-    String(String),
-    Path(JsonPath),
 }
 
 impl PartialEq for RegexExpr {
     fn eq(&self, other: &Self) -> bool {
-        match (&self.matchable, &other.matchable) {
-            (RegexMatchable::String(s1), RegexMatchable::String(s2)) => {
-                s1 == s2 && self.regex.to_string() == other.regex.to_string()
-            }
-            (RegexMatchable::Path(p1), RegexMatchable::Path(p2)) => {
-                p1 == p2 && self.regex.to_string() == other.regex.to_string()
-            }
-            (_, _) => false,
-        }
+        self.lhs == other.lhs && self.regex.to_string() == other.regex.to_string()
     }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct ContainExpr {
-    pub containable: Containable,
-    pub container: Container,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Containable {
-    Number(f64),
-    String(String),
-    Path(JsonPath),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Container {
-    Array(Vec<Value>),
-    Object(Map<String, Value>),
-    Path(JsonPath),
 }

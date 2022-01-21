@@ -4,6 +4,7 @@ pub(crate) mod ast;
 
 use crate::{Error, Result};
 pub use ast::*;
+use dts_json::Value;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as ParserTrait;
 use pest_derive::Parser;
@@ -113,7 +114,7 @@ fn parse_filter_expr(pair: Pair<Rule>) -> Result<FilterExpr> {
         Rule::NegExpr => FilterExpr::Not(Box::new(parse_filter_expr(inner(pair))?)),
         Rule::CompExpr => FilterExpr::Comp(parse_comp_expr(pair)?),
         Rule::RegexExpr => FilterExpr::Regex(parse_regex_expr(pair)?),
-        Rule::ContainExpr => FilterExpr::Contain(parse_contain_expr(pair)?),
+        Rule::ContainExpr => FilterExpr::Comp(parse_contain_expr(pair)?),
         rule => unmatched_rule(rule),
     };
 
@@ -136,17 +137,15 @@ fn parse_regex_expr(pair: Pair<Rule>) -> Result<RegexExpr> {
     let mut pairs = pair.into_inner();
 
     Ok(RegexExpr {
-        matchable: parse_regex_matchable(inner(pairs.next().unwrap()))?,
+        lhs: parse_regex_matchable(inner(pairs.next().unwrap()))?,
         regex: parse_regex(inner(pairs.next().unwrap()))?,
     })
 }
 
-fn parse_regex_matchable(pair: Pair<Rule>) -> Result<RegexMatchable> {
+fn parse_regex_matchable(pair: Pair<Rule>) -> Result<Operand> {
     match pair.as_rule() {
-        Rule::String => Ok(RegexMatchable::String(parse_quoted_string(pair))),
-        Rule::RelPath | Rule::JsonPath => {
-            Ok(RegexMatchable::Path(parse_jsonpath(pair.into_inner())?))
-        }
+        Rule::String => Ok(Operand::Value(parse_quoted_string(pair).into())),
+        Rule::RelPath | Rule::JsonPath => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
         rule => unmatched_rule(rule),
     }
 }
@@ -165,15 +164,15 @@ fn parse_comp_expr(pair: Pair<Rule>) -> Result<CompExpr> {
     })
 }
 
-fn parse_comparable(pair: Pair<Rule>) -> Result<Comparable> {
+fn parse_comparable(pair: Pair<Rule>) -> Result<Operand> {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::RelPath | Rule::JsonPath => Ok(Comparable::Path(parse_jsonpath(pair.into_inner())?)),
-        Rule::Number => Ok(Comparable::Number(parse_float(pair))),
-        Rule::String => Ok(Comparable::String(parse_string(pair))),
-        Rule::Boolean => Ok(Comparable::Boolean(parse_bool(pair))),
-        Rule::Null => Ok(Comparable::Null),
+        Rule::RelPath | Rule::JsonPath => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Number => Ok(Operand::Value(parse_float(pair).into())),
+        Rule::String => Ok(Operand::Value(parse_string(pair).into())),
+        Rule::Boolean => Ok(Operand::Value(parse_bool(pair).into())),
+        Rule::Null => Ok(Operand::Value(Value::Null)),
         rule => unmatched_rule(rule),
     }
 }
@@ -182,35 +181,36 @@ fn parse_comp_op(pair: Pair<Rule>) -> Result<CompOp> {
     CompOp::from_str(pair.as_str())
 }
 
-fn parse_contain_expr(pair: Pair<Rule>) -> Result<ContainExpr> {
+fn parse_contain_expr(pair: Pair<Rule>) -> Result<CompExpr> {
     let mut pairs = pair.into_inner();
 
-    Ok(ContainExpr {
-        containable: parse_containable(pairs.next().unwrap())?,
-        container: parse_container(pairs.next().unwrap())?,
+    Ok(CompExpr {
+        lhs: parse_containable(pairs.next().unwrap())?,
+        op: CompOp::In,
+        rhs: parse_container(pairs.next().unwrap())?,
     })
 }
 
-fn parse_containable(pair: Pair<Rule>) -> Result<Containable> {
+fn parse_containable(pair: Pair<Rule>) -> Result<Operand> {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::RelPath | Rule::JsonPath => Ok(Containable::Path(parse_jsonpath(pair.into_inner())?)),
-        Rule::Number => Ok(Containable::Number(parse_float(pair))),
-        Rule::String => Ok(Containable::String(parse_string(pair))),
+        Rule::RelPath | Rule::JsonPath => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Number => Ok(Operand::Value(parse_float(pair).into())),
+        Rule::String => Ok(Operand::Value(parse_string(pair).into())),
         rule => unmatched_rule(rule),
     }
 }
 
-fn parse_container(pair: Pair<Rule>) -> Result<Container> {
+fn parse_container(pair: Pair<Rule>) -> Result<Operand> {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::RelPath | Rule::JsonPath => Ok(Container::Path(parse_jsonpath(pair.into_inner())?)),
-        Rule::Array => Ok(Container::Array(
+        Rule::RelPath | Rule::JsonPath => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Array => Ok(Operand::Value(
             serde_json::from_str(pair.as_str()).map_err(Error::new)?,
         )),
-        Rule::Object => Ok(Container::Object(
+        Rule::Object => Ok(Operand::Value(
             serde_json::from_str(pair.as_str()).map_err(Error::new)?,
         )),
         rule => unmatched_rule(rule),
@@ -424,7 +424,7 @@ mod test {
             vec![
                 Selector::Root,
                 Selector::Filter(FilterExpr::Regex(RegexExpr {
-                    matchable: RegexMatchable::Path(vec![Selector::Current]),
+                    lhs: Operand::Path(vec![Selector::Current]),
                     regex: regex::Regex::new("foo").unwrap()
                 }))
             ]
@@ -436,7 +436,7 @@ mod test {
             vec![
                 Selector::Root,
                 Selector::Filter(FilterExpr::Not(Box::new(FilterExpr::Regex(RegexExpr {
-                    matchable: RegexMatchable::Path(vec![Selector::Current]),
+                    lhs: Operand::Path(vec![Selector::Current]),
                     regex: regex::Regex::new("foo").unwrap()
                 }))))
             ]
@@ -449,14 +449,11 @@ mod test {
                 Selector::Root,
                 Selector::Filter(FilterExpr::And(vec![
                     FilterExpr::Regex(RegexExpr {
-                        matchable: RegexMatchable::Path(vec![Selector::Current]),
+                        lhs: Operand::Path(vec![Selector::Current]),
                         regex: regex::Regex::new("foo").unwrap()
                     }),
                     FilterExpr::Regex(RegexExpr {
-                        matchable: RegexMatchable::Path(vec![
-                            Selector::Current,
-                            Selector::Key("bar".into())
-                        ]),
+                        lhs: Operand::Path(vec![Selector::Current, Selector::Key("bar".into())]),
                         regex: regex::Regex::new("qux").unwrap()
                     }),
                 ]))
@@ -481,9 +478,9 @@ mod test {
             vec![
                 Selector::Root,
                 Selector::Filter(FilterExpr::Comp(CompExpr {
-                    lhs: Comparable::Path(vec![Selector::Current, Selector::Key("foo".into())]),
+                    lhs: Operand::Path(vec![Selector::Current, Selector::Key("foo".into())]),
                     op: CompOp::GreaterEq,
-                    rhs: Comparable::Number(1.0)
+                    rhs: Operand::Value(1.0.into())
                 }))
             ]
         );
@@ -494,9 +491,9 @@ mod test {
             vec![
                 Selector::Root,
                 Selector::Filter(FilterExpr::Comp(CompExpr {
-                    lhs: Comparable::Path(vec![Selector::Current, Selector::Key("foo".into())]),
+                    lhs: Operand::Path(vec![Selector::Current, Selector::Key("foo".into())]),
                     op: CompOp::Eq,
-                    rhs: Comparable::String("bar".into())
+                    rhs: Operand::Value("bar".into())
                 }))
             ]
         );
@@ -506,12 +503,10 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Filter(FilterExpr::Contain(ContainExpr {
-                    containable: Containable::Path(vec![
-                        Selector::Current,
-                        Selector::Key("foo".into())
-                    ]),
-                    container: Container::Array(vec![json!(1), json!(2)])
+                Selector::Filter(FilterExpr::Comp(CompExpr {
+                    lhs: Operand::Path(vec![Selector::Current, Selector::Key("foo".into())]),
+                    op: CompOp::In,
+                    rhs: Operand::Value(json!([1, 2]))
                 }))
             ]
         );
