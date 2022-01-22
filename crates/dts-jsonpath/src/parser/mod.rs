@@ -17,16 +17,16 @@ struct JsonPathParser;
 
 /// Parses a `JsonPath` from an input string or returns an error if the input is not a value
 /// jsonpath query.
-pub fn parse(input: &str) -> Result<JsonPath> {
+pub fn parse(input: &str) -> Result<Vec<Selector>> {
     let pairs = JsonPathParser::parse(Rule::Root, input)?;
     parse_jsonpath(pairs)
 }
 
-fn parse_jsonpath(pairs: Pairs<Rule>) -> Result<JsonPath> {
+fn parse_jsonpath(pairs: Pairs<Rule>) -> Result<Vec<Selector>> {
     pairs
         .take_while(|pair| pair.as_rule() != Rule::EOI)
         .map(parse_selector)
-        .collect::<Result<JsonPath>>()
+        .collect()
 }
 
 fn parse_selector(pair: Pair<Rule>) -> Result<Selector> {
@@ -69,15 +69,15 @@ fn parse_descendant_selector(pair: Pair<Rule>) -> Selector {
     }
 }
 
-fn parse_slice_selector(pair: Pair<Rule>) -> SliceSelector {
+fn parse_slice_selector(pair: Pair<Rule>) -> SliceRange {
     pair.into_inner()
         .next()
-        .map(parse_slice_index)
+        .map(parse_slice_range)
         .unwrap_or_default()
 }
 
-fn parse_slice_index(pair: Pair<Rule>) -> SliceSelector {
-    let mut slice = SliceSelector::default();
+fn parse_slice_range(pair: Pair<Rule>) -> SliceRange {
+    let mut slice = SliceRange::default();
 
     for pair in pair.into_inner() {
         match pair.as_rule() {
@@ -91,7 +91,7 @@ fn parse_slice_index(pair: Pair<Rule>) -> SliceSelector {
     slice
 }
 
-fn parse_union_selector(pair: Pair<Rule>) -> JsonPath {
+fn parse_union_selector(pair: Pair<Rule>) -> Vec<Selector> {
     pair.into_inner()
         .map(|pair| {
             let pair = inner(pair);
@@ -99,7 +99,7 @@ fn parse_union_selector(pair: Pair<Rule>) -> JsonPath {
             match pair.as_rule() {
                 Rule::ElementIndex => Selector::Index(parse_int(pair)),
                 Rule::QuotedMemberName => Selector::Key(parse_quoted_string(pair)),
-                Rule::SliceIndex => Selector::Slice(parse_slice_index(pair)),
+                Rule::SliceIndex => Selector::Slice(parse_slice_range(pair)),
                 rule => unmatched_rule(rule),
             }
         })
@@ -334,24 +334,24 @@ mod test {
         let parsed = parse("$[]").unwrap();
         assert_eq!(
             parsed,
-            vec![Selector::Root, Selector::Slice(SliceSelector::default())]
+            vec![Selector::Root, Selector::Slice(SliceRange::default())]
         );
         let parsed = parse("$[:]").unwrap();
         assert_eq!(
             parsed,
-            vec![Selector::Root, Selector::Slice(SliceSelector::default())]
+            vec![Selector::Root, Selector::Slice(SliceRange::default())]
         );
         let parsed = parse("$[::]").unwrap();
         assert_eq!(
             parsed,
-            vec![Selector::Root, Selector::Slice(SliceSelector::default())]
+            vec![Selector::Root, Selector::Slice(SliceRange::default())]
         );
         let parsed = parse("$[1:]").unwrap();
         assert_eq!(
             parsed,
             vec![
                 Selector::Root,
-                Selector::Slice(SliceSelector {
+                Selector::Slice(SliceRange {
                     start: Some(1),
                     end: None,
                     step: None
@@ -363,7 +363,7 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Slice(SliceSelector {
+                Selector::Slice(SliceRange {
                     start: Some(1),
                     end: Some(2),
                     step: None
@@ -375,7 +375,7 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Slice(SliceSelector {
+                Selector::Slice(SliceRange {
                     start: None,
                     end: Some(-1),
                     step: None
@@ -387,7 +387,7 @@ mod test {
             parsed,
             vec![
                 Selector::Root,
-                Selector::Slice(SliceSelector {
+                Selector::Slice(SliceRange {
                     start: Some(1),
                     end: Some(2),
                     step: Some(3),
@@ -404,7 +404,7 @@ mod test {
             vec![
                 Selector::Root,
                 Selector::Union(vec![
-                    Selector::Slice(SliceSelector {
+                    Selector::Slice(SliceRange {
                         start: Some(1),
                         end: Some(2),
                         step: Some(3),

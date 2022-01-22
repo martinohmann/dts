@@ -199,15 +199,16 @@ impl PathSelector for UnionSelector {
     }
 }
 
-pub struct SliceSelector {
-    start: Option<i64>,
-    end: Option<i64>,
-    step: Option<i64>,
+#[derive(Default)]
+pub struct SliceRange {
+    pub start: Option<i64>,
+    pub end: Option<i64>,
+    pub step: Option<i64>,
 }
 
-impl SliceSelector {
+impl SliceRange {
     pub(crate) fn new(start: Option<i64>, end: Option<i64>, step: Option<i64>) -> Self {
-        SliceSelector { start, end, step }
+        SliceRange { start, end, step }
     }
 
     fn start(&self, step: i64, len: i64) -> i64 {
@@ -263,10 +264,20 @@ impl SliceSelector {
 
         (lower, upper)
     }
+}
+
+pub struct SliceSelector {
+    range: SliceRange,
+}
+
+impl SliceSelector {
+    pub(crate) fn new(range: SliceRange) -> Self {
+        SliceSelector { range }
+    }
 
     fn slice_array<'a>(&self, array: &'a Vec<Value>) -> Vec<&'a Value> {
-        let step = self.step();
-        let (lower, upper) = self.bounds(step, array.len() as i64);
+        let step = self.range.step();
+        let (lower, upper) = self.range.bounds(step, array.len() as i64);
 
         if step > 0 {
             (lower..upper)
@@ -393,48 +404,48 @@ mod test {
 
     #[test]
     fn test_slice_selector() {
-        let selector = SliceSelector::new(None, None, None);
+        let selector = SliceSelector::new(SliceRange::default());
         assert_selects(
             selector,
             &json!([1, 2, 3]),
             vec![&json!(1), &json!(2), &json!(3)],
         );
 
-        let selector = SliceSelector::new(Some(1), None, None);
+        let selector = SliceSelector::new(SliceRange::new(Some(1), None, None));
         assert_selects(selector, &json!([1, 2, 3]), vec![&json!(2), &json!(3)]);
 
-        let selector = SliceSelector::new(Some(1), Some(3), None);
+        let selector = SliceSelector::new(SliceRange::new(Some(1), Some(3), None));
         assert_selects(
             selector,
             &json!([1, 2, 3, 4, 5]),
             vec![&json!(2), &json!(3)],
         );
 
-        let selector = SliceSelector::new(Some(1), Some(5), Some(2));
+        let selector = SliceSelector::new(SliceRange::new(Some(1), Some(5), Some(2)));
         assert_selects(
             selector,
             &json!([1, 2, 3, 4, 5]),
             vec![&json!(2), &json!(4)],
         );
 
-        let selector = SliceSelector::new(Some(5), Some(1), Some(-2));
+        let selector = SliceSelector::new(SliceRange::new(Some(5), Some(1), Some(-2)));
         assert_selects(
             selector,
             &json!([1, 2, 3, 4, 5, 6]),
             vec![&json!(6), &json!(4)],
         );
 
-        let selector = SliceSelector::new(None, None, Some(-1));
+        let selector = SliceSelector::new(SliceRange::new(None, None, Some(-1)));
         assert_selects(
             selector,
             &json!([1, 2, 3]),
             vec![&json!(3), &json!(2), &json!(1)],
         );
 
-        let selector = SliceSelector::new(Some(-2), Some(-1), None);
+        let selector = SliceSelector::new(SliceRange::new(Some(-2), Some(-1), None));
         assert_selects(selector, &json!([1, 2, 3]), vec![&json!(2)]);
 
-        let selector = SliceSelector::new(Some(10), Some(12), None);
+        let selector = SliceSelector::new(SliceRange::new(Some(10), Some(12), None));
         assert_selects(selector, &json!([1, 2, 3]), vec![]);
     }
 

@@ -1,5 +1,4 @@
 use super::selector::{JsonPath, PathPointer, PathSelector};
-use crate::parser::CompOp;
 use dts_json::Value;
 use regex::Regex;
 
@@ -43,6 +42,16 @@ impl RegexFilter {
                 .unwrap_or_default()
         })
     }
+}
+
+pub enum CompOp {
+    Eq,
+    NotEq,
+    LessEq,
+    Less,
+    GreaterEq,
+    Greater,
+    In,
 }
 
 pub enum Operand {

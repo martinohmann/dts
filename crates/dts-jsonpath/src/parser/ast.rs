@@ -3,8 +3,6 @@ use dts_json::Value;
 use regex::Regex;
 use std::str::FromStr;
 
-pub type JsonPath = Vec<Selector>;
-
 #[derive(Debug, PartialEq)]
 pub enum Selector {
     Root,
@@ -13,14 +11,14 @@ pub enum Selector {
     Wildcard,
     Index(i64),
     IndexWildcard,
-    Union(JsonPath),
-    Slice(SliceSelector),
+    Union(Vec<Selector>),
+    Slice(SliceRange),
     Descendant(Box<Selector>),
     Filter(FilterExpr),
 }
 
 #[derive(Debug, PartialEq, Default)]
-pub struct SliceSelector {
+pub struct SliceRange {
     pub start: Option<i64>,
     pub end: Option<i64>,
     pub step: Option<i64>,
@@ -31,7 +29,7 @@ pub enum FilterExpr {
     Not(Box<FilterExpr>),
     Or(Vec<FilterExpr>),
     And(Vec<FilterExpr>),
-    Exist(JsonPath),
+    Exist(Vec<Selector>),
     Comp(CompExpr),
     Regex(RegexExpr),
 }
@@ -39,7 +37,7 @@ pub enum FilterExpr {
 #[derive(Debug, PartialEq)]
 pub enum Operand {
     Value(Value),
-    Path(JsonPath),
+    Path(Vec<Selector>),
 }
 
 #[derive(Debug, PartialEq)]
