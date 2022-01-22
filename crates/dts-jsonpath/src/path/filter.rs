@@ -95,7 +95,7 @@ impl CompFilter {
     }
 }
 
-fn eq(lhs: &Vec<&Value>, rhs: &Vec<&Value>) -> bool {
+fn eq(lhs: &[&Value], rhs: &[&Value]) -> bool {
     if lhs.len() != rhs.len() {
         return false;
     }
@@ -103,7 +103,7 @@ fn eq(lhs: &Vec<&Value>, rhs: &Vec<&Value>) -> bool {
     lhs.iter().zip(rhs).all(|(a, b)| a.eq(b))
 }
 
-fn contains(lhs: &Vec<&Value>, rhs: &Vec<&Value>) -> bool {
+fn contains(lhs: &[&Value], rhs: &[&Value]) -> bool {
     if lhs.is_empty() {
         return false;
     }
@@ -115,7 +115,7 @@ fn contains(lhs: &Vec<&Value>, rhs: &Vec<&Value>) -> bool {
     }
 }
 
-fn less(lhs: &Vec<&Value>, rhs: &Vec<&Value>) -> bool {
+fn less(lhs: &[&Value], rhs: &[&Value]) -> bool {
     if lhs.len() != 1 && rhs.len() != 1 {
         return false;
     }

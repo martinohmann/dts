@@ -211,11 +211,11 @@ impl SliceRange {
         SliceRange { start, end, step }
     }
 
-    fn start(&self, step: i64, len: i64) -> i64 {
+    fn start(&self, len: i64) -> i64 {
         match self.start {
             Some(start) => start,
             None => {
-                if step >= 0 {
+                if self.step() >= 0 {
                     0
                 } else {
                     len - 1
@@ -224,11 +224,11 @@ impl SliceRange {
         }
     }
 
-    fn end(&self, step: i64, len: i64) -> i64 {
+    fn end(&self, len: i64) -> i64 {
         match self.end {
             Some(end) => end,
             None => {
-                if step >= 0 {
+                if self.step() >= 0 {
                     len
                 } else {
                     (-len) - 1
@@ -238,13 +238,10 @@ impl SliceRange {
     }
 
     fn step(&self) -> i64 {
-        match self.step {
-            Some(step) => step,
-            None => 1,
-        }
+        self.step.unwrap_or(1)
     }
 
-    fn bounds(&self, step: i64, len: i64) -> (i64, i64) {
+    fn bounds(&self, len: i64) -> (i64, i64) {
         fn normalize(i: i64, len: i64) -> i64 {
             if i >= 0 {
                 i
@@ -253,8 +250,9 @@ impl SliceRange {
             }
         }
 
-        let start = normalize(self.start(step, len), len);
-        let end = normalize(self.end(step, len), len);
+        let step = self.step();
+        let start = normalize(self.start(len), len);
+        let end = normalize(self.end(len), len);
 
         let (lower, upper) = if step >= 0 {
             (start.max(0).min(len), end.max(0).min(len))
@@ -275,23 +273,20 @@ impl SliceSelector {
         SliceSelector { range }
     }
 
-    fn slice_array<'a>(&self, array: &'a Vec<Value>) -> Vec<&'a Value> {
-        let step = self.range.step();
-        let (lower, upper) = self.range.bounds(step, array.len() as i64);
+    fn slice<'a>(&self, array: &'a [Value]) -> Vec<&'a Value> {
+        let (lower, upper) = self.range.bounds(array.len() as i64);
 
-        if step > 0 {
-            (lower..upper)
+        match self.range.step() {
+            step @ 1..=i64::MAX => (lower..upper)
                 .step_by(step as usize)
                 .map(|i| &array[i as usize])
-                .collect()
-        } else if step < 0 {
-            (lower + 1..=upper)
+                .collect(),
+            step @ i64::MIN..=-1 => (lower + 1..=upper)
                 .rev()
                 .step_by(-step as usize)
                 .map(|i| &array[i as usize])
-                .collect()
-        } else {
-            vec![]
+                .collect(),
+            0 => vec![],
         }
     }
 }
@@ -299,7 +294,7 @@ impl SliceSelector {
 impl PathSelector for SliceSelector {
     fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
         match pointer.current.as_array() {
-            Some(array) => self.slice_array(array),
+            Some(array) => self.slice(array),
             None => vec![],
         }
     }
