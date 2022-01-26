@@ -1,4 +1,4 @@
-use super::filter::Filter;
+use super::{Filter, Index, SliceRange};
 use dts_json::Value;
 
 pub trait PathSelector<'a> {
@@ -30,7 +30,7 @@ where
         }
     }
 
-    pub(crate) fn visit<'v>(&mut self, value: &mut Value) {
+    pub(crate) fn visit(&mut self, value: &mut Value) {
         match self.chain.get(0) {
             Some(path) => {
                 let mut visitor = Visitor::new(&self.chain[1..], self.mutate);
@@ -296,25 +296,13 @@ impl<'a> PathVisitor<'a> for WildcardSelector {
 
 #[derive(Clone)]
 pub struct IndexSelector {
-    index: i64,
+    index: Index,
 }
 
 impl IndexSelector {
     pub(crate) fn new(index: i64) -> Self {
-        IndexSelector { index }
-    }
-
-    fn index(&self, len: i64) -> Option<usize> {
-        let index = if self.index < 0 {
-            len + self.index
-        } else {
-            self.index
-        };
-
-        if index < 0 || index >= len {
-            None
-        } else {
-            Some(index as usize)
+        IndexSelector {
+            index: Index::new(index),
         }
     }
 }
@@ -324,7 +312,8 @@ impl<'a> PathSelector<'a> for IndexSelector {
         value
             .as_array()
             .and_then(|array| {
-                self.index(array.len() as i64)
+                self.index
+                    .get(array.len() as i64)
                     .map(|index| vec![&array[index]])
             })
             .unwrap_or_default()
@@ -337,7 +326,7 @@ impl<'a> PathVisitor<'a> for IndexSelector {
         F: FnMut(&mut Value),
     {
         if let Some(array) = value.as_array_mut() {
-            if let Some(index) = self.index(array.len() as i64) {
+            if let Some(index) = self.index.get(array.len() as i64) {
                 visitor.visit(&mut array[index]);
             }
         }
@@ -383,71 +372,6 @@ impl<'a> PathVisitor<'a> for UnionSelector<'a> {
         for entry in self.entries.iter() {
             entry.visit(value, visitor)
         }
-    }
-}
-
-#[derive(Default, Clone)]
-pub struct SliceRange {
-    pub start: Option<i64>,
-    pub end: Option<i64>,
-    pub step: Option<i64>,
-}
-
-impl SliceRange {
-    pub(crate) fn new(start: Option<i64>, end: Option<i64>, step: Option<i64>) -> Self {
-        SliceRange { start, end, step }
-    }
-
-    fn start(&self, len: i64) -> i64 {
-        match self.start {
-            Some(start) => start,
-            None => {
-                if self.step() >= 0 {
-                    0
-                } else {
-                    len - 1
-                }
-            }
-        }
-    }
-
-    fn end(&self, len: i64) -> i64 {
-        match self.end {
-            Some(end) => end,
-            None => {
-                if self.step() >= 0 {
-                    len
-                } else {
-                    (-len) - 1
-                }
-            }
-        }
-    }
-
-    fn step(&self) -> i64 {
-        self.step.unwrap_or(1)
-    }
-
-    fn bounds(&self, len: i64) -> (i64, i64) {
-        fn normalize(i: i64, len: i64) -> i64 {
-            if i >= 0 {
-                i
-            } else {
-                len + i
-            }
-        }
-
-        let step = self.step();
-        let start = normalize(self.start(len), len);
-        let end = normalize(self.end(len), len);
-
-        let (lower, upper) = if step >= 0 {
-            (start.max(0).min(len), end.max(0).min(len))
-        } else {
-            (end.max(-1).min(len - 1), start.max(-1).min(len - 1))
-        };
-
-        (lower, upper)
     }
 }
 

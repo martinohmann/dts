@@ -1,4 +1,4 @@
-use super::selector::{JsonPath, PathSelector};
+use super::{CompOp, JsonPath, PathSelector};
 use dts_json::Value;
 use regex::Regex;
 
@@ -44,17 +44,6 @@ impl<'a> RegexFilter<'a> {
                 .unwrap_or_default()
         })
     }
-}
-
-#[derive(Clone)]
-pub enum CompOp {
-    Eq,
-    NotEq,
-    LessEq,
-    Less,
-    GreaterEq,
-    Greater,
-    In,
 }
 
 #[derive(Clone)]
