@@ -5,28 +5,32 @@ use crate::parser::ast::{self, FilterExpr, Selector};
 use filter::*;
 use selector::*;
 
-pub(crate) use selector::{JsonPath, PathPointer, PathSelector};
+pub(crate) use selector::{
+    JsonPath, PathPointer, PathPointerMut, PathSelector, PathVisitor, Visitor,
+};
 
 pub fn compile(selectors: Vec<Selector>) -> JsonPath {
-    selectors.into_iter().map(compile_selector).collect()
+    JsonPath::Chain(ChainSelector::from_iter(
+        selectors.into_iter().map(compile_selector),
+    ))
 }
 
-fn compile_selector(selector: Selector) -> Box<dyn PathSelector> {
+fn compile_selector(selector: Selector) -> JsonPath {
     match selector {
-        Selector::Root => Box::new(RootSelector),
-        Selector::Current => Box::new(CurrentSelector),
-        Selector::Key(key) => Box::new(KeySelector::new(key)),
-        Selector::Wildcard => Box::new(WildcardSelector),
-        Selector::Index(index) => Box::new(IndexSelector::new(index)),
-        Selector::IndexWildcard => Box::new(WildcardSelector),
-        Selector::Union(entries) => Box::new(UnionSelector::new(
+        Selector::Root => JsonPath::Root(RootSelector),
+        Selector::Current => JsonPath::Current(CurrentSelector),
+        Selector::Key(key) => JsonPath::Key(KeySelector::new(key)),
+        Selector::Wildcard => JsonPath::Wildcard(WildcardSelector),
+        Selector::Index(index) => JsonPath::Index(IndexSelector::new(index)),
+        Selector::IndexWildcard => JsonPath::Wildcard(WildcardSelector),
+        Selector::Union(entries) => JsonPath::Union(UnionSelector::new(
             entries.into_iter().map(compile_selector),
         )),
-        Selector::Slice(range) => Box::new(SliceSelector::new(range.into())),
+        Selector::Slice(range) => JsonPath::Slice(SliceSelector::new(range.into())),
         Selector::Descendant(selector) => {
-            Box::new(DescendantSelector::new(compile_selector(*selector)))
+            JsonPath::Descendant(DescendantSelector::new(compile_selector(*selector)))
         }
-        Selector::Filter(expr) => Box::new(FilterSelector::new(compile_filter(expr))),
+        Selector::Filter(expr) => JsonPath::Filter(FilterSelector::new(compile_filter(expr))),
     }
 }
 

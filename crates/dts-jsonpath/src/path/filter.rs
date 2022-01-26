@@ -2,6 +2,7 @@ use super::selector::{JsonPath, PathPointer, PathSelector};
 use dts_json::Value;
 use regex::Regex;
 
+#[derive(Clone)]
 pub enum Filter {
     Not(Box<Filter>),
     Or(Vec<Filter>),
@@ -24,6 +25,7 @@ impl Filter {
     }
 }
 
+#[derive(Clone)]
 pub struct RegexFilter {
     lhs: Operand,
     regex: Regex,
@@ -44,6 +46,7 @@ impl RegexFilter {
     }
 }
 
+#[derive(Clone)]
 pub enum CompOp {
     Eq,
     NotEq,
@@ -54,6 +57,7 @@ pub enum CompOp {
     In,
 }
 
+#[derive(Clone)]
 pub enum Operand {
     Value(Value),
     Path(JsonPath),
@@ -68,6 +72,7 @@ impl Operand {
     }
 }
 
+#[derive(Clone)]
 pub struct CompFilter {
     lhs: Operand,
     op: CompOp,

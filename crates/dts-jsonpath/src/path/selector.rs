@@ -1,5 +1,6 @@
 use super::filter::Filter;
 use dts_json::Value;
+use std::collections::VecDeque;
 
 pub struct PathPointer<'a> {
     pub root: &'a Value,
@@ -10,14 +11,81 @@ impl<'a> PathPointer<'a> {
     pub(crate) fn new(root: &'a Value, current: &'a Value) -> Self {
         PathPointer { root, current }
     }
+}
 
-    pub(crate) fn new_root(root: &'a Value) -> Self {
-        PathPointer::new(root, root)
+pub struct PathPointerMut<'a> {
+    pub root: &'a mut Value,
+    pub current: &'a mut Value,
+}
+
+impl<'a> PathPointerMut<'a> {
+    pub(crate) fn new(root: &'a mut Value, current: &'a mut Value) -> Self {
+        PathPointerMut { root, current }
     }
 }
 
 pub trait PathSelector {
     fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value>;
+}
+
+pub trait PathVisitor {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value);
+}
+
+pub struct Visitor<'a, F> {
+    chain: Vec<JsonPath>,
+    mutate: &'a mut F,
+}
+
+impl<'a, F> Visitor<'a, F>
+where
+    F: FnMut(&mut Value),
+{
+    pub(crate) fn new<I>(chain: I, mutate: &'a mut F) -> Self
+    where
+        I: IntoIterator<Item = &'a JsonPath>,
+    {
+        Visitor {
+            chain: chain.into_iter().cloned().collect(),
+            mutate,
+        }
+    }
+
+    pub(crate) fn visit<'v>(&mut self, pointer: &mut PathPointerMut<'v>) {
+        match self.chain.get(0) {
+            Some(path) => {
+                let mut visitor = Visitor::new(&self.chain[1..], self.mutate);
+                path.visit(pointer, &mut visitor);
+            }
+            None => (self.mutate)(pointer.current),
+        }
+    }
+}
+
+impl<T> PathVisitor for Box<T>
+where
+    T: PathVisitor + ?Sized,
+{
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        (**self).visit(pointer, visitor)
+    }
+}
+
+impl<T> PathVisitor for &T
+where
+    T: PathVisitor + ?Sized,
+{
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        (*self).visit(pointer, visitor)
+    }
 }
 
 impl<T> PathSelector for Box<T>
@@ -38,29 +106,81 @@ where
     }
 }
 
-pub struct JsonPath {
-    chain: Vec<Box<dyn PathSelector>>,
+#[derive(Clone)]
+pub enum JsonPath {
+    Root(RootSelector),
+    Current(CurrentSelector),
+    Key(KeySelector),
+    Wildcard(WildcardSelector),
+    Index(IndexSelector),
+    Union(UnionSelector),
+    Slice(SliceSelector),
+    Descendant(DescendantSelector),
+    Filter(FilterSelector),
+    Chain(ChainSelector),
 }
 
-impl JsonPath {
+impl PathSelector for JsonPath {
+    fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+        match self {
+            JsonPath::Root(s) => s.select(pointer),
+            JsonPath::Current(s) => s.select(pointer),
+            JsonPath::Key(s) => s.select(pointer),
+            JsonPath::Wildcard(s) => s.select(pointer),
+            JsonPath::Index(s) => s.select(pointer),
+            JsonPath::Union(s) => s.select(pointer),
+            JsonPath::Slice(s) => s.select(pointer),
+            JsonPath::Descendant(s) => s.select(pointer),
+            JsonPath::Filter(s) => s.select(pointer),
+            JsonPath::Chain(s) => s.select(pointer),
+        }
+    }
+}
+
+impl PathVisitor for JsonPath {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        match self {
+            JsonPath::Root(v) => v.visit(pointer, visitor),
+            JsonPath::Current(v) => v.visit(pointer, visitor),
+            JsonPath::Key(v) => v.visit(pointer, visitor),
+            JsonPath::Wildcard(v) => v.visit(pointer, visitor),
+            JsonPath::Index(v) => v.visit(pointer, visitor),
+            JsonPath::Union(v) => v.visit(pointer, visitor),
+            JsonPath::Slice(v) => v.visit(pointer, visitor),
+            JsonPath::Descendant(v) => v.visit(pointer, visitor),
+            JsonPath::Filter(v) => v.visit(pointer, visitor),
+            JsonPath::Chain(v) => v.visit(pointer, visitor),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ChainSelector {
+    chain: Vec<JsonPath>,
+}
+
+impl ChainSelector {
     pub(crate) fn new<I>(chain: I) -> Self
     where
-        I: IntoIterator<Item = Box<dyn PathSelector>>,
+        I: IntoIterator<Item = JsonPath>,
     {
-        JsonPath {
+        ChainSelector {
             chain: chain.into_iter().collect(),
         }
     }
 }
 
-impl FromIterator<Box<dyn PathSelector>> for JsonPath {
-    fn from_iter<I: IntoIterator<Item = Box<dyn PathSelector>>>(iter: I) -> Self {
-        JsonPath::new(iter)
+impl FromIterator<JsonPath> for ChainSelector {
+    fn from_iter<I: IntoIterator<Item = JsonPath>>(iter: I) -> Self {
+        ChainSelector::new(iter)
     }
 }
 
-impl<'a> IntoIterator for JsonPath {
-    type Item = Box<dyn PathSelector>;
+impl<'a> IntoIterator for ChainSelector {
+    type Item = JsonPath;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -68,7 +188,7 @@ impl<'a> IntoIterator for JsonPath {
     }
 }
 
-impl PathSelector for JsonPath {
+impl PathSelector for ChainSelector {
     fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
         self.chain
             .iter()
@@ -83,6 +203,20 @@ impl PathSelector for JsonPath {
     }
 }
 
+impl PathVisitor for ChainSelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        for path in self.chain.iter().rev() {
+            visitor.chain.insert(0, path.clone());
+        }
+
+        visitor.visit(pointer);
+    }
+}
+
+#[derive(Clone)]
 pub struct RootSelector;
 
 impl PathSelector for RootSelector {
@@ -91,6 +225,16 @@ impl PathSelector for RootSelector {
     }
 }
 
+impl PathVisitor for RootSelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        visitor.visit(pointer);
+    }
+}
+
+#[derive(Clone)]
 pub struct CurrentSelector;
 
 impl PathSelector for CurrentSelector {
@@ -99,6 +243,16 @@ impl PathSelector for CurrentSelector {
     }
 }
 
+impl PathVisitor for CurrentSelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        visitor.visit(pointer);
+    }
+}
+
+#[derive(Clone)]
 pub struct KeySelector {
     key: String,
 }
@@ -120,6 +274,21 @@ impl PathSelector for KeySelector {
     }
 }
 
+impl PathVisitor for KeySelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        if let Some(object) = pointer.current.as_object_mut() {
+            if let Some(value) = object.get_mut(&self.key) {
+                let mut pointer = PathPointerMut::new(pointer.root, value);
+                visitor.visit(&mut pointer);
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct WildcardSelector;
 
 impl PathSelector for WildcardSelector {
@@ -132,6 +301,26 @@ impl PathSelector for WildcardSelector {
     }
 }
 
+impl PathVisitor for WildcardSelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        match pointer.current {
+            Value::Array(array) => array.iter_mut().for_each(|value| {
+                let mut pointer = PathPointerMut::new(pointer.root, value);
+                visitor.visit(&mut pointer);
+            }),
+            Value::Object(object) => object.values_mut().for_each(|value| {
+                let mut pointer = PathPointerMut::new(pointer.root, value);
+                visitor.visit(&mut pointer);
+            }),
+            _ => (),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct IndexSelector {
     index: i64,
 }
@@ -169,14 +358,29 @@ impl PathSelector for IndexSelector {
     }
 }
 
+impl PathVisitor for IndexSelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        if let Some(array) = pointer.current.as_array_mut() {
+            if let Some(index) = self.index(array.len() as i64) {
+                let mut pointer = PathPointerMut::new(pointer.root, &mut array[index]);
+                visitor.visit(&mut pointer);
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct UnionSelector {
-    entries: Vec<Box<dyn PathSelector>>,
+    entries: Vec<JsonPath>,
 }
 
 impl UnionSelector {
     pub(crate) fn new<I>(entries: I) -> Self
     where
-        I: IntoIterator<Item = Box<dyn PathSelector>>,
+        I: IntoIterator<Item = JsonPath>,
     {
         UnionSelector {
             entries: entries.into_iter().collect(),
@@ -184,8 +388,8 @@ impl UnionSelector {
     }
 }
 
-impl FromIterator<Box<dyn PathSelector>> for UnionSelector {
-    fn from_iter<I: IntoIterator<Item = Box<dyn PathSelector>>>(iter: I) -> Self {
+impl FromIterator<JsonPath> for UnionSelector {
+    fn from_iter<I: IntoIterator<Item = JsonPath>>(iter: I) -> Self {
         UnionSelector::new(iter)
     }
 }
@@ -199,7 +403,18 @@ impl PathSelector for UnionSelector {
     }
 }
 
-#[derive(Default)]
+impl PathVisitor for UnionSelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        for entry in self.entries.iter() {
+            entry.visit(pointer, visitor)
+        }
+    }
+}
+
+#[derive(Default, Clone)]
 pub struct SliceRange {
     pub start: Option<i64>,
     pub end: Option<i64>,
@@ -264,6 +479,7 @@ impl SliceRange {
     }
 }
 
+#[derive(Clone)]
 pub struct SliceSelector {
     range: SliceRange,
 }
@@ -272,41 +488,71 @@ impl SliceSelector {
     pub(crate) fn new(range: SliceRange) -> Self {
         SliceSelector { range }
     }
-
-    fn slice<'a>(&self, array: &'a [Value]) -> Vec<&'a Value> {
-        let (lower, upper) = self.range.bounds(array.len() as i64);
-
-        match self.range.step() {
-            step @ 1..=i64::MAX => (lower..upper)
-                .step_by(step as usize)
-                .map(|i| &array[i as usize])
-                .collect(),
-            step @ i64::MIN..=-1 => (lower + 1..=upper)
-                .rev()
-                .step_by(-step as usize)
-                .map(|i| &array[i as usize])
-                .collect(),
-            0 => vec![],
-        }
-    }
 }
 
 impl PathSelector for SliceSelector {
     fn select<'a>(&self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
         match pointer.current.as_array() {
-            Some(array) => self.slice(array),
+            Some(array) => {
+                let (lower, upper) = self.range.bounds(array.len() as i64);
+
+                match self.range.step() {
+                    step @ 1..=i64::MAX => (lower..upper)
+                        .step_by(step as usize)
+                        .map(|i| &array[i as usize])
+                        .collect(),
+                    step @ i64::MIN..=-1 => (lower + 1..=upper)
+                        .rev()
+                        .step_by(-step as usize)
+                        .map(|i| &array[i as usize])
+                        .collect(),
+                    0 => vec![],
+                }
+            }
             None => vec![],
         }
     }
 }
 
+impl PathVisitor for SliceSelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        if let Some(array) = pointer.current.as_array_mut() {
+            let (lower, upper) = self.range.bounds(array.len() as i64);
+
+            match self.range.step() {
+                step @ 1..=i64::MAX => (lower..upper).step_by(step as usize).for_each(|i| {
+                    let mut pointer = PathPointerMut::new(pointer.root, &mut array[i as usize]);
+                    visitor.visit(&mut pointer);
+                }),
+                step @ i64::MIN..=-1 => {
+                    (lower + 1..=upper)
+                        .rev()
+                        .step_by(-step as usize)
+                        .for_each(|i| {
+                            let mut pointer =
+                                PathPointerMut::new(pointer.root, &mut array[i as usize]);
+                            visitor.visit(&mut pointer);
+                        })
+                }
+                0 => (),
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct DescendantSelector {
-    selector: Box<dyn PathSelector>,
+    selector: Box<JsonPath>,
 }
 
 impl DescendantSelector {
-    pub(crate) fn new(selector: Box<dyn PathSelector>) -> Self {
-        DescendantSelector { selector }
+    pub(crate) fn new(selector: JsonPath) -> Self {
+        DescendantSelector {
+            selector: Box::new(selector),
+        }
     }
 }
 
@@ -342,13 +588,37 @@ impl PathSelector for DescendantSelector {
     }
 }
 
+impl PathVisitor for DescendantSelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        self.selector.visit(pointer, visitor);
+
+        match pointer.current {
+            Value::Array(array) => array.iter_mut().for_each(|value| {
+                let mut pointer = PathPointerMut::new(pointer.root, value);
+                visitor.visit(&mut pointer);
+            }),
+            Value::Object(object) => object.values_mut().for_each(|value| {
+                let mut pointer = PathPointerMut::new(pointer.root, value);
+                visitor.visit(&mut pointer);
+            }),
+            _ => (),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct FilterSelector {
-    filter: Filter,
+    filter: Box<Filter>,
 }
 
 impl FilterSelector {
     pub(crate) fn new(filter: Filter) -> Self {
-        FilterSelector { filter }
+        FilterSelector {
+            filter: Box::new(filter),
+        }
     }
 }
 
@@ -374,6 +644,39 @@ impl PathSelector for FilterSelector {
     }
 }
 
+impl PathVisitor for FilterSelector {
+    fn visit<'a, 'v, F>(&self, pointer: &mut PathPointerMut<'v>, visitor: &mut Visitor<'a, F>)
+    where
+        F: FnMut(&mut Value),
+    {
+        let root = pointer.root.clone();
+
+        match pointer.current {
+            Value::Array(array) => array
+                .iter_mut()
+                .filter(|value| {
+                    let pointer = PathPointer::new(&root, value);
+                    self.filter.matches(&pointer)
+                })
+                .for_each(|value| {
+                    let mut pointer = PathPointerMut::new(pointer.root, value);
+                    visitor.visit(&mut pointer);
+                }),
+            Value::Object(object) => object
+                .values_mut()
+                .filter(|value| {
+                    let pointer = PathPointer::new(&root, value);
+                    self.filter.matches(&pointer)
+                })
+                .for_each(|value| {
+                    let mut pointer = PathPointerMut::new(pointer.root, value);
+                    visitor.visit(&mut pointer);
+                }),
+            _ => (),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -384,7 +687,7 @@ mod test {
     where
         T: PathSelector,
     {
-        let pointer = PathPointer::new_root(root);
+        let pointer = PathPointer::new(root, root);
         assert_eq!(selector.select(&pointer), expected);
     }
 
