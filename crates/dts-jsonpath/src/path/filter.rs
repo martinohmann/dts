@@ -3,41 +3,41 @@ use dts_json::Value;
 use regex::Regex;
 
 #[derive(Clone)]
-pub enum Filter {
-    Not(Box<Filter>),
-    Or(Vec<Filter>),
-    And(Vec<Filter>),
-    Exist(JsonPath),
-    Regex(RegexFilter),
-    Comp(CompFilter),
+pub enum Filter<'a> {
+    Not(Box<Filter<'a>>),
+    Or(Vec<Filter<'a>>),
+    And(Vec<Filter<'a>>),
+    Exist(JsonPath<'a>),
+    Regex(RegexFilter<'a>),
+    Comp(CompFilter<'a>),
 }
 
-impl Filter {
-    pub(crate) fn matches<'a>(&self, root: &'a Value, current: &'a Value) -> bool {
+impl<'a> Filter<'a> {
+    pub(crate) fn matches(&self, value: &'a Value) -> bool {
         match self {
-            Filter::Not(filter) => !filter.matches(root, current),
-            Filter::Or(filters) => filters.iter().any(|filter| filter.matches(root, current)),
-            Filter::And(filters) => filters.iter().all(|filter| filter.matches(root, current)),
-            Filter::Exist(path) => !path.select(root, current).is_empty(),
-            Filter::Regex(re) => re.matches(root, current),
-            Filter::Comp(comp) => comp.matches(root, current),
+            Filter::Not(filter) => !filter.matches(value),
+            Filter::Or(filters) => filters.iter().any(|filter| filter.matches(value)),
+            Filter::And(filters) => filters.iter().all(|filter| filter.matches(value)),
+            Filter::Exist(path) => !path.select(value).is_empty(),
+            Filter::Regex(re) => re.matches(value),
+            Filter::Comp(comp) => comp.matches(value),
         }
     }
 }
 
 #[derive(Clone)]
-pub struct RegexFilter {
-    lhs: Operand,
+pub struct RegexFilter<'a> {
+    lhs: JsonPath<'a>,
     regex: Regex,
 }
 
-impl RegexFilter {
-    pub(crate) fn new(lhs: Operand, regex: Regex) -> Self {
+impl<'a> RegexFilter<'a> {
+    pub(crate) fn new(lhs: JsonPath<'a>, regex: Regex) -> Self {
         RegexFilter { lhs, regex }
     }
 
-    pub(crate) fn matches<'a>(&self, root: &'a Value, current: &'a Value) -> bool {
-        self.lhs.select(root, current).iter().any(|value| {
+    pub(crate) fn matches(&self, value: &'a Value) -> bool {
+        self.lhs.select(value).iter().any(|value| {
             value
                 .as_str()
                 .map(|s| self.regex.is_match(s))
@@ -58,35 +58,20 @@ pub enum CompOp {
 }
 
 #[derive(Clone)]
-pub enum Operand {
-    Value(Value),
-    Path(JsonPath),
-}
-
-impl Operand {
-    fn select<'a>(&'a self, root: &'a Value, current: &'a Value) -> Vec<&'a Value> {
-        match self {
-            Operand::Value(value) => vec![value],
-            Operand::Path(path) => path.select(root, current),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct CompFilter {
-    lhs: Operand,
+pub struct CompFilter<'a> {
+    lhs: JsonPath<'a>,
     op: CompOp,
-    rhs: Operand,
+    rhs: JsonPath<'a>,
 }
 
-impl CompFilter {
-    pub(crate) fn new(lhs: Operand, op: CompOp, rhs: Operand) -> Self {
+impl<'a> CompFilter<'a> {
+    pub(crate) fn new(lhs: JsonPath<'a>, op: CompOp, rhs: JsonPath<'a>) -> Self {
         CompFilter { lhs, op, rhs }
     }
 
-    pub(crate) fn matches<'a>(&self, root: &'a Value, current: &'a Value) -> bool {
-        let lhs = self.lhs.select(root, current);
-        let rhs = self.rhs.select(root, current);
+    pub(crate) fn matches(&self, value: &'a Value) -> bool {
+        let lhs = self.lhs.select(value);
+        let rhs = self.rhs.select(value);
 
         match &self.op {
             CompOp::Eq => eq(&lhs, &rhs),

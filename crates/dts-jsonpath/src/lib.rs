@@ -8,31 +8,33 @@ pub use error::{Error, Result};
 pub use parser::parse;
 
 use dts_json::Value;
-use path::{JsonPath, PathSelector, Visitor};
+use path::{PathSelector, Visitor};
 
 pub struct Selector {
-    path: JsonPath,
+    ast: Vec<parser::ast::Selector>,
 }
 
 impl Selector {
     pub fn new(query: &str) -> Result<Selector> {
         let ast = parser::parse(query)?;
-        let path = path::compile(ast);
-        Ok(Selector { path })
+        Ok(Selector { ast })
     }
 
-    pub fn select<'a>(&self, value: &'a Value) -> Vec<&'a Value> {
-        self.path.select(value, value)
+    pub fn select<'a>(&'a self, value: &'a Value) -> Vec<&'a Value> {
+        let path = path::compile(&self.ast, value);
+        path.select(value)
     }
 
     pub fn mutate<F>(&self, mut value: Value, f: &mut F) -> Value
     where
         F: FnMut(&mut Value),
     {
-        let chain = vec![self.path.clone()];
-        let mut root = value.clone();
+        let root = value.clone();
+        let mut fake_root = value.clone();
+        let path = path::compile(&self.ast, &root);
+        let chain = vec![path];
         let mut visitor = Visitor::new(&chain, f);
-        visitor.visit(&mut root, &mut value);
+        visitor.visit(&mut fake_root, &mut value);
         value
     }
 }

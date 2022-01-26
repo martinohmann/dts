@@ -47,7 +47,7 @@ pub struct CompExpr {
     pub rhs: Operand,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CompOp {
     Eq,
     NotEq,
