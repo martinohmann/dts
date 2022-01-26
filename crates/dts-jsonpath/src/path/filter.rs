@@ -1,4 +1,4 @@
-use super::selector::{JsonPath, PathPointer, PathSelector};
+use super::selector::{JsonPath, PathSelector};
 use dts_json::Value;
 use regex::Regex;
 
@@ -13,14 +13,14 @@ pub enum Filter {
 }
 
 impl Filter {
-    pub(crate) fn matches<'a>(&self, pointer: &PathPointer<'a>) -> bool {
+    pub(crate) fn matches<'a>(&self, root: &'a Value, current: &'a Value) -> bool {
         match self {
-            Filter::Not(filter) => !filter.matches(pointer),
-            Filter::Or(filters) => filters.iter().any(|filter| filter.matches(pointer)),
-            Filter::And(filters) => filters.iter().all(|filter| filter.matches(pointer)),
-            Filter::Exist(path) => !path.select(pointer).is_empty(),
-            Filter::Regex(re) => re.matches(pointer),
-            Filter::Comp(comp) => comp.matches(pointer),
+            Filter::Not(filter) => !filter.matches(root, current),
+            Filter::Or(filters) => filters.iter().any(|filter| filter.matches(root, current)),
+            Filter::And(filters) => filters.iter().all(|filter| filter.matches(root, current)),
+            Filter::Exist(path) => !path.select(root, current).is_empty(),
+            Filter::Regex(re) => re.matches(root, current),
+            Filter::Comp(comp) => comp.matches(root, current),
         }
     }
 }
@@ -36,8 +36,8 @@ impl RegexFilter {
         RegexFilter { lhs, regex }
     }
 
-    pub(crate) fn matches<'a>(&self, pointer: &PathPointer<'a>) -> bool {
-        self.lhs.select(pointer).iter().any(|value| {
+    pub(crate) fn matches<'a>(&self, root: &'a Value, current: &'a Value) -> bool {
+        self.lhs.select(root, current).iter().any(|value| {
             value
                 .as_str()
                 .map(|s| self.regex.is_match(s))
@@ -64,10 +64,10 @@ pub enum Operand {
 }
 
 impl Operand {
-    fn select<'a>(&'a self, pointer: &PathPointer<'a>) -> Vec<&'a Value> {
+    fn select<'a>(&'a self, root: &'a Value, current: &'a Value) -> Vec<&'a Value> {
         match self {
             Operand::Value(value) => vec![value],
-            Operand::Path(path) => path.select(pointer),
+            Operand::Path(path) => path.select(root, current),
         }
     }
 }
@@ -84,9 +84,9 @@ impl CompFilter {
         CompFilter { lhs, op, rhs }
     }
 
-    pub(crate) fn matches<'a>(&self, pointer: &PathPointer<'a>) -> bool {
-        let lhs = self.lhs.select(pointer);
-        let rhs = self.rhs.select(pointer);
+    pub(crate) fn matches<'a>(&self, root: &'a Value, current: &'a Value) -> bool {
+        let lhs = self.lhs.select(root, current);
+        let rhs = self.rhs.select(root, current);
 
         match &self.op {
             CompOp::Eq => eq(&lhs, &rhs),

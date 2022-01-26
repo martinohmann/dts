@@ -8,7 +8,7 @@ pub use error::{Error, Result};
 pub use parser::parse;
 
 use dts_json::Value;
-use path::{JsonPath, PathPointer, PathPointerMut, PathSelector, Visitor};
+use path::{JsonPath, PathSelector, Visitor};
 
 pub struct Selector {
     path: JsonPath,
@@ -22,8 +22,7 @@ impl Selector {
     }
 
     pub fn select<'a>(&self, value: &'a Value) -> Vec<&'a Value> {
-        let pointer = PathPointer::new(value, value);
-        self.path.select(&pointer)
+        self.path.select(value, value)
     }
 
     pub fn mutate<F>(&self, mut value: Value, f: &mut F) -> Value
@@ -31,10 +30,9 @@ impl Selector {
         F: FnMut(&mut Value),
     {
         let chain = vec![self.path.clone()];
-        let mut current = value.clone();
-        let mut pointer = PathPointerMut::new(&mut current, &mut value);
+        let mut root = value.clone();
         let mut visitor = Visitor::new(&chain, f);
-        visitor.visit(&mut pointer);
+        visitor.visit(&mut root, &mut value);
         value
     }
 }

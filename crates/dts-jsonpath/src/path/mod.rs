@@ -5,9 +5,7 @@ use crate::parser::ast::{self, FilterExpr, Selector};
 use filter::*;
 use selector::*;
 
-pub(crate) use selector::{
-    JsonPath, PathPointer, PathPointerMut, PathSelector, PathVisitor, Visitor,
-};
+pub(crate) use selector::{JsonPath, PathSelector, Visitor};
 
 pub fn compile(selectors: Vec<Selector>) -> JsonPath {
     JsonPath::Chain(ChainSelector::from_iter(
