@@ -6,7 +6,7 @@ pub trait PathSelector<'a> {
 }
 
 pub trait PathVisitor<'a> {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value);
 }
@@ -30,13 +30,13 @@ where
         }
     }
 
-    pub(crate) fn visit<'v>(&mut self, root: &mut Value, current: &mut Value) {
+    pub(crate) fn visit<'v>(&mut self, value: &mut Value) {
         match self.chain.get(0) {
             Some(path) => {
                 let mut visitor = Visitor::new(&self.chain[1..], self.mutate);
-                path.visit(root, current, &mut visitor);
+                path.visit(value, &mut visitor);
             }
-            None => (self.mutate)(current),
+            None => (self.mutate)(value),
         }
     }
 }
@@ -45,11 +45,11 @@ impl<'a, T> PathVisitor<'a> for Box<T>
 where
     T: PathVisitor<'a> + ?Sized,
 {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        (**self).visit(root, current, visitor)
+        (**self).visit(value, visitor)
     }
 }
 
@@ -57,11 +57,11 @@ impl<'a, T> PathVisitor<'a> for &T
 where
     T: PathVisitor<'a> + ?Sized,
 {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        (*self).visit(root, current, visitor)
+        (*self).visit(value, visitor)
     }
 }
 
@@ -115,21 +115,21 @@ impl<'a> PathSelector<'a> for JsonPath<'a> {
 }
 
 impl<'a> PathVisitor<'a> for JsonPath<'a> {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
         match self {
-            JsonPath::Root(v) => v.visit(root, current, visitor),
-            JsonPath::Current(v) => v.visit(root, current, visitor),
-            JsonPath::Key(v) => v.visit(root, current, visitor),
-            JsonPath::Wildcard(v) => v.visit(root, current, visitor),
-            JsonPath::Index(v) => v.visit(root, current, visitor),
-            JsonPath::Union(v) => v.visit(root, current, visitor),
-            JsonPath::Slice(v) => v.visit(root, current, visitor),
-            JsonPath::Descendant(v) => v.visit(root, current, visitor),
-            JsonPath::Filter(v) => v.visit(root, current, visitor),
-            JsonPath::Chain(v) => v.visit(root, current, visitor),
+            JsonPath::Root(v) => v.visit(value, visitor),
+            JsonPath::Current(v) => v.visit(value, visitor),
+            JsonPath::Key(v) => v.visit(value, visitor),
+            JsonPath::Wildcard(v) => v.visit(value, visitor),
+            JsonPath::Index(v) => v.visit(value, visitor),
+            JsonPath::Union(v) => v.visit(value, visitor),
+            JsonPath::Slice(v) => v.visit(value, visitor),
+            JsonPath::Descendant(v) => v.visit(value, visitor),
+            JsonPath::Filter(v) => v.visit(value, visitor),
+            JsonPath::Chain(v) => v.visit(value, visitor),
         }
     }
 }
@@ -176,15 +176,17 @@ impl<'a> PathSelector<'a> for ChainSelector<'a> {
 }
 
 impl<'a> PathVisitor<'a> for ChainSelector<'a> {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        for path in self.chain.iter().rev() {
-            visitor.chain.insert(0, path.clone());
-        }
+        self.chain
+            .iter()
+            .cloned()
+            .rev()
+            .for_each(|path| visitor.chain.insert(0, path));
 
-        visitor.visit(root, current);
+        visitor.visit(value);
     }
 }
 
@@ -206,11 +208,11 @@ impl<'a> PathSelector<'a> for RootSelector<'a> {
 }
 
 impl<'a> PathVisitor<'a> for RootSelector<'a> {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        visitor.visit(root, current);
+        visitor.visit(value);
     }
 }
 
@@ -224,11 +226,11 @@ impl<'a> PathSelector<'a> for CurrentSelector {
 }
 
 impl<'a> PathVisitor<'a> for CurrentSelector {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        visitor.visit(root, current);
+        visitor.visit(value);
     }
 }
 
@@ -254,13 +256,13 @@ impl<'a> PathSelector<'a> for KeySelector {
 }
 
 impl<'a> PathVisitor<'a> for KeySelector {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        if let Some(object) = current.as_object_mut() {
+        if let Some(object) = value.as_object_mut() {
             if let Some(value) = object.get_mut(&self.key) {
-                visitor.visit(root, value);
+                visitor.visit(value);
             }
         }
     }
@@ -280,17 +282,13 @@ impl<'a> PathSelector<'a> for WildcardSelector {
 }
 
 impl<'a> PathVisitor<'a> for WildcardSelector {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        match current {
-            Value::Array(array) => array
-                .iter_mut()
-                .for_each(|value| visitor.visit(root, value)),
-            Value::Object(object) => object
-                .values_mut()
-                .for_each(|value| visitor.visit(root, value)),
+        match value {
+            Value::Array(array) => array.iter_mut().for_each(|value| visitor.visit(value)),
+            Value::Object(object) => object.values_mut().for_each(|value| visitor.visit(value)),
             _ => (),
         }
     }
@@ -334,13 +332,13 @@ impl<'a> PathSelector<'a> for IndexSelector {
 }
 
 impl<'a> PathVisitor<'a> for IndexSelector {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        if let Some(array) = current.as_array_mut() {
+        if let Some(array) = value.as_array_mut() {
             if let Some(index) = self.index(array.len() as i64) {
-                visitor.visit(root, &mut array[index]);
+                visitor.visit(&mut array[index]);
             }
         }
     }
@@ -378,12 +376,12 @@ impl<'a> PathSelector<'a> for UnionSelector<'a> {
 }
 
 impl<'a> PathVisitor<'a> for UnionSelector<'a> {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
         for entry in self.entries.iter() {
-            entry.visit(root, current, visitor)
+            entry.visit(value, visitor)
         }
     }
 }
@@ -489,21 +487,21 @@ impl<'a> PathSelector<'a> for SliceSelector {
 }
 
 impl<'a> PathVisitor<'a> for SliceSelector {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        if let Some(array) = current.as_array_mut() {
+        if let Some(array) = value.as_array_mut() {
             let (lower, upper) = self.range.bounds(array.len() as i64);
 
             match self.range.step() {
                 step @ 1..=i64::MAX => (lower..upper)
                     .step_by(step as usize)
-                    .for_each(|i| visitor.visit(root, &mut array[i as usize])),
+                    .for_each(|i| visitor.visit(&mut array[i as usize])),
                 step @ i64::MIN..=-1 => (lower + 1..=upper)
                     .rev()
                     .step_by(-step as usize)
-                    .for_each(|i| visitor.visit(root, &mut array[i as usize])),
+                    .for_each(|i| visitor.visit(&mut array[i as usize])),
                 0 => (),
             }
         }
@@ -550,19 +548,15 @@ impl<'a> PathSelector<'a> for DescendantSelector<'a> {
 }
 
 impl<'a> PathVisitor<'a> for DescendantSelector<'a> {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        self.selector.visit(root, current, visitor);
+        self.selector.visit(value, visitor);
 
-        match current {
-            Value::Array(array) => array
-                .iter_mut()
-                .for_each(|value| visitor.visit(root, value)),
-            Value::Object(object) => object
-                .values_mut()
-                .for_each(|value| visitor.visit(root, value)),
+        match value {
+            Value::Array(array) => array.iter_mut().for_each(|value| visitor.visit(value)),
+            Value::Object(object) => object.values_mut().for_each(|value| visitor.visit(value)),
             _ => (),
         }
     }
@@ -598,19 +592,19 @@ impl<'a> PathSelector<'a> for FilterSelector<'a> {
 }
 
 impl<'a> PathVisitor<'a> for FilterSelector<'a> {
-    fn visit<F>(&self, root: &mut Value, current: &mut Value, visitor: &mut Visitor<'a, F>)
+    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
-        match current {
+        match value {
             Value::Array(array) => array
                 .iter_mut()
                 .filter(|value| self.filter.matches(value))
-                .for_each(|value| visitor.visit(root, value)),
+                .for_each(|value| visitor.visit(value)),
             Value::Object(object) => object
                 .values_mut()
                 .filter(|value| self.filter.matches(value))
-                .for_each(|value| visitor.visit(root, value)),
+                .for_each(|value| visitor.visit(value)),
             _ => (),
         }
     }

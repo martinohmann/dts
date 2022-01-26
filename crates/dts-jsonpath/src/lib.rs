@@ -30,11 +30,10 @@ impl Selector {
         F: FnMut(&mut Value),
     {
         let root = value.clone();
-        let mut fake_root = value.clone();
         let path = path::compile(&self.ast, &root);
         let chain = vec![path];
         let mut visitor = Visitor::new(&chain, f);
-        visitor.visit(&mut fake_root, &mut value);
+        visitor.visit(&mut value);
         value
     }
 }
