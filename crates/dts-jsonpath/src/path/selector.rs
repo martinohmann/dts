@@ -25,17 +25,18 @@ where
         I: IntoIterator<Item = &'a JsonPath<'a>>,
     {
         Visitor {
-            chain: chain.into_iter().cloned().collect(),
+            chain: chain
+                .into_iter()
+                .cloned()
+                .flat_map(JsonPath::into_vec)
+                .collect(),
             mutate,
         }
     }
 
     pub fn visit(&mut self, value: &mut Value) {
         match self.chain.get(0) {
-            Some(path) => {
-                let mut visitor = Visitor::new(&self.chain[1..], self.mutate);
-                path.visit(value, &mut visitor);
-            }
+            Some(path) => path.visit(value, &mut Visitor::new(&self.chain[1..], self.mutate)),
             None => (self.mutate)(value),
         }
     }
@@ -53,6 +54,15 @@ pub enum JsonPath<'a> {
     Descendant(Descendant<'a>),
     Filter(Filter<'a>),
     Chain(Chain<'a>),
+}
+
+impl<'a> JsonPath<'a> {
+    fn into_vec(self) -> Vec<JsonPath<'a>> {
+        match self {
+            JsonPath::Chain(chain) => chain.chain,
+            path => vec![path],
+        }
+    }
 }
 
 impl<'a> Select<'a> for JsonPath<'a> {
@@ -103,7 +113,7 @@ impl<'a> Chain<'a> {
         I: IntoIterator<Item = JsonPath<'a>>,
     {
         Chain {
-            chain: chain.into_iter().collect(),
+            chain: chain.into_iter().flat_map(JsonPath::into_vec).collect(),
         }
     }
 }
@@ -138,6 +148,8 @@ impl<'a> Visit<'a> for Chain<'a> {
     where
         F: FnMut(&mut Value),
     {
+        visitor.chain.reserve(self.chain.len());
+
         self.chain
             .iter()
             .cloned()
