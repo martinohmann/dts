@@ -421,17 +421,14 @@ impl<'a> Select<'a> for Descendant<'a> {
 
         match value {
             Value::Array(array) => {
-                let mut children = array
-                    .iter()
-                    .flat_map(|value| self.selector.select(value))
-                    .collect();
+                let mut children = array.iter().flat_map(|value| self.select(value)).collect();
                 values.append(&mut children);
                 values
             }
             Value::Object(object) => {
                 let mut children = object
                     .values()
-                    .flat_map(|value| self.selector.select(value))
+                    .flat_map(|value| self.select(value))
                     .collect();
                 values.append(&mut children);
                 values
@@ -449,8 +446,12 @@ impl<'a> Visit<'a> for Descendant<'a> {
         self.selector.visit(value, visitor);
 
         match value {
-            Value::Array(array) => array.iter_mut().for_each(|value| visitor.visit(value)),
-            Value::Object(object) => object.values_mut().for_each(|value| visitor.visit(value)),
+            Value::Array(array) => array
+                .iter_mut()
+                .for_each(|value| self.visit(value, visitor)),
+            Value::Object(object) => object
+                .values_mut()
+                .for_each(|value| self.visit(value, visitor)),
             _ => (),
         }
     }
