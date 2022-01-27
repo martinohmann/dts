@@ -1,9 +1,9 @@
 //! Provides a jsonpath parser and types for the AST elements of a jsonpath query.
 
-pub(crate) mod ast;
+pub mod ast;
 
 use crate::{Error, Result};
-pub use ast::*;
+use ast::*;
 use dts_json::Value;
 use pest::iterators::{Pair, Pairs};
 use pest::Parser as ParserTrait;

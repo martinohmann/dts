@@ -1,11 +1,11 @@
-use super::{Filter, Index, SliceRange};
+use super::{FilterExpr, Index, SliceRange};
 use dts_json::Value;
 
-pub trait PathSelector<'a> {
+pub trait Select<'a> {
     fn select(&self, value: &'a Value) -> Vec<&'a Value>;
 }
 
-pub trait PathVisitor<'a> {
+pub trait Visit<'a> {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value);
@@ -20,7 +20,7 @@ impl<'a, F> Visitor<'a, F>
 where
     F: FnMut(&mut Value),
 {
-    pub(crate) fn new<I>(chain: I, mutate: &'a mut F) -> Self
+    pub fn new<I>(chain: I, mutate: &'a mut F) -> Self
     where
         I: IntoIterator<Item = &'a JsonPath<'a>>,
     {
@@ -30,7 +30,7 @@ where
         }
     }
 
-    pub(crate) fn visit(&mut self, value: &mut Value) {
+    pub fn visit(&mut self, value: &mut Value) {
         match self.chain.get(0) {
             Some(path) => {
                 let mut visitor = Visitor::new(&self.chain[1..], self.mutate);
@@ -41,63 +41,21 @@ where
     }
 }
 
-impl<'a, T> PathVisitor<'a> for Box<T>
-where
-    T: PathVisitor<'a> + ?Sized,
-{
-    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
-    where
-        F: FnMut(&mut Value),
-    {
-        (**self).visit(value, visitor)
-    }
-}
-
-impl<'a, T> PathVisitor<'a> for &T
-where
-    T: PathVisitor<'a> + ?Sized,
-{
-    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
-    where
-        F: FnMut(&mut Value),
-    {
-        (*self).visit(value, visitor)
-    }
-}
-
-impl<'a, T> PathSelector<'a> for Box<T>
-where
-    T: PathSelector<'a> + ?Sized,
-{
-    fn select(&self, valur: &'a Value) -> Vec<&'a Value> {
-        (**self).select(valur)
-    }
-}
-
-impl<'a, T> PathSelector<'a> for &T
-where
-    T: PathSelector<'a> + ?Sized,
-{
-    fn select(&self, value: &'a Value) -> Vec<&'a Value> {
-        (*self).select(value)
-    }
-}
-
 #[derive(Clone)]
 pub enum JsonPath<'a> {
-    Root(RootSelector<'a>),
-    Current(CurrentSelector),
-    Key(KeySelector),
-    Wildcard(WildcardSelector),
-    Index(IndexSelector),
-    Union(UnionSelector<'a>),
-    Slice(SliceSelector),
-    Descendant(DescendantSelector<'a>),
-    Filter(FilterSelector<'a>),
-    Chain(ChainSelector<'a>),
+    Root(Root<'a>),
+    Current(Current),
+    Key(ObjectKey),
+    Wildcard(Wildcard),
+    Index(ArrayIndex),
+    Union(Union<'a>),
+    Slice(Slice),
+    Descendant(Descendant<'a>),
+    Filter(Filter<'a>),
+    Chain(Chain<'a>),
 }
 
-impl<'a> PathSelector<'a> for JsonPath<'a> {
+impl<'a> Select<'a> for JsonPath<'a> {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         match self {
             JsonPath::Root(s) => s.select(value),
@@ -114,7 +72,7 @@ impl<'a> PathSelector<'a> for JsonPath<'a> {
     }
 }
 
-impl<'a> PathVisitor<'a> for JsonPath<'a> {
+impl<'a> Visit<'a> for JsonPath<'a> {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -135,28 +93,28 @@ impl<'a> PathVisitor<'a> for JsonPath<'a> {
 }
 
 #[derive(Clone)]
-pub struct ChainSelector<'a> {
+pub struct Chain<'a> {
     chain: Vec<JsonPath<'a>>,
 }
 
-impl<'a> ChainSelector<'a> {
+impl<'a> Chain<'a> {
     pub(crate) fn new<I>(chain: I) -> Self
     where
         I: IntoIterator<Item = JsonPath<'a>>,
     {
-        ChainSelector {
+        Chain {
             chain: chain.into_iter().collect(),
         }
     }
 }
 
-impl<'a> FromIterator<JsonPath<'a>> for ChainSelector<'a> {
+impl<'a> FromIterator<JsonPath<'a>> for Chain<'a> {
     fn from_iter<I: IntoIterator<Item = JsonPath<'a>>>(iter: I) -> Self {
-        ChainSelector::new(iter)
+        Chain::new(iter)
     }
 }
 
-impl<'a> IntoIterator for ChainSelector<'a> {
+impl<'a> IntoIterator for Chain<'a> {
     type Item = JsonPath<'a>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -165,7 +123,7 @@ impl<'a> IntoIterator for ChainSelector<'a> {
     }
 }
 
-impl<'a> PathSelector<'a> for ChainSelector<'a> {
+impl<'a> Select<'a> for Chain<'a> {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         self.chain.iter().fold(vec![value], |acc, selector| {
             acc.iter()
@@ -175,7 +133,7 @@ impl<'a> PathSelector<'a> for ChainSelector<'a> {
     }
 }
 
-impl<'a> PathVisitor<'a> for ChainSelector<'a> {
+impl<'a> Visit<'a> for Chain<'a> {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -191,23 +149,23 @@ impl<'a> PathVisitor<'a> for ChainSelector<'a> {
 }
 
 #[derive(Clone)]
-pub struct RootSelector<'a> {
+pub struct Root<'a> {
     root: &'a Value,
 }
 
-impl<'a> RootSelector<'a> {
+impl<'a> Root<'a> {
     pub(crate) fn new(root: &'a Value) -> Self {
-        RootSelector { root }
+        Root { root }
     }
 }
 
-impl<'a> PathSelector<'a> for RootSelector<'a> {
+impl<'a> Select<'a> for Root<'a> {
     fn select(&self, _value: &'a Value) -> Vec<&'a Value> {
         vec![self.root]
     }
 }
 
-impl<'a> PathVisitor<'a> for RootSelector<'a> {
+impl<'a> Visit<'a> for Root<'a> {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -217,15 +175,15 @@ impl<'a> PathVisitor<'a> for RootSelector<'a> {
 }
 
 #[derive(Clone)]
-pub struct CurrentSelector;
+pub struct Current;
 
-impl<'a> PathSelector<'a> for CurrentSelector {
+impl<'a> Select<'a> for Current {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         vec![value]
     }
 }
 
-impl<'a> PathVisitor<'a> for CurrentSelector {
+impl<'a> Visit<'a> for Current {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -235,17 +193,17 @@ impl<'a> PathVisitor<'a> for CurrentSelector {
 }
 
 #[derive(Clone)]
-pub struct KeySelector {
+pub struct ObjectKey {
     key: String,
 }
 
-impl KeySelector {
+impl ObjectKey {
     pub(crate) fn new(key: String) -> Self {
-        KeySelector { key }
+        ObjectKey { key }
     }
 }
 
-impl<'a> PathSelector<'a> for KeySelector {
+impl<'a> Select<'a> for ObjectKey {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         value
             .as_object()
@@ -255,7 +213,7 @@ impl<'a> PathSelector<'a> for KeySelector {
     }
 }
 
-impl<'a> PathVisitor<'a> for KeySelector {
+impl<'a> Visit<'a> for ObjectKey {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -269,9 +227,9 @@ impl<'a> PathVisitor<'a> for KeySelector {
 }
 
 #[derive(Clone)]
-pub struct WildcardSelector;
+pub struct Wildcard;
 
-impl<'a> PathSelector<'a> for WildcardSelector {
+impl<'a> Select<'a> for Wildcard {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         match value {
             Value::Array(array) => array.iter().collect(),
@@ -281,7 +239,7 @@ impl<'a> PathSelector<'a> for WildcardSelector {
     }
 }
 
-impl<'a> PathVisitor<'a> for WildcardSelector {
+impl<'a> Visit<'a> for Wildcard {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -295,19 +253,19 @@ impl<'a> PathVisitor<'a> for WildcardSelector {
 }
 
 #[derive(Clone)]
-pub struct IndexSelector {
+pub struct ArrayIndex {
     index: Index,
 }
 
-impl IndexSelector {
+impl ArrayIndex {
     pub(crate) fn new(index: i64) -> Self {
-        IndexSelector {
+        ArrayIndex {
             index: Index::new(index),
         }
     }
 }
 
-impl<'a> PathSelector<'a> for IndexSelector {
+impl<'a> Select<'a> for ArrayIndex {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         value
             .as_array()
@@ -320,7 +278,7 @@ impl<'a> PathSelector<'a> for IndexSelector {
     }
 }
 
-impl<'a> PathVisitor<'a> for IndexSelector {
+impl<'a> Visit<'a> for ArrayIndex {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -334,28 +292,28 @@ impl<'a> PathVisitor<'a> for IndexSelector {
 }
 
 #[derive(Clone)]
-pub struct UnionSelector<'a> {
+pub struct Union<'a> {
     entries: Vec<JsonPath<'a>>,
 }
 
-impl<'a> UnionSelector<'a> {
+impl<'a> Union<'a> {
     pub(crate) fn new<I>(entries: I) -> Self
     where
         I: IntoIterator<Item = JsonPath<'a>>,
     {
-        UnionSelector {
+        Union {
             entries: entries.into_iter().collect(),
         }
     }
 }
 
-impl<'a> FromIterator<JsonPath<'a>> for UnionSelector<'a> {
+impl<'a> FromIterator<JsonPath<'a>> for Union<'a> {
     fn from_iter<I: IntoIterator<Item = JsonPath<'a>>>(iter: I) -> Self {
-        UnionSelector::new(iter)
+        Union::new(iter)
     }
 }
 
-impl<'a> PathSelector<'a> for UnionSelector<'a> {
+impl<'a> Select<'a> for Union<'a> {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         self.entries
             .iter()
@@ -364,7 +322,7 @@ impl<'a> PathSelector<'a> for UnionSelector<'a> {
     }
 }
 
-impl<'a> PathVisitor<'a> for UnionSelector<'a> {
+impl<'a> Visit<'a> for Union<'a> {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -376,17 +334,17 @@ impl<'a> PathVisitor<'a> for UnionSelector<'a> {
 }
 
 #[derive(Clone)]
-pub struct SliceSelector {
+pub struct Slice {
     range: SliceRange,
 }
 
-impl SliceSelector {
+impl Slice {
     pub(crate) fn new(range: SliceRange) -> Self {
-        SliceSelector { range }
+        Slice { range }
     }
 }
 
-impl<'a> PathSelector<'a> for SliceSelector {
+impl<'a> Select<'a> for Slice {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         match value.as_array() {
             Some(array) => {
@@ -410,7 +368,7 @@ impl<'a> PathSelector<'a> for SliceSelector {
     }
 }
 
-impl<'a> PathVisitor<'a> for SliceSelector {
+impl<'a> Visit<'a> for Slice {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -433,19 +391,19 @@ impl<'a> PathVisitor<'a> for SliceSelector {
 }
 
 #[derive(Clone)]
-pub struct DescendantSelector<'a> {
+pub struct Descendant<'a> {
     selector: Box<JsonPath<'a>>,
 }
 
-impl<'a> DescendantSelector<'a> {
+impl<'a> Descendant<'a> {
     pub(crate) fn new(selector: JsonPath<'a>) -> Self {
-        DescendantSelector {
+        Descendant {
             selector: Box::new(selector),
         }
     }
 }
 
-impl<'a> PathSelector<'a> for DescendantSelector<'a> {
+impl<'a> Select<'a> for Descendant<'a> {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         let mut values = self.selector.select(value);
 
@@ -471,7 +429,7 @@ impl<'a> PathSelector<'a> for DescendantSelector<'a> {
     }
 }
 
-impl<'a> PathVisitor<'a> for DescendantSelector<'a> {
+impl<'a> Visit<'a> for Descendant<'a> {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -487,35 +445,35 @@ impl<'a> PathVisitor<'a> for DescendantSelector<'a> {
 }
 
 #[derive(Clone)]
-pub struct FilterSelector<'a> {
-    filter: Box<Filter<'a>>,
+pub struct Filter<'a> {
+    expr: Box<FilterExpr<'a>>,
 }
 
-impl<'a> FilterSelector<'a> {
-    pub(crate) fn new(filter: Filter<'a>) -> Self {
-        FilterSelector {
-            filter: Box::new(filter),
+impl<'a> Filter<'a> {
+    pub(crate) fn new(expr: FilterExpr<'a>) -> Self {
+        Filter {
+            expr: Box::new(expr),
         }
     }
 }
 
-impl<'a> PathSelector<'a> for FilterSelector<'a> {
+impl<'a> Select<'a> for Filter<'a> {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         match value {
             Value::Array(array) => array
                 .iter()
-                .filter(|value| self.filter.matches(value))
+                .filter(|value| self.expr.matches(value))
                 .collect(),
             Value::Object(object) => object
                 .values()
-                .filter(|value| self.filter.matches(value))
+                .filter(|value| self.expr.matches(value))
                 .collect(),
             _ => vec![],
         }
     }
 }
 
-impl<'a> PathVisitor<'a> for FilterSelector<'a> {
+impl<'a> Visit<'a> for Filter<'a> {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
@@ -523,11 +481,11 @@ impl<'a> PathVisitor<'a> for FilterSelector<'a> {
         match value {
             Value::Array(array) => array
                 .iter_mut()
-                .filter(|value| self.filter.matches(value))
+                .filter(|value| self.expr.matches(value))
                 .for_each(|value| visitor.visit(value)),
             Value::Object(object) => object
                 .values_mut()
-                .filter(|value| self.filter.matches(value))
+                .filter(|value| self.expr.matches(value))
                 .for_each(|value| visitor.visit(value)),
             _ => (),
         }
@@ -542,70 +500,70 @@ mod test {
     #[track_caller]
     fn assert_selects<'a, T>(selector: T, root: &'a Value, expected: Vec<&'a Value>)
     where
-        T: PathSelector<'a>,
+        T: Select<'a>,
     {
         assert_eq!(selector.select(root), expected);
     }
 
     #[test]
-    fn test_index_selector() {
-        let selector = IndexSelector::new(0);
+    fn test_array_index_selector() {
+        let selector = ArrayIndex::new(0);
         assert_selects(selector, &json!([1, 2]), vec![&json!(1)]);
 
-        let selector = IndexSelector::new(-2);
+        let selector = ArrayIndex::new(-2);
         assert_selects(selector, &json!([1, 2, 3]), vec![&json!(2)]);
     }
 
     #[test]
     fn test_slice_selector() {
-        let selector = SliceSelector::new(SliceRange::default());
+        let selector = Slice::new(SliceRange::default());
         assert_selects(
             selector,
             &json!([1, 2, 3]),
             vec![&json!(1), &json!(2), &json!(3)],
         );
 
-        let selector = SliceSelector::new(SliceRange::new(Some(1), None, None));
+        let selector = Slice::new(SliceRange::new(Some(1), None, None));
         assert_selects(selector, &json!([1, 2, 3]), vec![&json!(2), &json!(3)]);
 
-        let selector = SliceSelector::new(SliceRange::new(Some(1), Some(3), None));
+        let selector = Slice::new(SliceRange::new(Some(1), Some(3), None));
         assert_selects(
             selector,
             &json!([1, 2, 3, 4, 5]),
             vec![&json!(2), &json!(3)],
         );
 
-        let selector = SliceSelector::new(SliceRange::new(Some(1), Some(5), Some(2)));
+        let selector = Slice::new(SliceRange::new(Some(1), Some(5), Some(2)));
         assert_selects(
             selector,
             &json!([1, 2, 3, 4, 5]),
             vec![&json!(2), &json!(4)],
         );
 
-        let selector = SliceSelector::new(SliceRange::new(Some(5), Some(1), Some(-2)));
+        let selector = Slice::new(SliceRange::new(Some(5), Some(1), Some(-2)));
         assert_selects(
             selector,
             &json!([1, 2, 3, 4, 5, 6]),
             vec![&json!(6), &json!(4)],
         );
 
-        let selector = SliceSelector::new(SliceRange::new(None, None, Some(-1)));
+        let selector = Slice::new(SliceRange::new(None, None, Some(-1)));
         assert_selects(
             selector,
             &json!([1, 2, 3]),
             vec![&json!(3), &json!(2), &json!(1)],
         );
 
-        let selector = SliceSelector::new(SliceRange::new(Some(-2), Some(-1), None));
+        let selector = Slice::new(SliceRange::new(Some(-2), Some(-1), None));
         assert_selects(selector, &json!([1, 2, 3]), vec![&json!(2)]);
 
-        let selector = SliceSelector::new(SliceRange::new(Some(10), Some(12), None));
+        let selector = Slice::new(SliceRange::new(Some(10), Some(12), None));
         assert_selects(selector, &json!([1, 2, 3]), vec![]);
     }
 
     #[test]
-    fn test_key_selector() {
-        let selector = KeySelector::new("foo".into());
+    fn test_object_key_selector() {
+        let selector = ObjectKey::new("foo".into());
         assert_selects(selector, &json!({"foo": 1, "bar": 2}), vec![&json!(1)]);
     }
 }

@@ -1,39 +1,39 @@
-use super::{CompOp, JsonPath, PathSelector};
+use super::{CompOp, JsonPath, Select};
 use dts_json::Value;
 use regex::Regex;
 
 #[derive(Clone)]
-pub enum Filter<'a> {
-    Not(Box<Filter<'a>>),
-    Or(Vec<Filter<'a>>),
-    And(Vec<Filter<'a>>),
+pub enum FilterExpr<'a> {
+    Not(Box<FilterExpr<'a>>),
+    Or(Vec<FilterExpr<'a>>),
+    And(Vec<FilterExpr<'a>>),
     Exist(JsonPath<'a>),
-    Regex(RegexFilter<'a>),
-    Comp(CompFilter<'a>),
+    Regex(RegexFilterExpr<'a>),
+    Comp(CompFilterExpr<'a>),
 }
 
-impl<'a> Filter<'a> {
+impl<'a> FilterExpr<'a> {
     pub(crate) fn matches(&self, value: &'a Value) -> bool {
         match self {
-            Filter::Not(filter) => !filter.matches(value),
-            Filter::Or(filters) => filters.iter().any(|filter| filter.matches(value)),
-            Filter::And(filters) => filters.iter().all(|filter| filter.matches(value)),
-            Filter::Exist(path) => !path.select(value).is_empty(),
-            Filter::Regex(re) => re.matches(value),
-            Filter::Comp(comp) => comp.matches(value),
+            FilterExpr::Not(filter) => !filter.matches(value),
+            FilterExpr::Or(filters) => filters.iter().any(|filter| filter.matches(value)),
+            FilterExpr::And(filters) => filters.iter().all(|filter| filter.matches(value)),
+            FilterExpr::Exist(path) => !path.select(value).is_empty(),
+            FilterExpr::Regex(re) => re.matches(value),
+            FilterExpr::Comp(comp) => comp.matches(value),
         }
     }
 }
 
 #[derive(Clone)]
-pub struct RegexFilter<'a> {
+pub struct RegexFilterExpr<'a> {
     lhs: JsonPath<'a>,
     regex: Regex,
 }
 
-impl<'a> RegexFilter<'a> {
+impl<'a> RegexFilterExpr<'a> {
     pub(crate) fn new(lhs: JsonPath<'a>, regex: Regex) -> Self {
-        RegexFilter { lhs, regex }
+        RegexFilterExpr { lhs, regex }
     }
 
     pub(crate) fn matches(&self, value: &'a Value) -> bool {
@@ -47,15 +47,15 @@ impl<'a> RegexFilter<'a> {
 }
 
 #[derive(Clone)]
-pub struct CompFilter<'a> {
+pub struct CompFilterExpr<'a> {
     lhs: JsonPath<'a>,
     op: CompOp,
     rhs: JsonPath<'a>,
 }
 
-impl<'a> CompFilter<'a> {
+impl<'a> CompFilterExpr<'a> {
     pub(crate) fn new(lhs: JsonPath<'a>, op: CompOp, rhs: JsonPath<'a>) -> Self {
-        CompFilter { lhs, op, rhs }
+        CompFilterExpr { lhs, op, rhs }
     }
 
     pub(crate) fn matches(&self, value: &'a Value) -> bool {

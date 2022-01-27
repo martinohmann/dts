@@ -2,16 +2,16 @@
 
 pub mod error;
 pub mod parser;
-mod path;
+pub mod path;
 
 pub use error::{Error, Result};
-pub use parser::parse;
 
 use dts_json::Value;
-use path::{PathSelector, Visitor};
+use parser::ast;
+use path::{Select, Visitor};
 
 pub struct Selector {
-    ast: Vec<parser::ast::Selector>,
+    ast: Vec<ast::Selector>,
 }
 
 impl Selector {

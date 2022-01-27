@@ -1,58 +1,68 @@
 mod filter;
 mod selector;
 
-use crate::parser::ast::{self, FilterExpr, Operand, Selector};
+use crate::parser::ast;
 use dts_json::Value;
 use filter::*;
 use selector::*;
 
-pub(crate) use selector::{JsonPath, PathSelector, Visitor};
+pub use selector::{JsonPath, Select, Visit, Visitor};
 
-pub fn compile<'a>(selectors: &'a [Selector], root: &'a Value) -> JsonPath<'a> {
-    JsonPath::Chain(ChainSelector::from_iter(compile_selectors(selectors, root)))
+pub fn compile<'a>(selectors: &'a [ast::Selector], root: &'a Value) -> JsonPath<'a> {
+    JsonPath::Chain(compile_selectors(selectors, root).collect())
 }
 
-fn compile_selectors<'a>(selectors: &'a [Selector], root: &'a Value) -> Vec<JsonPath<'a>> {
+fn compile_selectors<'a>(
+    selectors: &'a [ast::Selector],
+    root: &'a Value,
+) -> impl Iterator<Item = JsonPath<'a>> {
     selectors
         .iter()
         .map(|selector| compile_selector(selector, root))
-        .collect()
 }
 
-fn compile_selector<'a>(selector: &'a Selector, root: &'a Value) -> JsonPath<'a> {
+fn compile_selector<'a>(selector: &'a ast::Selector, root: &'a Value) -> JsonPath<'a> {
     match selector {
-        Selector::Root => JsonPath::Root(RootSelector::new(root)),
-        Selector::Current => JsonPath::Current(CurrentSelector),
-        Selector::Key(key) => JsonPath::Key(KeySelector::new(key.clone())),
-        Selector::Wildcard => JsonPath::Wildcard(WildcardSelector),
-        Selector::Index(index) => JsonPath::Index(IndexSelector::new(*index)),
-        Selector::IndexWildcard => JsonPath::Wildcard(WildcardSelector),
-        Selector::Union(entries) => {
-            JsonPath::Union(UnionSelector::from_iter(compile_selectors(entries, root)))
+        ast::Selector::Root => JsonPath::Root(Root::new(root)),
+        ast::Selector::Current => JsonPath::Current(Current),
+        ast::Selector::Key(key) => JsonPath::Key(ObjectKey::new(key.clone())),
+        ast::Selector::Wildcard | ast::Selector::IndexWildcard => JsonPath::Wildcard(Wildcard),
+        ast::Selector::Index(index) => JsonPath::Index(ArrayIndex::new(*index)),
+        ast::Selector::Union(entries) => {
+            JsonPath::Union(compile_selectors(entries, root).collect())
         }
-        Selector::Slice(range) => JsonPath::Slice(SliceSelector::new(SliceRange::new(
+        ast::Selector::Slice(range) => JsonPath::Slice(Slice::new(SliceRange::new(
             range.start,
             range.end,
             range.step,
         ))),
-        Selector::Descendant(selector) => {
-            JsonPath::Descendant(DescendantSelector::new(compile_selector(selector, root)))
+        ast::Selector::Descendant(selector) => {
+            JsonPath::Descendant(Descendant::new(compile_selector(selector, root)))
         }
-        Selector::Filter(expr) => JsonPath::Filter(FilterSelector::new(compile_filter(expr, root))),
+        ast::Selector::Filter(expr) => {
+            JsonPath::Filter(Filter::new(compile_filter_expr(expr, root)))
+        }
     }
 }
 
-fn compile_filter<'a>(expr: &'a FilterExpr, root: &'a Value) -> Filter<'a> {
+fn compile_filter_exprs<'a>(exprs: &'a [ast::FilterExpr], root: &'a Value) -> Vec<FilterExpr<'a>> {
+    exprs
+        .iter()
+        .map(|expr| compile_filter_expr(expr, root))
+        .collect()
+}
+
+fn compile_filter_expr<'a>(expr: &'a ast::FilterExpr, root: &'a Value) -> FilterExpr<'a> {
     match expr {
-        FilterExpr::Not(expr) => Filter::Not(Box::new(compile_filter(expr, root))),
-        FilterExpr::Or(exprs) => Filter::Or(compile_filter_exprs(exprs, root)),
-        FilterExpr::And(exprs) => Filter::And(compile_filter_exprs(exprs, root)),
-        FilterExpr::Exist(path) => Filter::Exist(compile(path, root)),
-        FilterExpr::Regex(expr) => Filter::Regex(RegexFilter::new(
+        ast::FilterExpr::Not(expr) => FilterExpr::Not(Box::new(compile_filter_expr(expr, root))),
+        ast::FilterExpr::Or(exprs) => FilterExpr::Or(compile_filter_exprs(exprs, root)),
+        ast::FilterExpr::And(exprs) => FilterExpr::And(compile_filter_exprs(exprs, root)),
+        ast::FilterExpr::Exist(path) => FilterExpr::Exist(compile(path, root)),
+        ast::FilterExpr::Regex(expr) => FilterExpr::Regex(RegexFilterExpr::new(
             compile_operand(&expr.lhs, root),
             expr.regex.clone(),
         )),
-        FilterExpr::Comp(expr) => Filter::Comp(CompFilter::new(
+        ast::FilterExpr::Comp(expr) => FilterExpr::Comp(CompFilterExpr::new(
             compile_operand(&expr.lhs, root),
             expr.op.into(),
             compile_operand(&expr.rhs, root),
@@ -60,17 +70,10 @@ fn compile_filter<'a>(expr: &'a FilterExpr, root: &'a Value) -> Filter<'a> {
     }
 }
 
-fn compile_filter_exprs<'a>(exprs: &'a [FilterExpr], root: &'a Value) -> Vec<Filter<'a>> {
-    exprs
-        .iter()
-        .map(|expr| compile_filter(expr, root))
-        .collect()
-}
-
-fn compile_operand<'a>(operand: &'a Operand, root: &'a Value) -> JsonPath<'a> {
+fn compile_operand<'a>(operand: &'a ast::Operand, root: &'a Value) -> JsonPath<'a> {
     match operand {
-        Operand::Value(v) => JsonPath::Root(RootSelector::new(v)),
-        Operand::Path(path) => compile(path, root),
+        ast::Operand::Value(v) => JsonPath::Root(Root::new(v)),
+        ast::Operand::Path(path) => compile(path, root),
     }
 }
 
