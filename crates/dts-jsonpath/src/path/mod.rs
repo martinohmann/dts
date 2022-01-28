@@ -6,41 +6,41 @@ use dts_json::Value;
 use filter::*;
 use selector::*;
 
-pub use selector::{JsonPath, Select, Visit, Visitor};
+pub use selector::{Select, Selector, Visit, Visitor};
 
-pub fn compile<'a>(selectors: &'a [ast::Selector], root: &'a Value) -> JsonPath<'a> {
-    JsonPath::Chain(compile_selectors(selectors, root).collect())
+pub fn compile<'a>(selectors: &'a [ast::Selector], root: &'a Value) -> Path<'a> {
+    compile_selectors(selectors, root).collect()
 }
 
 fn compile_selectors<'a>(
     selectors: &'a [ast::Selector],
     root: &'a Value,
-) -> impl Iterator<Item = JsonPath<'a>> {
+) -> impl Iterator<Item = Selector<'a>> {
     selectors
         .iter()
         .map(|selector| compile_selector(selector, root))
 }
 
-fn compile_selector<'a>(selector: &'a ast::Selector, root: &'a Value) -> JsonPath<'a> {
+fn compile_selector<'a>(selector: &'a ast::Selector, root: &'a Value) -> Selector<'a> {
     match selector {
-        ast::Selector::Root => JsonPath::Root(Root::new(root)),
-        ast::Selector::Current => JsonPath::Current(Current),
-        ast::Selector::Key(key) => JsonPath::Key(ObjectKey::new(key.clone())),
-        ast::Selector::Wildcard | ast::Selector::IndexWildcard => JsonPath::Wildcard(Wildcard),
-        ast::Selector::Index(index) => JsonPath::Index(ArrayIndex::new(*index)),
+        ast::Selector::Root => Selector::Root(Root::new(root)),
+        ast::Selector::Current => Selector::Current(Current),
+        ast::Selector::Key(key) => Selector::Key(ObjectKey::new(key.clone())),
+        ast::Selector::Wildcard | ast::Selector::IndexWildcard => Selector::Wildcard(Wildcard),
+        ast::Selector::Index(index) => Selector::Index(ArrayIndex::new(*index)),
         ast::Selector::Union(entries) => {
-            JsonPath::Union(compile_selectors(entries, root).collect())
+            Selector::Union(compile_selectors(entries, root).collect())
         }
-        ast::Selector::Slice(range) => JsonPath::Slice(Slice::new(SliceRange::new(
+        ast::Selector::Slice(range) => Selector::Slice(Slice::new(SliceRange::new(
             range.start,
             range.end,
             range.step,
         ))),
         ast::Selector::Descendant(selector) => {
-            JsonPath::Descendant(Descendant::new(compile_selector(selector, root)))
+            Selector::Descendant(Descendant::new(compile_selector(selector, root)))
         }
         ast::Selector::Filter(expr) => {
-            JsonPath::Filter(Filter::new(compile_filter_expr(expr, root)))
+            Selector::Filter(Filter::new(compile_filter_expr(expr, root)))
         }
     }
 }
@@ -70,9 +70,9 @@ fn compile_filter_expr<'a>(expr: &'a ast::FilterExpr, root: &'a Value) -> Filter
     }
 }
 
-fn compile_operand<'a>(operand: &'a ast::Operand, root: &'a Value) -> JsonPath<'a> {
+fn compile_operand<'a>(operand: &'a ast::Operand, root: &'a Value) -> Path<'a> {
     match operand {
-        ast::Operand::Value(v) => JsonPath::Root(Root::new(v)),
+        ast::Operand::Value(v) => Selector::Root(Root::new(v)).into(),
         ast::Operand::Path(path) => compile(path, root),
     }
 }

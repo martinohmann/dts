@@ -8,34 +8,33 @@ pub use error::{Error, Result};
 
 use dts_json::Value;
 use parser::ast;
-use path::{Select, Visitor};
+use path::Select;
 
-pub struct Selector {
-    ast: Vec<ast::Selector>,
+pub struct JsonPath {
+    selectors: Vec<ast::Selector>,
 }
 
-impl Selector {
-    pub fn new(query: &str) -> Result<Selector> {
-        let ast = parser::parse(query)?;
-        Ok(Selector { ast })
+impl JsonPath {
+    pub fn new(query: &str) -> Result<JsonPath> {
+        let selectors = parser::parse(query)?;
+        Ok(JsonPath { selectors })
     }
 
     pub fn find<'a>(&'a self, value: &'a Value) -> Vec<&'a Value> {
-        path::compile(&self.ast, value).select(value)
+        path::compile(&self.selectors, value).select(value)
     }
 
     pub fn select(&self, value: Value) -> Value {
         self.find(&value).iter().cloned().collect()
     }
 
-    pub fn mutate<F>(&self, mut value: Value, f: &mut F) -> Value
+    pub fn mutate<F>(&self, mut value: Value, f: F) -> Value
     where
         F: FnMut(&mut Value),
     {
         let root = value.clone();
-        let path = path::compile(&self.ast, &root);
-        let mut visitor = Visitor::new(vec![&path], f);
-        visitor.visit(&mut value);
+        let path = path::compile(&self.selectors, &root);
+        path.visit(&mut value, f);
         value
     }
 }
@@ -47,18 +46,18 @@ mod test {
 
     #[test]
     fn test_select() {
-        let selector = Selector::new("$.foo.*").unwrap();
+        let path = JsonPath::new("$.foo.*").unwrap();
 
         let value = json!({"bar": {"baz": 1}, "foo": {"bar": 2, "qux": 3}});
-        assert_eq!(selector.select(value), json!([2, 3]));
+        assert_eq!(path.select(value), json!([2, 3]));
     }
 
     #[test]
     fn test_mutate() {
-        let selector = Selector::new("$.foo.*").unwrap();
+        let path = JsonPath::new("$.foo.*").unwrap();
 
         let value = json!({"bar": {"baz": 1}, "foo": {"bar": 2, "qux": 3}});
-        let result = selector.mutate(value, &mut |value| {
+        let result = path.mutate(value, |value| {
             *value = Value::String("replaced".into());
         });
         assert_eq!(

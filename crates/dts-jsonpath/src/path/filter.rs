@@ -1,4 +1,4 @@
-use super::{CompOp, JsonPath, Select};
+use super::{CompOp, Path, Select};
 use dts_json::Value;
 use regex::Regex;
 
@@ -7,7 +7,7 @@ pub enum FilterExpr<'a> {
     Not(Box<FilterExpr<'a>>),
     Or(Vec<FilterExpr<'a>>),
     And(Vec<FilterExpr<'a>>),
-    Exist(JsonPath<'a>),
+    Exist(Path<'a>),
     Regex(RegexFilterExpr<'a>),
     Comp(CompFilterExpr<'a>),
 }
@@ -27,12 +27,12 @@ impl<'a> FilterExpr<'a> {
 
 #[derive(Clone)]
 pub struct RegexFilterExpr<'a> {
-    lhs: JsonPath<'a>,
+    lhs: Path<'a>,
     regex: Regex,
 }
 
 impl<'a> RegexFilterExpr<'a> {
-    pub(crate) fn new(lhs: JsonPath<'a>, regex: Regex) -> Self {
+    pub(crate) fn new(lhs: Path<'a>, regex: Regex) -> Self {
         RegexFilterExpr { lhs, regex }
     }
 
@@ -48,13 +48,13 @@ impl<'a> RegexFilterExpr<'a> {
 
 #[derive(Clone)]
 pub struct CompFilterExpr<'a> {
-    lhs: JsonPath<'a>,
+    lhs: Path<'a>,
     op: CompOp,
-    rhs: JsonPath<'a>,
+    rhs: Path<'a>,
 }
 
 impl<'a> CompFilterExpr<'a> {
-    pub(crate) fn new(lhs: JsonPath<'a>, op: CompOp, rhs: JsonPath<'a>) -> Self {
+    pub(crate) fn new(lhs: Path<'a>, op: CompOp, rhs: Path<'a>) -> Self {
         CompFilterExpr { lhs, op, rhs }
     }
 

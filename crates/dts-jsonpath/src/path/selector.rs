@@ -12,7 +12,7 @@ pub trait Visit<'a> {
 }
 
 pub struct Visitor<'a, F> {
-    chain: Vec<JsonPath<'a>>,
+    selectors: Vec<Selector<'a>>,
     mutate: &'a mut F,
 }
 
@@ -20,30 +20,26 @@ impl<'a, F> Visitor<'a, F>
 where
     F: FnMut(&mut Value),
 {
-    pub fn new<I>(chain: I, mutate: &'a mut F) -> Self
+    pub fn new<I>(selectors: I, mutate: &'a mut F) -> Self
     where
-        I: IntoIterator<Item = &'a JsonPath<'a>>,
+        I: IntoIterator<Item = &'a Selector<'a>>,
     {
         Visitor {
-            chain: chain
-                .into_iter()
-                .cloned()
-                .flat_map(JsonPath::into_vec)
-                .collect(),
+            selectors: selectors.into_iter().cloned().collect(),
             mutate,
         }
     }
 
     pub fn visit(&mut self, value: &mut Value) {
-        match self.chain.get(0) {
-            Some(path) => path.visit(value, &mut Visitor::new(&self.chain[1..], self.mutate)),
+        match self.selectors.get(0) {
+            Some(path) => path.visit(value, &mut Visitor::new(&self.selectors[1..], self.mutate)),
             None => (self.mutate)(value),
         }
     }
 }
 
 #[derive(Clone)]
-pub enum JsonPath<'a> {
+pub enum Selector<'a> {
     Root(Root<'a>),
     Current(Current),
     Key(ObjectKey),
@@ -53,110 +49,103 @@ pub enum JsonPath<'a> {
     Slice(Slice),
     Descendant(Descendant<'a>),
     Filter(Filter<'a>),
-    Chain(Chain<'a>),
 }
 
-impl<'a> JsonPath<'a> {
-    fn into_vec(self) -> Vec<JsonPath<'a>> {
-        match self {
-            JsonPath::Chain(chain) => chain.chain,
-            path => vec![path],
-        }
-    }
-}
-
-impl<'a> Select<'a> for JsonPath<'a> {
+impl<'a> Select<'a> for Selector<'a> {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         match self {
-            JsonPath::Root(s) => s.select(value),
-            JsonPath::Current(s) => s.select(value),
-            JsonPath::Key(s) => s.select(value),
-            JsonPath::Wildcard(s) => s.select(value),
-            JsonPath::Index(s) => s.select(value),
-            JsonPath::Union(s) => s.select(value),
-            JsonPath::Slice(s) => s.select(value),
-            JsonPath::Descendant(s) => s.select(value),
-            JsonPath::Filter(s) => s.select(value),
-            JsonPath::Chain(s) => s.select(value),
+            Selector::Root(s) => s.select(value),
+            Selector::Current(s) => s.select(value),
+            Selector::Key(s) => s.select(value),
+            Selector::Wildcard(s) => s.select(value),
+            Selector::Index(s) => s.select(value),
+            Selector::Union(s) => s.select(value),
+            Selector::Slice(s) => s.select(value),
+            Selector::Descendant(s) => s.select(value),
+            Selector::Filter(s) => s.select(value),
         }
     }
 }
 
-impl<'a> Visit<'a> for JsonPath<'a> {
+impl<'a> Visit<'a> for Selector<'a> {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value),
     {
         match self {
-            JsonPath::Root(v) => v.visit(value, visitor),
-            JsonPath::Current(v) => v.visit(value, visitor),
-            JsonPath::Key(v) => v.visit(value, visitor),
-            JsonPath::Wildcard(v) => v.visit(value, visitor),
-            JsonPath::Index(v) => v.visit(value, visitor),
-            JsonPath::Union(v) => v.visit(value, visitor),
-            JsonPath::Slice(v) => v.visit(value, visitor),
-            JsonPath::Descendant(v) => v.visit(value, visitor),
-            JsonPath::Filter(v) => v.visit(value, visitor),
-            JsonPath::Chain(v) => v.visit(value, visitor),
+            Selector::Root(v) => v.visit(value, visitor),
+            Selector::Current(v) => v.visit(value, visitor),
+            Selector::Key(v) => v.visit(value, visitor),
+            Selector::Wildcard(v) => v.visit(value, visitor),
+            Selector::Index(v) => v.visit(value, visitor),
+            Selector::Union(v) => v.visit(value, visitor),
+            Selector::Slice(v) => v.visit(value, visitor),
+            Selector::Descendant(v) => v.visit(value, visitor),
+            Selector::Filter(v) => v.visit(value, visitor),
         }
     }
 }
 
 #[derive(Clone)]
-pub struct Chain<'a> {
-    chain: Vec<JsonPath<'a>>,
+pub struct Path<'a> {
+    selectors: Vec<Selector<'a>>,
 }
 
-impl<'a> Chain<'a> {
-    pub(crate) fn new<I>(chain: I) -> Self
+impl<'a> Path<'a> {
+    pub(crate) fn new<I>(selectors: I) -> Self
     where
-        I: IntoIterator<Item = JsonPath<'a>>,
+        I: IntoIterator<Item = Selector<'a>>,
     {
-        Chain {
-            chain: chain.into_iter().flat_map(JsonPath::into_vec).collect(),
+        Path {
+            selectors: selectors.into_iter().collect(),
         }
     }
-}
 
-impl<'a> FromIterator<JsonPath<'a>> for Chain<'a> {
-    fn from_iter<I: IntoIterator<Item = JsonPath<'a>>>(iter: I) -> Self {
-        Chain::new(iter)
+    pub fn iter(&self) -> std::slice::Iter<'_, Selector<'a>> {
+        self.selectors.iter()
+    }
+
+    pub fn into_inner(self) -> Vec<Selector<'a>> {
+        self.selectors
+    }
+
+    pub fn visit<F>(&self, value: &mut Value, mut f: F)
+    where
+        F: FnMut(&mut Value),
+    {
+        let mut visitor = Visitor::new(self.iter(), &mut f);
+        visitor.visit(value);
     }
 }
 
-impl<'a> IntoIterator for Chain<'a> {
-    type Item = JsonPath<'a>;
+impl<'a> FromIterator<Selector<'a>> for Path<'a> {
+    fn from_iter<I: IntoIterator<Item = Selector<'a>>>(iter: I) -> Self {
+        Path::new(iter)
+    }
+}
+
+impl<'a> IntoIterator for Path<'a> {
+    type Item = Selector<'a>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.chain.into_iter()
+        self.selectors.into_iter()
     }
 }
 
-impl<'a> Select<'a> for Chain<'a> {
+impl<'a> From<Selector<'a>> for Path<'a> {
+    fn from(selector: Selector<'a>) -> Self {
+        Path::from_iter(vec![selector])
+    }
+}
+
+impl<'a> Select<'a> for Path<'a> {
     fn select(&self, value: &'a Value) -> Vec<&'a Value> {
-        self.chain.iter().fold(vec![value], |acc, selector| {
+        self.selectors.iter().fold(vec![value], |acc, selector| {
             acc.iter()
                 .flat_map(|value| selector.select(value))
                 .collect()
         })
-    }
-}
-
-impl<'a> Visit<'a> for Chain<'a> {
-    fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
-    where
-        F: FnMut(&mut Value),
-    {
-        visitor.chain.reserve(self.chain.len());
-
-        self.chain
-            .iter()
-            .cloned()
-            .rev()
-            .for_each(|path| visitor.chain.insert(0, path));
-
-        visitor.visit(value);
     }
 }
 
@@ -182,6 +171,9 @@ impl<'a> Visit<'a> for Root<'a> {
     where
         F: FnMut(&mut Value),
     {
+        // This is not a bug. Root is guaranteed to be the first selector in which case the current
+        // value == root. Working with a mutable reference to self.root would lead to two mutable
+        // borrows of the same data, which is not allowed in safe rust.
         visitor.visit(value);
     }
 }
@@ -305,13 +297,13 @@ impl<'a> Visit<'a> for ArrayIndex {
 
 #[derive(Clone)]
 pub struct Union<'a> {
-    entries: Vec<JsonPath<'a>>,
+    entries: Vec<Selector<'a>>,
 }
 
 impl<'a> Union<'a> {
     pub(crate) fn new<I>(entries: I) -> Self
     where
-        I: IntoIterator<Item = JsonPath<'a>>,
+        I: IntoIterator<Item = Selector<'a>>,
     {
         Union {
             entries: entries.into_iter().collect(),
@@ -319,8 +311,8 @@ impl<'a> Union<'a> {
     }
 }
 
-impl<'a> FromIterator<JsonPath<'a>> for Union<'a> {
-    fn from_iter<I: IntoIterator<Item = JsonPath<'a>>>(iter: I) -> Self {
+impl<'a> FromIterator<Selector<'a>> for Union<'a> {
+    fn from_iter<I: IntoIterator<Item = Selector<'a>>>(iter: I) -> Self {
         Union::new(iter)
     }
 }
@@ -404,11 +396,11 @@ impl<'a> Visit<'a> for Slice {
 
 #[derive(Clone)]
 pub struct Descendant<'a> {
-    selector: Box<JsonPath<'a>>,
+    selector: Box<Selector<'a>>,
 }
 
 impl<'a> Descendant<'a> {
-    pub(crate) fn new(selector: JsonPath<'a>) -> Self {
+    pub(crate) fn new(selector: Selector<'a>) -> Self {
         Descendant {
             selector: Box::new(selector),
         }
