@@ -1,4 +1,6 @@
-use super::{CompOp, Path, Select};
+//! Types for jsonpath filter operations.
+
+use super::{CompOp, Path};
 use dts_json::Value;
 use regex::Regex;
 
@@ -13,14 +15,14 @@ pub enum FilterExpr<'a> {
 }
 
 impl<'a> FilterExpr<'a> {
-    pub(crate) fn matches(&self, value: &'a Value) -> bool {
+    pub(crate) fn is_match(&self, value: &'a Value) -> bool {
         match self {
-            FilterExpr::Not(filter) => !filter.matches(value),
-            FilterExpr::Or(filters) => filters.iter().any(|filter| filter.matches(value)),
-            FilterExpr::And(filters) => filters.iter().all(|filter| filter.matches(value)),
+            FilterExpr::Not(filter) => !filter.is_match(value),
+            FilterExpr::Or(filters) => filters.iter().any(|filter| filter.is_match(value)),
+            FilterExpr::And(filters) => filters.iter().all(|filter| filter.is_match(value)),
             FilterExpr::Exist(path) => !path.select(value).is_empty(),
-            FilterExpr::Regex(re) => re.matches(value),
-            FilterExpr::Comp(comp) => comp.matches(value),
+            FilterExpr::Regex(re) => re.is_match(value),
+            FilterExpr::Comp(comp) => comp.is_match(value),
         }
     }
 }
@@ -36,7 +38,7 @@ impl<'a> RegexFilterExpr<'a> {
         RegexFilterExpr { lhs, regex }
     }
 
-    pub(crate) fn matches(&self, value: &'a Value) -> bool {
+    pub(crate) fn is_match(&self, value: &'a Value) -> bool {
         self.lhs.select(value).iter().any(|value| {
             value
                 .as_str()
@@ -58,7 +60,7 @@ impl<'a> CompFilterExpr<'a> {
         CompFilterExpr { lhs, op, rhs }
     }
 
-    pub(crate) fn matches(&self, value: &'a Value) -> bool {
+    pub(crate) fn is_match(&self, value: &'a Value) -> bool {
         let lhs = self.lhs.select(value);
         let rhs = self.rhs.select(value);
 

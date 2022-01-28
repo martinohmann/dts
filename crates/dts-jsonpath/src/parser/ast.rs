@@ -1,7 +1,6 @@
-use crate::Error;
+use crate::path::CompOp;
 use dts_json::Value;
 use regex::Regex;
-use std::str::FromStr;
 
 #[derive(Debug, PartialEq)]
 pub enum Selector {
@@ -45,37 +44,6 @@ pub struct CompExpr {
     pub lhs: Operand,
     pub op: CompOp,
     pub rhs: Operand,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum CompOp {
-    Eq,
-    NotEq,
-    LessEq,
-    Less,
-    GreaterEq,
-    Greater,
-    In,
-}
-
-impl FromStr for CompOp {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "==" => Ok(CompOp::Eq),
-            "!=" => Ok(CompOp::NotEq),
-            "<=" => Ok(CompOp::LessEq),
-            "<" => Ok(CompOp::Less),
-            ">=" => Ok(CompOp::GreaterEq),
-            ">" => Ok(CompOp::Greater),
-            "in" => Ok(CompOp::In),
-            other => Err(Error::new(format!(
-                "not a comparision operation: {}",
-                other
-            ))),
-        }
-    }
 }
 
 #[derive(Debug)]

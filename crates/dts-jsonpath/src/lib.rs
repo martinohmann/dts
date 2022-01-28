@@ -8,7 +8,6 @@ pub use error::{Error, Result};
 
 use dts_json::Value;
 use parser::ast;
-use path::Select;
 
 pub struct JsonPath {
     selectors: Vec<ast::Selector>,

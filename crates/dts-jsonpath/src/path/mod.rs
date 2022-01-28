@@ -1,83 +1,109 @@
-mod filter;
-mod selector;
+//! Provides a path compiler and the `Path` type.
 
-use crate::parser::ast;
+mod compile;
+pub mod filter;
+pub mod selector;
+
+pub use self::compile::compile;
+
+use self::filter::FilterExpr;
+use self::selector::{Select, Selector, Visit};
+use crate::Error;
 use dts_json::Value;
-use filter::*;
-use selector::*;
-
-pub use selector::{Select, Selector, Visit, Visitor};
-
-pub fn compile<'a>(selectors: &'a [ast::Selector], root: &'a Value) -> Path<'a> {
-    compile_selectors(selectors, root).collect()
-}
-
-fn compile_selectors<'a>(
-    selectors: &'a [ast::Selector],
-    root: &'a Value,
-) -> impl Iterator<Item = Selector<'a>> {
-    selectors
-        .iter()
-        .map(|selector| compile_selector(selector, root))
-}
-
-fn compile_selector<'a>(selector: &'a ast::Selector, root: &'a Value) -> Selector<'a> {
-    match selector {
-        ast::Selector::Root => Selector::Root(Root::new(root)),
-        ast::Selector::Current => Selector::Current(Current),
-        ast::Selector::Key(key) => Selector::Key(ObjectKey::new(key.clone())),
-        ast::Selector::Wildcard | ast::Selector::IndexWildcard => Selector::Wildcard(Wildcard),
-        ast::Selector::Index(index) => Selector::Index(ArrayIndex::new(*index)),
-        ast::Selector::Union(entries) => {
-            Selector::Union(compile_selectors(entries, root).collect())
-        }
-        ast::Selector::Slice(range) => Selector::Slice(Slice::new(SliceRange::new(
-            range.start,
-            range.end,
-            range.step,
-        ))),
-        ast::Selector::Descendant(selector) => {
-            Selector::Descendant(Descendant::new(compile_selector(selector, root)))
-        }
-        ast::Selector::Filter(expr) => {
-            Selector::Filter(Filter::new(compile_filter_expr(expr, root)))
-        }
-    }
-}
-
-fn compile_filter_exprs<'a>(exprs: &'a [ast::FilterExpr], root: &'a Value) -> Vec<FilterExpr<'a>> {
-    exprs
-        .iter()
-        .map(|expr| compile_filter_expr(expr, root))
-        .collect()
-}
-
-fn compile_filter_expr<'a>(expr: &'a ast::FilterExpr, root: &'a Value) -> FilterExpr<'a> {
-    match expr {
-        ast::FilterExpr::Not(expr) => FilterExpr::Not(Box::new(compile_filter_expr(expr, root))),
-        ast::FilterExpr::Or(exprs) => FilterExpr::Or(compile_filter_exprs(exprs, root)),
-        ast::FilterExpr::And(exprs) => FilterExpr::And(compile_filter_exprs(exprs, root)),
-        ast::FilterExpr::Exist(path) => FilterExpr::Exist(compile(path, root)),
-        ast::FilterExpr::Regex(expr) => FilterExpr::Regex(RegexFilterExpr::new(
-            compile_operand(&expr.lhs, root),
-            expr.regex.clone(),
-        )),
-        ast::FilterExpr::Comp(expr) => FilterExpr::Comp(CompFilterExpr::new(
-            compile_operand(&expr.lhs, root),
-            expr.op.into(),
-            compile_operand(&expr.rhs, root),
-        )),
-    }
-}
-
-fn compile_operand<'a>(operand: &'a ast::Operand, root: &'a Value) -> Path<'a> {
-    match operand {
-        ast::Operand::Value(v) => Selector::Root(Root::new(v)).into(),
-        ast::Operand::Path(path) => compile(path, root),
-    }
-}
+use std::str::FromStr;
 
 #[derive(Clone)]
+pub struct Path<'a> {
+    selectors: Vec<Selector<'a>>,
+}
+
+impl<'a> Path<'a> {
+    pub fn new<I>(selectors: I) -> Self
+    where
+        I: IntoIterator<Item = Selector<'a>>,
+    {
+        Path {
+            selectors: selectors.into_iter().collect(),
+        }
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, Selector<'a>> {
+        self.selectors.iter()
+    }
+
+    pub fn into_inner(self) -> Vec<Selector<'a>> {
+        self.selectors
+    }
+
+    pub fn select(&self, value: &'a Value) -> Vec<&'a Value> {
+        self.selectors.iter().fold(vec![value], |acc, selector| {
+            acc.iter()
+                .flat_map(|value| selector.select(value))
+                .collect()
+        })
+    }
+
+    pub fn visit<F>(&self, value: &mut Value, mut f: F)
+    where
+        F: FnMut(&mut Value),
+    {
+        let mut visitor = Visitor::new(self.iter(), &mut f);
+        visitor.visit(value);
+    }
+}
+
+impl<'a> FromIterator<Selector<'a>> for Path<'a> {
+    fn from_iter<I: IntoIterator<Item = Selector<'a>>>(iter: I) -> Self {
+        Path::new(iter)
+    }
+}
+
+impl<'a> IntoIterator for Path<'a> {
+    type Item = Selector<'a>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.selectors.into_iter()
+    }
+}
+
+impl<'a> From<Selector<'a>> for Path<'a> {
+    fn from(selector: Selector<'a>) -> Self {
+        Path::from_iter(vec![selector])
+    }
+}
+
+pub struct Visitor<'a, F> {
+    selectors: Vec<Selector<'a>>,
+    mutate: &'a mut F,
+}
+
+impl<'a, F> Visitor<'a, F>
+where
+    F: FnMut(&mut Value),
+{
+    pub fn new<I>(selectors: I, mutate: &'a mut F) -> Self
+    where
+        I: IntoIterator<Item = &'a Selector<'a>>,
+    {
+        Visitor {
+            selectors: selectors.into_iter().cloned().collect(),
+            mutate,
+        }
+    }
+
+    pub fn visit(&mut self, value: &mut Value) {
+        match self.selectors.get(0) {
+            Some(path) => path.visit(
+                value,
+                &mut Visitor::new(self.selectors.iter().skip(1), self.mutate),
+            ),
+            None => (self.mutate)(value),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CompOp {
     Eq,
     NotEq,
@@ -88,16 +114,22 @@ pub enum CompOp {
     In,
 }
 
-impl From<ast::CompOp> for CompOp {
-    fn from(op: ast::CompOp) -> Self {
-        match op {
-            ast::CompOp::Eq => CompOp::Eq,
-            ast::CompOp::NotEq => CompOp::NotEq,
-            ast::CompOp::LessEq => CompOp::LessEq,
-            ast::CompOp::Less => CompOp::Less,
-            ast::CompOp::GreaterEq => CompOp::GreaterEq,
-            ast::CompOp::Greater => CompOp::Greater,
-            ast::CompOp::In => CompOp::In,
+impl FromStr for CompOp {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "==" => Ok(CompOp::Eq),
+            "!=" => Ok(CompOp::NotEq),
+            "<=" => Ok(CompOp::LessEq),
+            "<" => Ok(CompOp::Less),
+            ">=" => Ok(CompOp::GreaterEq),
+            ">" => Ok(CompOp::Greater),
+            "in" => Ok(CompOp::In),
+            other => Err(Error::new(format!(
+                "not a comparision operation: {}",
+                other
+            ))),
         }
     }
 }

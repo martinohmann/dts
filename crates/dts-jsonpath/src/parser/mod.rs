@@ -2,7 +2,7 @@
 
 pub mod ast;
 
-use crate::{Error, Result};
+use crate::{path::CompOp, Error, Result};
 use ast::*;
 use dts_json::Value;
 use pest::iterators::{Pair, Pairs};

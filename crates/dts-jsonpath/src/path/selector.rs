@@ -1,5 +1,6 @@
-use super::{FilterExpr, Index, SliceRange};
-use dts_json::Value;
+//! Selector types for each jsonpath operation.
+
+use super::*;
 
 pub trait Select<'a> {
     fn select(&self, value: &'a Value) -> Vec<&'a Value>;
@@ -9,33 +10,6 @@ pub trait Visit<'a> {
     fn visit<F>(&self, value: &mut Value, visitor: &mut Visitor<'a, F>)
     where
         F: FnMut(&mut Value);
-}
-
-pub struct Visitor<'a, F> {
-    selectors: Vec<Selector<'a>>,
-    mutate: &'a mut F,
-}
-
-impl<'a, F> Visitor<'a, F>
-where
-    F: FnMut(&mut Value),
-{
-    pub fn new<I>(selectors: I, mutate: &'a mut F) -> Self
-    where
-        I: IntoIterator<Item = &'a Selector<'a>>,
-    {
-        Visitor {
-            selectors: selectors.into_iter().cloned().collect(),
-            mutate,
-        }
-    }
-
-    pub fn visit(&mut self, value: &mut Value) {
-        match self.selectors.get(0) {
-            Some(path) => path.visit(value, &mut Visitor::new(&self.selectors[1..], self.mutate)),
-            None => (self.mutate)(value),
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -83,69 +57,6 @@ impl<'a> Visit<'a> for Selector<'a> {
             Selector::Descendant(v) => v.visit(value, visitor),
             Selector::Filter(v) => v.visit(value, visitor),
         }
-    }
-}
-
-#[derive(Clone)]
-pub struct Path<'a> {
-    selectors: Vec<Selector<'a>>,
-}
-
-impl<'a> Path<'a> {
-    pub(crate) fn new<I>(selectors: I) -> Self
-    where
-        I: IntoIterator<Item = Selector<'a>>,
-    {
-        Path {
-            selectors: selectors.into_iter().collect(),
-        }
-    }
-
-    pub fn iter(&self) -> std::slice::Iter<'_, Selector<'a>> {
-        self.selectors.iter()
-    }
-
-    pub fn into_inner(self) -> Vec<Selector<'a>> {
-        self.selectors
-    }
-
-    pub fn visit<F>(&self, value: &mut Value, mut f: F)
-    where
-        F: FnMut(&mut Value),
-    {
-        let mut visitor = Visitor::new(self.iter(), &mut f);
-        visitor.visit(value);
-    }
-}
-
-impl<'a> FromIterator<Selector<'a>> for Path<'a> {
-    fn from_iter<I: IntoIterator<Item = Selector<'a>>>(iter: I) -> Self {
-        Path::new(iter)
-    }
-}
-
-impl<'a> IntoIterator for Path<'a> {
-    type Item = Selector<'a>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.selectors.into_iter()
-    }
-}
-
-impl<'a> From<Selector<'a>> for Path<'a> {
-    fn from(selector: Selector<'a>) -> Self {
-        Path::from_iter(vec![selector])
-    }
-}
-
-impl<'a> Select<'a> for Path<'a> {
-    fn select(&self, value: &'a Value) -> Vec<&'a Value> {
-        self.selectors.iter().fold(vec![value], |acc, selector| {
-            acc.iter()
-                .flat_map(|value| selector.select(value))
-                .collect()
-        })
     }
 }
 
@@ -467,11 +378,11 @@ impl<'a> Select<'a> for Filter<'a> {
         match value {
             Value::Array(array) => array
                 .iter()
-                .filter(|value| self.expr.matches(value))
+                .filter(|value| self.expr.is_match(value))
                 .collect(),
             Value::Object(object) => object
                 .values()
-                .filter(|value| self.expr.matches(value))
+                .filter(|value| self.expr.is_match(value))
                 .collect(),
             _ => vec![],
         }
@@ -486,11 +397,11 @@ impl<'a> Visit<'a> for Filter<'a> {
         match value {
             Value::Array(array) => array
                 .iter_mut()
-                .filter(|value| self.expr.matches(value))
+                .filter(|value| self.expr.is_match(value))
                 .for_each(|value| visitor.visit(value)),
             Value::Object(object) => object
                 .values_mut()
-                .filter(|value| self.expr.matches(value))
+                .filter(|value| self.expr.is_match(value))
                 .for_each(|value| visitor.visit(value)),
             _ => (),
         }
