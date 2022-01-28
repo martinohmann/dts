@@ -4,7 +4,7 @@ use dts_core::transform::{
     dsl::{Arg, Definition, DefinitionMatch, Definitions},
     sort::ValueSorter,
     visitor::{KeyVisitor, ValueVisitor},
-    Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Insert, KeyIndex, Mutate, Remove,
+    Chain, Delete, DeleteKeys, EachKey, EachValue, FlattenKeys, Insert, KeyIndex, Mutate,
     ReplaceString, Select, Sort, Transform, Unparameterized, Visit, Wrap,
 };
 use indoc::indoc;
@@ -158,14 +158,6 @@ pub fn definitions<'a>() -> Definitions<'a> {
                 .add_arg(&query_arg),
         )
         .add_definition(
-            Definition::new("remove")
-                .add_alias("rm")
-                .with_description(indoc! {r#"
-                    Selectively removes values based on a jsonpath query.
-                "#})
-                .add_arg(&query_arg),
-        )
-        .add_definition(
             Definition::new("each_key")
                 .with_description(indoc! {r#"
                     Applies the expression to all keys of the current object. This is a no-op for
@@ -313,11 +305,10 @@ fn parse_transformation(m: &DefinitionMatch<'_>) -> Result<Box<dyn Transform>> {
         }
         "keys" => Box::new(Unparameterized::Keys),
         "mutate" => {
-            let mutator = m.parse_str("query")?;
+            let path = m.parse_str("query")?;
             let chain = m.map_expr("expression", parse_matches)?;
-            Box::new(Mutate::new(mutator, chain))
+            Box::new(Mutate::new(path, chain))
         }
-        "remove" => Box::new(Remove::new(m.parse_str("query")?)),
         "remove_empty_values" => Box::new(Unparameterized::RemoveEmptyValues),
         "replace_string" => {
             let regex = m.parse_str("regex_pattern")?;

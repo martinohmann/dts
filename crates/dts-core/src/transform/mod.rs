@@ -1,7 +1,6 @@
 //! Data transformation utilities.
 
 pub mod dsl;
-pub mod jsonpath;
 pub(crate) mod key;
 pub mod sort;
 pub mod visitor;
@@ -11,7 +10,7 @@ use crate::{
     Error,
 };
 use dts_json::{Map, Value};
-use jsonpath::{JsonPathMutator, JsonPathSelector};
+use dts_jsonpath::JsonPath;
 use key::KeyFlattener;
 use rayon::prelude::*;
 use regex::Regex;
@@ -91,12 +90,12 @@ impl Transform for Chain {
 }
 
 /// A type that can select a value based on a jsonpath query.
-pub struct Select(JsonPathSelector);
+pub struct Select(JsonPath);
 
 impl Select {
     /// Creates a new `Select` transformation.
-    pub fn new(selector: JsonPathSelector) -> Self {
-        Select(selector)
+    pub fn new(path: JsonPath) -> Self {
+        Select(path)
     }
 }
 
@@ -108,14 +107,14 @@ impl Transform for Select {
 
 /// A type that can selectively mutate a value based on a jsonpath query and a transformation.
 pub struct Mutate<T> {
-    mutator: JsonPathMutator,
+    path: JsonPath,
     expr: T,
 }
 
 impl<T> Mutate<T> {
     /// Creates a new `Mutate`.
-    pub fn new(mutator: JsonPathMutator, expr: T) -> Self {
-        Mutate { mutator, expr }
+    pub fn new(path: JsonPath, expr: T) -> Self {
+        Mutate { path, expr }
     }
 }
 
@@ -124,40 +123,24 @@ where
     T: Transform,
 {
     fn transform(&self, value: Value) -> Value {
-        self.mutator.mutate(value, |v| Some(self.expr.transform(v)))
+        self.path.mutate(value, |v| self.expr.transform(v))
     }
 }
 
 /// A type that can selectively delete values based on a jsonpath query. Deleted values are
 /// represented as `Value::Null`.
-pub struct Delete(JsonPathMutator);
+pub struct Delete(JsonPath);
 
 impl Delete {
     /// Creates a new `Delete`.
-    pub fn new(mutator: JsonPathMutator) -> Self {
-        Delete(mutator)
+    pub fn new(path: JsonPath) -> Self {
+        Delete(path)
     }
 }
 
 impl Transform for Delete {
     fn transform(&self, value: Value) -> Value {
-        self.0.mutate(value, |_| Some(Value::Null))
-    }
-}
-
-/// A type that can selectively remove values based on a jsonpath query.
-pub struct Remove(JsonPathMutator);
-
-impl Remove {
-    /// Creates a new `Remove`.
-    pub fn new(mutator: JsonPathMutator) -> Self {
-        Remove(mutator)
-    }
-}
-
-impl Transform for Remove {
-    fn transform(&self, value: Value) -> Value {
-        self.0.mutate(value, |_| None)
+        self.0.mutate(value, |_| Value::Null)
     }
 }
 

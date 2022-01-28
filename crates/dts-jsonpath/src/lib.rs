@@ -9,6 +9,7 @@ use crate::parser::ast::Selector;
 pub use crate::parser::parse;
 pub use crate::path::compile;
 use dts_json::Value;
+use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct JsonPath {
@@ -54,6 +55,14 @@ impl JsonPath {
         F: Fn() -> Value,
     {
         self.mutate(value, |_| f())
+    }
+}
+
+impl FromStr for JsonPath {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        JsonPath::new(s)
     }
 }
 

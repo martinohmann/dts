@@ -61,7 +61,7 @@ fn parse_descendant_selector(pair: Pair<Rule>) -> Selector {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::DotMemberName => Selector::Key(parse_string(pair)),
+        Rule::DotMemberName => Selector::Key(parse_member_name(pair)),
         Rule::IndexSelector => parse_index_selector(pair),
         Rule::IndexWildSelector => Selector::IndexWildcard,
         Rule::Wildcard => Selector::Wildcard,
@@ -145,7 +145,7 @@ fn parse_regex_expr(pair: Pair<Rule>) -> Result<RegexExpr> {
 fn parse_regex_matchable(pair: Pair<Rule>) -> Result<Operand> {
     match pair.as_rule() {
         Rule::String => Ok(Operand::Value(parse_quoted_string(pair).into())),
-        Rule::RelPath | Rule::JsonPath => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Path => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
         rule => unmatched_rule(rule),
     }
 }
@@ -168,7 +168,7 @@ fn parse_comparable(pair: Pair<Rule>) -> Result<Operand> {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::RelPath | Rule::JsonPath => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Path => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
         Rule::Number => Ok(Operand::Value(parse_float(pair).into())),
         Rule::String => Ok(Operand::Value(parse_string(pair).into())),
         Rule::Boolean => Ok(Operand::Value(parse_bool(pair).into())),
@@ -195,7 +195,7 @@ fn parse_containable(pair: Pair<Rule>) -> Result<Operand> {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::RelPath | Rule::JsonPath => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Path => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
         Rule::Number => Ok(Operand::Value(parse_float(pair).into())),
         Rule::String => Ok(Operand::Value(parse_string(pair).into())),
         rule => unmatched_rule(rule),
@@ -206,7 +206,7 @@ fn parse_container(pair: Pair<Rule>) -> Result<Operand> {
     let pair = inner(pair);
 
     match pair.as_rule() {
-        Rule::RelPath | Rule::JsonPath => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
+        Rule::Path => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
         Rule::Array => Ok(Operand::Value(
             serde_json::from_str(pair.as_str()).map_err(Error::new)?,
         )),
@@ -215,6 +215,10 @@ fn parse_container(pair: Pair<Rule>) -> Result<Operand> {
         )),
         rule => unmatched_rule(rule),
     }
+}
+
+fn parse_member_name(pair: Pair<Rule>) -> String {
+    pair.as_str().to_owned()
 }
 
 fn parse_string(pair: Pair<Rule>) -> String {
@@ -325,6 +329,15 @@ mod test {
             vec![
                 Selector::Root,
                 Selector::Descendant(Box::new(Selector::IndexWildcard))
+            ]
+        );
+
+        let parsed = parse("$..foo").unwrap();
+        assert_eq!(
+            parsed,
+            vec![
+                Selector::Root,
+                Selector::Descendant(Box::new(Selector::Key("foo".into())))
             ]
         );
     }

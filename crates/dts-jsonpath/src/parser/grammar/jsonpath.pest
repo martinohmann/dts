@@ -4,6 +4,19 @@
 
 Root = _{ SOI ~ JsonPath ~ EOI }
 
+// Paths
+Path    =  { RelPath | JsonPath }
+RelPath = _{
+    CurrentSelector ~ (
+        DotSelector |
+        DotWildSelector |
+        IndexSelector |
+        IndexWildSelector |
+        UnionSelector |
+        SliceSelector |
+        DescendantSelector
+    )*
+}
 JsonPath = _{
     RootSelector ~ (
         DotSelector |
@@ -25,7 +38,7 @@ CurrentSelector = { "@" }
 DotSelector   =  { "." ~ DotMemberName }
 DotMemberName = @{ NameFirst ~ NameChar* }
 NameFirst     =  { ASCII_ALPHA | "_" }
-NameChar      =  { ASCII_ALPHANUMERIC }
+NameChar      =  { ASCII_ALPHANUMERIC | "_" }
 
 // Wildcard
 Wildcard = { "*" }
@@ -73,10 +86,6 @@ RelationExpr   = _{ CompExpr | RegexExpr | ContainExpr }
 CompExpr       =  { Comparable ~ CompOp ~ Comparable }
 RegexExpr      =  { RegexMatchable ~ RegexOp ~ Regex }
 ContainExpr    =  { Containable ~ InOp ~ Container }
-
-// Paths
-Path    = _{ RelPath | JsonPath }
-RelPath =  { CurrentSelector ~ (DotSelector | IndexSelector)* }
 
 // Operations
 NegOp   = _{ "!" }
