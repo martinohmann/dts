@@ -2,7 +2,7 @@ use crate::path::CompOp;
 use dts_json::Value;
 use regex::Regex;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Selector {
     Root,
     Current,
@@ -16,14 +16,14 @@ pub enum Selector {
     Filter(FilterExpr),
 }
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Clone)]
 pub struct SliceRange {
     pub start: Option<i64>,
     pub end: Option<i64>,
     pub step: Option<i64>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum FilterExpr {
     Not(Box<FilterExpr>),
     Or(Vec<FilterExpr>),
@@ -33,20 +33,20 @@ pub enum FilterExpr {
     Regex(RegexExpr),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operand {
     Value(Value),
     Path(Vec<Selector>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct CompExpr {
     pub lhs: Operand,
     pub op: CompOp,
     pub rhs: Operand,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RegexExpr {
     pub lhs: Operand,
     pub regex: Regex,

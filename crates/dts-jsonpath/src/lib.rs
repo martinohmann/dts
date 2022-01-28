@@ -4,37 +4,56 @@ pub mod error;
 pub mod parser;
 pub mod path;
 
-pub use error::{Error, Result};
-
+pub use crate::error::{Error, Result};
+use crate::parser::ast::Selector;
+pub use crate::parser::parse;
+pub use crate::path::compile;
 use dts_json::Value;
-use parser::ast;
 
+#[derive(Debug, Clone)]
 pub struct JsonPath {
-    selectors: Vec<ast::Selector>,
+    selectors: Vec<Selector>,
 }
 
 impl JsonPath {
     pub fn new(query: &str) -> Result<JsonPath> {
-        let selectors = parser::parse(query)?;
+        let selectors = parse(query)?;
         Ok(JsonPath { selectors })
     }
 
     pub fn find<'a>(&'a self, value: &'a Value) -> Vec<&'a Value> {
-        path::compile(&self.selectors, value).select(value)
+        compile(&self.selectors, value).select(value)
     }
 
     pub fn select(&self, value: Value) -> Value {
-        self.find(&value).iter().cloned().collect()
+        self.find(&value).clone().into()
     }
 
-    pub fn mutate<F>(&self, mut value: Value, f: F) -> Value
+    pub fn visit<F>(&self, value: &mut Value, f: F)
     where
         F: FnMut(&mut Value),
     {
         let root = value.clone();
-        let path = path::compile(&self.selectors, &root);
-        path.visit(&mut value, f);
+        compile(&self.selectors, &root).visit(value, f);
+    }
+
+    pub fn mutate<F>(&self, mut value: Value, f: F) -> Value
+    where
+        F: Fn(Value) -> Value,
+    {
+        self.visit(&mut value, |value| *value = f(value.clone()));
         value
+    }
+
+    pub fn replace(&self, value: Value, replacement: Value) -> Value {
+        self.mutate(value, |_| replacement.clone())
+    }
+
+    pub fn replace_with<F>(&self, value: Value, f: F) -> Value
+    where
+        F: Fn() -> Value,
+    {
+        self.mutate(value, |_| f())
     }
 }
 
@@ -52,13 +71,11 @@ mod test {
     }
 
     #[test]
-    fn test_mutate() {
+    fn test_replace_with() {
         let path = JsonPath::new("$.foo.*").unwrap();
 
         let value = json!({"bar": {"baz": 1}, "foo": {"bar": 2, "qux": 3}});
-        let result = path.mutate(value, |value| {
-            *value = Value::String("replaced".into());
-        });
+        let result = path.replace_with(value, || Value::String("replaced".into()));
         assert_eq!(
             result,
             json!({"bar": {"baz": 1}, "foo": {"bar": "replaced", "qux": "replaced"}})
