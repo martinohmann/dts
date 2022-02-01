@@ -82,9 +82,10 @@ impl<'a> Visit<'a> for Root<'a> {
     where
         F: FnMut(&mut Value),
     {
-        // This is not a bug. Root is guaranteed to be the first selector in which case the current
-        // value == root. Working with a mutable reference to self.root would lead to two mutable
-        // borrows of the same data, which is not allowed in safe rust.
+        // This is not a bug. Root is guaranteed to be the first selector in any valid jsonpath in
+        // which case the current value is always root when ending up here. Working with a mutable
+        // reference to self.root would lead to two mutable borrows of the same data, which is not
+        // allowed in safe rust.
         visitor.visit(value);
     }
 }
