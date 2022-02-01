@@ -168,27 +168,6 @@ impl JsonPath {
         self.visit(&mut root, |value| *value = f(value.clone()));
         root
     }
-
-    /// Recursively visits `root` and replaces all matches with the `Value` returned by `f`.
-    ///
-    /// This is similar to [`replace`] but accepts a closure instead of a `Value`.
-    ///
-    /// [`replace`]: JsonPath::replace
-    pub fn replace_with<F>(&self, value: Value, f: F) -> Value
-    where
-        F: Fn() -> Value,
-    {
-        self.mutate(value, |_| f())
-    }
-
-    /// Recursively visits `root` and replaces all matches with the `replacement`.
-    ///
-    /// This is similar to [`replace_with`] but accepts a `Value` instead of a closure.
-    ///
-    /// [`replace_with`]: JsonPath::replace_with
-    pub fn replace(&self, value: Value, replacement: Value) -> Value {
-        self.replace_with(value, || replacement.clone())
-    }
 }
 
 impl FromStr for JsonPath {
@@ -213,11 +192,11 @@ mod test {
     }
 
     #[test]
-    fn test_replace_with() {
+    fn test_mutate() {
         let path = JsonPath::new("$.foo.*").unwrap();
 
         let value = json!({"bar": {"baz": 1}, "foo": {"bar": 2, "qux": 3}});
-        let result = path.replace_with(value, || Value::String("replaced".into()));
+        let result = path.mutate(value, |_| Value::String("replaced".into()));
         assert_eq!(
             result,
             json!({"bar": {"baz": 1}, "foo": {"bar": "replaced", "qux": "replaced"}})
