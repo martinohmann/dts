@@ -10,14 +10,17 @@ use self::filter::FilterExpr;
 use self::selector::{Select, Selector, Visit};
 use crate::Error;
 use dts_json::Value;
+use std::slice::Iter;
 use std::str::FromStr;
 
+/// Represents a jsonpath consisting of multiple `Selector`s.
 #[derive(Clone)]
 pub struct Path<'a> {
     selectors: Vec<Selector<'a>>,
 }
 
 impl<'a> Path<'a> {
+    /// Creates a new `Visitor` from a chain of `Selector`s.
     pub fn new<I>(selectors: I) -> Self
     where
         I: IntoIterator<Item = Selector<'a>>,
@@ -27,14 +30,17 @@ impl<'a> Path<'a> {
         }
     }
 
-    pub fn iter(&self) -> std::slice::Iter<'_, Selector<'a>> {
+    /// Returns an `Iterator` over all path selectors.
+    pub fn iter(&self) -> Iter<'_, Selector<'a>> {
         self.selectors.iter()
     }
 
+    /// Consumes `self` and returns the inner `Vec<Selector>`.
     pub fn into_inner(self) -> Vec<Selector<'a>> {
         self.selectors
     }
 
+    /// Applies the path selectors to `Value` and returns references to all matches.
     pub fn select(&self, value: &'a Value) -> Vec<&'a Value> {
         self.selectors.iter().fold(vec![value], |acc, selector| {
             acc.iter()
@@ -43,6 +49,7 @@ impl<'a> Path<'a> {
         })
     }
 
+    /// Recursively visits `Value` and calls `f` on every matched `Value`.
     pub fn visit<F>(&self, value: &mut Value, mut f: F)
     where
         F: FnMut(&mut Value),
@@ -73,6 +80,11 @@ impl<'a> From<Selector<'a>> for Path<'a> {
     }
 }
 
+/// The json `Value` visitor.
+///
+/// An instance of this type is passed into the `visit` method of a `Selector` and recursively
+/// visits every `Value` matched by all `Selector`s in the chain, calling a closure to mutate these
+/// values.
 pub struct Visitor<'a, F> {
     selectors: Vec<Selector<'a>>,
     mutate: &'a mut F,
@@ -82,6 +94,8 @@ impl<'a, F> Visitor<'a, F>
 where
     F: FnMut(&mut Value),
 {
+    /// Creates a new `Visitor` with a chain of pending `Selector`s to apply and a mutation
+    /// function that is called for every matched `Value`.
     pub fn new<I>(selectors: I, mutate: &'a mut F) -> Self
     where
         I: IntoIterator<Item = &'a Selector<'a>>,
@@ -92,6 +106,7 @@ where
         }
     }
 
+    /// Recursively visits `Value`.
     pub fn visit(&mut self, value: &mut Value) {
         match self.selectors.get(0) {
             Some(path) => path.visit(
@@ -103,6 +118,7 @@ where
     }
 }
 
+/// Represents a comparison operation inside a filter expression.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CompOp {
     Eq,
@@ -134,6 +150,8 @@ impl FromStr for CompOp {
     }
 }
 
+/// Represents an array index which can be either positive or negative. Negative indices select
+/// elements starting from the end of the array.
 #[derive(Clone)]
 pub struct Index {
     index: i64,
@@ -159,6 +177,8 @@ impl Index {
     }
 }
 
+/// Represents a slice range of the form `[start:end:step]` used in a `Slice` selector where all
+/// parts can be optional signed integers.
 #[derive(Default, Clone)]
 pub struct SliceRange {
     start: Option<i64>,

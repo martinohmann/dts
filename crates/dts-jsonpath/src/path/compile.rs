@@ -8,6 +8,7 @@ use super::{
 use crate::parser::ast;
 use dts_json::Value;
 
+/// Compiles selectors and a root `Value` into a `Path` instance.
 pub fn compile<'a>(selectors: &'a [ast::Selector], root: &'a Value) -> Path<'a> {
     compile_selectors(selectors, root).collect()
 }

@@ -11,50 +11,63 @@ pub use crate::path::compile;
 use dts_json::Value;
 use std::str::FromStr;
 
+/// Represents a jsonpath query that can be used for filtering and mutating json values.
 #[derive(Debug, Clone)]
 pub struct JsonPath {
     selectors: Vec<Selector>,
 }
 
 impl JsonPath {
+    /// Creates a new `JsonPath` from a query. The returned value can be used multiple times.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if the input is not a valid jsonpath query.
     pub fn new(query: &str) -> Result<JsonPath> {
         let selectors = parse(query)?;
         Ok(JsonPath { selectors })
     }
 
-    pub fn find<'a>(&'a self, value: &'a Value) -> Vec<&'a Value> {
-        compile(&self.selectors, value).select(value)
+    /// Finds all matching `Value`s in `root` and returns references to them.
+    pub fn find<'a>(&'a self, root: &'a Value) -> Vec<&'a Value> {
+        compile(&self.selectors, root).select(root)
     }
 
-    pub fn select(&self, value: Value) -> Value {
-        self.find(&value).clone().into()
+    /// Selects all matching `Value`s from `root` and returns copies of them.
+    pub fn select(&self, root: Value) -> Value {
+        self.find(&root).clone().into()
     }
 
-    pub fn visit<F>(&self, value: &mut Value, f: F)
+    /// Recursively visits `root` and calls `f` for every matching `Value`.
+    pub fn visit<F>(&self, root: &mut Value, f: F)
     where
         F: FnMut(&mut Value),
     {
-        let root = value.clone();
-        compile(&self.selectors, &root).visit(value, f);
+        let root_ref = root.clone();
+        compile(&self.selectors, &root_ref).visit(root, f);
     }
 
-    pub fn mutate<F>(&self, mut value: Value, f: F) -> Value
+    /// Recursively visits `root` and calls `f` for every matching `Value`, producing a new
+    /// `Value`.
+    pub fn mutate<F>(&self, mut root: Value, f: F) -> Value
     where
         F: Fn(Value) -> Value,
     {
-        self.visit(&mut value, |value| *value = f(value.clone()));
-        value
+        self.visit(&mut root, |value| *value = f(value.clone()));
+        root
     }
 
-    pub fn replace(&self, value: Value, replacement: Value) -> Value {
-        self.mutate(value, |_| replacement.clone())
-    }
-
+    /// Recursively visits `root` and replaces all matches with the `Value` returned by `f`.
     pub fn replace_with<F>(&self, value: Value, f: F) -> Value
     where
         F: Fn() -> Value,
     {
         self.mutate(value, |_| f())
+    }
+
+    /// Recursively visits `root` and replaces all matches with the `replacement`.
+    pub fn replace(&self, value: Value, replacement: Value) -> Value {
+        self.replace_with(value, || replacement.clone())
     }
 }
 
