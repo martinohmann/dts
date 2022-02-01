@@ -12,6 +12,42 @@ use dts_json::Value;
 use std::str::FromStr;
 
 /// Represents a jsonpath query that can be used for filtering and mutating json values.
+///
+/// ```
+/// use dts_json::json;
+/// use dts_jsonpath::JsonPath;
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let value = json!({
+///     "books": [
+///         {
+///             "title": "Sayings of the Century",
+///             "price": 8.95
+///         },
+///         {
+///             "title": "Sword of Honour",
+///             "price": 12.99
+///         },
+///         {
+///             "title": "Moby Dick",
+///             "price": 8.99
+///         },
+///         {
+///             "title": "The Lord of the Rings",
+///             "price": 22.99
+///         }
+///     ]
+/// });
+///
+/// let path = JsonPath::new("$.books[?(@.price < 10)].title")?;
+///
+/// assert_eq!(path.select(value), json!([
+///     "Sayings of the Century",
+///     "Moby Dick",
+/// ]));
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct JsonPath {
     selectors: Vec<Selector>,
