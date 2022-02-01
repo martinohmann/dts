@@ -15,8 +15,11 @@ use std::str::FromStr;
 #[grammar = "parser/grammar/jsonpath.pest"]
 struct JsonPathParser;
 
-/// Parses a `JsonPath` from an input string or returns an error if the input is not a value
-/// jsonpath query.
+/// Parses jsonpath selectors from an input string.
+///
+/// ## Errors
+///
+/// Returns an error if the input is not a valid jsonpath query.
 pub fn parse(input: &str) -> Result<Vec<Selector>> {
     let pairs = JsonPathParser::parse(Rule::Root, input)?;
     parse_jsonpath(pairs)
@@ -114,7 +117,7 @@ fn parse_filter_expr(pair: Pair<Rule>) -> Result<FilterExpr> {
         Rule::NegExpr => FilterExpr::Not(Box::new(parse_filter_expr(inner(pair))?)),
         Rule::CompExpr => FilterExpr::Comp(parse_comp_expr(pair)?),
         Rule::RegexExpr => FilterExpr::Regex(parse_regex_expr(pair)?),
-        Rule::ContainExpr => FilterExpr::Comp(parse_contain_expr(pair)?),
+        Rule::ContainExpr => FilterExpr::Comp(parse_comp_expr(pair)?),
         rule => unmatched_rule(rule),
     };
 
@@ -137,34 +140,22 @@ fn parse_regex_expr(pair: Pair<Rule>) -> Result<RegexExpr> {
     let mut pairs = pair.into_inner();
 
     Ok(RegexExpr {
-        lhs: parse_regex_matchable(inner(pairs.next().unwrap()))?,
+        lhs: parse_operand(pairs.next().unwrap())?,
         regex: parse_regex(inner(pairs.next().unwrap()))?,
     })
-}
-
-fn parse_regex_matchable(pair: Pair<Rule>) -> Result<Operand> {
-    match pair.as_rule() {
-        Rule::String => Ok(Operand::Value(parse_quoted_string(pair).into())),
-        Rule::Path => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
-        rule => unmatched_rule(rule),
-    }
-}
-
-fn parse_regex(pair: Pair<Rule>) -> Result<Regex> {
-    Regex::new(pair.as_str()).map_err(Error::new)
 }
 
 fn parse_comp_expr(pair: Pair<Rule>) -> Result<CompExpr> {
     let mut pairs = pair.into_inner();
 
     Ok(CompExpr {
-        lhs: parse_comparable(pairs.next().unwrap())?,
+        lhs: parse_operand(pairs.next().unwrap())?,
         op: parse_comp_op(pairs.next().unwrap())?,
-        rhs: parse_comparable(pairs.next().unwrap())?,
+        rhs: parse_operand(pairs.next().unwrap())?,
     })
 }
 
-fn parse_comparable(pair: Pair<Rule>) -> Result<Operand> {
+fn parse_operand(pair: Pair<Rule>) -> Result<Operand> {
     let pair = inner(pair);
 
     match pair.as_rule() {
@@ -173,40 +164,6 @@ fn parse_comparable(pair: Pair<Rule>) -> Result<Operand> {
         Rule::String => Ok(Operand::Value(parse_string(pair).into())),
         Rule::Boolean => Ok(Operand::Value(parse_bool(pair).into())),
         Rule::Null => Ok(Operand::Value(Value::Null)),
-        rule => unmatched_rule(rule),
-    }
-}
-
-fn parse_comp_op(pair: Pair<Rule>) -> Result<CompOp> {
-    CompOp::from_str(pair.as_str())
-}
-
-fn parse_contain_expr(pair: Pair<Rule>) -> Result<CompExpr> {
-    let mut pairs = pair.into_inner();
-
-    Ok(CompExpr {
-        lhs: parse_containable(pairs.next().unwrap())?,
-        op: CompOp::In,
-        rhs: parse_container(pairs.next().unwrap())?,
-    })
-}
-
-fn parse_containable(pair: Pair<Rule>) -> Result<Operand> {
-    let pair = inner(pair);
-
-    match pair.as_rule() {
-        Rule::Path => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
-        Rule::Number => Ok(Operand::Value(parse_float(pair).into())),
-        Rule::String => Ok(Operand::Value(parse_string(pair).into())),
-        rule => unmatched_rule(rule),
-    }
-}
-
-fn parse_container(pair: Pair<Rule>) -> Result<Operand> {
-    let pair = inner(pair);
-
-    match pair.as_rule() {
-        Rule::Path => Ok(Operand::Path(parse_jsonpath(pair.into_inner())?)),
         Rule::Array => Ok(Operand::Value(
             serde_json::from_str(pair.as_str()).map_err(Error::new)?,
         )),
@@ -215,6 +172,14 @@ fn parse_container(pair: Pair<Rule>) -> Result<Operand> {
         )),
         rule => unmatched_rule(rule),
     }
+}
+
+fn parse_regex(pair: Pair<Rule>) -> Result<Regex> {
+    Regex::new(pair.as_str()).map_err(Error::new)
+}
+
+fn parse_comp_op(pair: Pair<Rule>) -> Result<CompOp> {
+    CompOp::from_str(pair.as_str())
 }
 
 fn parse_member_name(pair: Pair<Rule>) -> String {

@@ -91,7 +91,7 @@ ContainExpr    =  { Containable ~ InOp ~ Container }
 NegOp   = _{ "!" }
 CompOp  =  { "==" | "!=" | "<=" | "<" | ">=" | ">" }
 RegexOp = _{ "=~" }
-InOp    = _{ "in" }
+InOp    =  { "in" }
 
 // Other
 Comparable  = { Number | String | Boolean | Null | Path }
