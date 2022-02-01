@@ -101,7 +101,7 @@ impl Select {
 
 impl Transform for Select {
     fn transform(&self, value: Value) -> Value {
-        self.0.select(value)
+        self.0.find(value)
     }
 }
 
