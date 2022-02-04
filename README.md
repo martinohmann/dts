@@ -6,7 +6,8 @@
 A simple tool to _**deserialize**_ data from an input encoding, _**transform**_
 it and _**serialize**_ it back into an output encoding.
 
-Requires rust >= 1.56.0.
+Uses [`jq`](https://stedolan.github.io/jq/) for data transformation and
+requires rust >= 1.56.0.
 
 ## Installation from source
 
@@ -21,7 +22,7 @@ cargo install --locked --path .
 ## Usage
 
 ```sh
-dts [<source>...] [-t <transform-options>] [-O <sink>...]
+dts [<source>...] [-j <jq-expression>] [-O <sink>...]
 ```
 
 For a full list of available flags consult the help:
@@ -30,43 +31,24 @@ For a full list of available flags consult the help:
 dts --help
 ```
 
-The help for the transformation expression syntax and available functions along
-with their documentation can be printed via:
-
-```sh
-dts --help-transform
-```
-
 ## Examples
 
-Convert YAML to TOML and remove empty values:
+Convert YAML to TOML:
 
 ```sh
-dts input.yaml -t remove_empty_values -o toml
+dts input.yaml -o toml
 ```
 
-Load all YAML files from sub directories, flatten nested arrays and merge them into one:
+Load all YAML files from sub directories and merge them into one:
 
 ```sh
-dts . --glob '**/*.yaml' -t flatten output.yaml
+dts . --glob '**/*.yaml' output.yaml
 ```
 
-Select a subset of the input data via JSONPath query:
+Transform the input data using a [`jq`](https://stedolan.github.io/jq/) expression:
 
 ```sh
-dts tests/fixtures/example.json -t 'select("$.users[?(@.age < 30)]")'
-```
-
-Mutate just a subset of the input data:
-
-```sh
-dts tests/fixtures/example.json -t 'mutate("$.users[?(@.age > 30)]", sort().flatten())'
-```
-
-Combine multiple transformation options:
-
-```sh
-dts tests/fixtures/example.json -t 'delete_keys("some_key").deep_merge.select("[*]").flatten.select("[*].id")'
+dts tests/fixtures/example.json -j '.users | map(select(.age < 30))'
 ```
 
 Read data from stdin:

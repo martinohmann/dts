@@ -12,6 +12,7 @@ pub use source::Source;
 pub mod de;
 mod encoding;
 mod error;
+pub mod jq;
 mod parsers;
 pub mod ser;
 mod sink;

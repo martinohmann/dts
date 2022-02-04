@@ -133,12 +133,24 @@ impl From<&InputOptions> for DeserializeOptions {
 #[derive(Args, Debug)]
 #[clap(help_heading = "TRANSFORM OPTIONS")]
 pub struct TransformOptions {
+    /// A jq expression for transforming the input data.
+    ///
+    /// The usage of this flag requires the `jq` executable to be present in the `PATH`. You may
+    /// also point `dts` to a different `jq` executable by setting the `DTS_JQ` environment
+    /// variable.
+    ///
+    /// See <https://stedolan.github.io/jq/manual/> for supported operators, filters and
+    /// functions.
+    #[clap(short = 'j', long = "--jq", value_name = "EXPRESSION")]
+    pub jq_expression: Option<String>,
+
     /// An expression containing one or more transformation functions.
     ///
     /// See --help-transform to get a list of possible transformation functions, their arguments.
     #[clap(short = 't', long = "transform", value_name = "EXPRESSION")]
     #[clap(multiple_occurrences = true, number_of_values = 1)]
-    pub expressions: Vec<String>,
+    #[clap(conflicts_with = "jq-expression")]
+    pub legacy_expressions: Vec<String>,
 
     /// Displays help and usage examples for the transformation expressions and available
     /// functions and exit.

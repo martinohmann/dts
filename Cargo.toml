@@ -44,6 +44,10 @@ version = "= 3.0.0-rc.7"
 optional = true
 version = "1.9.0"
 
+[dependencies.serde_json]
+features = ["preserve_order"]
+version = "1.0.68"
+
 [dev-dependencies]
 assert_cmd = "2.0.2"
 criterion = "0.3"

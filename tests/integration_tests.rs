@@ -52,7 +52,7 @@ fn json_to_csv_filtered_flattened_with_keys() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-o", "csv", "-t", "select(\"$..friends\").flatten", "-K"])
+        .args(&["-o", "csv", "-j", ".users[].friends[]", "-K"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/friends.csv").unwrap());
@@ -63,7 +63,7 @@ fn json_to_csv_collections_as_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-o", "csv", "-t", "select(\"$.users[*]\")", "-K"])
+        .args(&["-o", "csv", "-j", ".users[]", "-K"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/users.csv").unwrap());
@@ -74,7 +74,7 @@ fn json_to_gron() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-t", "flatten_keys(\"json\")", "-o", "gron"])
+        .args(&["-o", "gron"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.js").unwrap());
@@ -134,7 +134,7 @@ fn deep_merge_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-t", "select(\"$.users\").flatten.deep_merge", "-n"])
+        .args(&["-j", "reduce .users[] as $item ({}; . * $item)", "-n"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.merged.json").unwrap());
@@ -151,8 +151,8 @@ fn continue_on_error() {
         .args(&[
             "-i",
             "json",
-            "-t",
-            "select(\"$[*].users\").flatten.deep_merge",
+            "-j",
+            ".[] | reduce .users[] as $item ({}; . * $item)",
             "-n",
         ])
         .assert()
@@ -165,8 +165,8 @@ fn continue_on_error() {
         .args(&[
             "-i",
             "json",
-            "-t",
-            "select(\"$[*].users\").flatten.deep_merge",
+            "-j",
+            ".[] | reduce .users[] as $item ({}; . * $item)",
             "-n",
             "--continue-on-error",
         ])
