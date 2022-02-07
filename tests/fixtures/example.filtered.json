@@ -1,0 +1,32 @@
+[
+  {
+    "id": "61896431b3d9c0729b0d35e6",
+    "isActive": true,
+    "balance": "$1,533.07",
+    "picture": "http://placehold.it/32x32",
+    "age": 27,
+    "eyeColor": "brown",
+    "name": "Dena Stone",
+    "gender": "female",
+    "company": "ZAJ",
+    "email": "denastone@zaj.com",
+    "phone": "+1 (822) 541-3135",
+    "address": "416 Oxford Street, Balm, Indiana, 5900",
+    "about": "Aute mollit quis reprehenderit consequat do laborum. Veniam reprehenderit aliqua in velit eu tempor tempor ullamco culpa qui ad. Ad fugiat est excepteur sint do occaecat eiusmod voluptate velit anim laboris. Esse duis Lorem amet in aliqua cillum enim. Et proident ullamco qui non cillum occaecat est do deserunt. Quis pariatur dolore velit eu duis ullamco occaecat exercitation proident labore minim consequat voluptate ex.\r\n",
+    "registered": "2019-03-05T05:26:01 -01:00",
+    "tags": [
+      "aute",
+      "elit",
+      "mollit",
+      "sit"
+    ],
+    "friends": [
+      {
+        "id": "6189643146646d84cd519d62",
+        "name": "Dawn Joyce"
+      }
+    ],
+    "latitude": 65.453177,
+    "longitude": 102.591909
+  }
+]

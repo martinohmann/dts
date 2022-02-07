@@ -87,8 +87,12 @@ fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
                     in the `DTS_JQ` environment variable",
                 )?;
 
-            jq.process(expr, &value)
-                .context("Failed to transform value")
+            let res = match expr.strip_prefix('@') {
+                Some(path) => jq.process_file(path, &value),
+                None => jq.process(expr, &value),
+            };
+
+            res.context("Failed to transform value")
         }
         None => parse_expressions(&opts.legacy_expressions)
             .map(|chain| chain.transform(value))

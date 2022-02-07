@@ -51,6 +51,12 @@ Transform the input data using a [`jq`](https://stedolan.github.io/jq/) expressi
 dts tests/fixtures/example.json -j '.users | map(select(.age < 30))'
 ```
 
+Use `jq` filter expression from a file:
+
+```sh
+dts tests/fixtures/example.json -j @my-filter.jq
+```
+
 Read data from stdin:
 
 ```sh

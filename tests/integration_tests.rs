@@ -141,6 +141,17 @@ fn deep_merge_json() {
 }
 
 #[test]
+fn filter_expression_from_file() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .arg("tests/fixtures/example.json")
+        .args(&["-j", "@tests/fixtures/filter.jq", "-n"])
+        .assert()
+        .success()
+        .stdout(read("tests/fixtures/example.filtered.json").unwrap());
+}
+
+#[test]
 fn continue_on_error() {
     // Test for the failure first without the --continue-on-error flag to catch potential
     // regressions.

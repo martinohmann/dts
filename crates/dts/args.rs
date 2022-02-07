@@ -139,6 +139,9 @@ pub struct TransformOptions {
     /// also point `dts` to a different `jq` executable by setting the `DTS_JQ` environment
     /// variable.
     ///
+    /// If the expression starts with an `@` it is treated as a local file path and the expression
+    /// is read from there instead.
+    ///
     /// See <https://stedolan.github.io/jq/manual/> for supported operators, filters and
     /// functions.
     #[clap(short = 'j', long = "--jq", value_name = "EXPRESSION")]
