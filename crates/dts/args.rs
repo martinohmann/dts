@@ -146,27 +146,6 @@ pub struct TransformOptions {
     /// functions.
     #[clap(short = 'j', long = "--jq", value_name = "EXPRESSION")]
     pub jq_expression: Option<String>,
-
-    /// An expression containing one or more transformation functions.
-    ///
-    /// See --help-transform to get a list of possible transformation functions, their arguments.
-    #[clap(short = 't', long = "transform", value_name = "EXPRESSION")]
-    #[clap(multiple_occurrences = true, number_of_values = 1)]
-    #[clap(conflicts_with = "jq-expression")]
-    pub legacy_expressions: Vec<String>,
-
-    /// Displays help and usage examples for the transformation expressions and available
-    /// functions and exit.
-    ///
-    /// Optionally accepts one or more keywords to filter functions docs. Only displays function
-    /// docs that contain all of the provided keywords (case insensitive).
-    #[clap(
-        long = "help-transform",
-        min_values = 0,
-        value_name = "KEYWORDS",
-        conflicts_with = "generate-completion"
-    )]
-    pub help_keywords: Option<Vec<String>>,
 }
 
 /// Options that configure the behaviour of output serialization.

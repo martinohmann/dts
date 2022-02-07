@@ -6,7 +6,6 @@ mod args;
 mod highlighting;
 mod output;
 mod paging;
-mod transform;
 mod utils;
 
 #[cfg(feature = "color")]
@@ -15,14 +14,11 @@ use crate::{
     args::{InputOptions, Options, OutputOptions, TransformOptions},
     output::StdoutWriter,
     paging::PagingConfig,
-    transform::{parse_expressions, print_transform_help},
 };
 use anyhow::{anyhow, Context, Result};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
-use dts_core::{
-    de::Deserializer, jq::Jq, ser::Serializer, transform::Transform, Encoding, Error, Sink, Source,
-};
+use dts_core::{de::Deserializer, jq::Jq, ser::Serializer, Encoding, Error, Sink, Source};
 use dts_json::Value;
 use rayon::prelude::*;
 use std::fs::File;
@@ -94,9 +90,7 @@ fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
 
             res.context("Failed to transform value")
         }
-        None => parse_expressions(&opts.legacy_expressions)
-            .map(|chain| chain.transform(value))
-            .context("Failed to build transformation chain"),
+        None => Ok(value),
     }
 }
 
@@ -178,14 +172,6 @@ fn main() -> Result<()> {
     if let Some(shell) = opts.generate_completion {
         let mut app = Options::into_app();
         print_completions(&mut app, shell);
-        std::process::exit(0);
-    }
-
-    if let Some(keywords) = opts.transform.help_keywords {
-        #[cfg(not(feature = "color"))]
-        print_transform_help(&keywords, output::ColorChoice::Never)?;
-        #[cfg(feature = "color")]
-        print_transform_help(&keywords, opts.output.color)?;
         std::process::exit(0);
     }
 

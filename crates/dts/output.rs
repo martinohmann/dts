@@ -6,9 +6,8 @@ use crate::{
     utils::resolve_cmd,
 };
 use clap::ArgEnum;
-use std::io::{self, Stdout, Write};
+use std::io::{self, Stdout};
 use std::process::{Child, Command, Stdio};
-use termcolor::{Buffer, BufferWriter, ColorSpec, WriteColor};
 
 /// ColorChoice represents the color preference of a user.
 #[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
@@ -149,51 +148,5 @@ impl Drop for StdoutWriter {
         if let StdoutWriter::Pager(cmd) = self {
             let _ = cmd.wait();
         }
-    }
-}
-
-/// A type that can buffer writes of colored and non-colored data and finally print the buffer to
-/// stdout.
-pub struct BufferedStdoutPrinter {
-    stdout: BufferWriter,
-    buf: Buffer,
-}
-
-impl BufferedStdoutPrinter {
-    /// Creates a new `BufferedStdoutPrinter` which may colorize output based on the provided
-    /// `ColorChoice`.
-    pub fn new(choice: ColorChoice) -> Self {
-        let stdout = BufferWriter::stdout(choice.into());
-
-        BufferedStdoutPrinter {
-            buf: stdout.buffer(),
-            stdout,
-        }
-    }
-
-    /// Writes `buf` wrapped with the given `ColorSpec` into the print buffer.
-    ///
-    /// The `ColorSpec` may be discarded if the `ColorChoice` used for creating the
-    /// `BufferedStdoutPrinter` dictated that output should not be colored.
-    pub fn write_colored<B>(&mut self, spec: &ColorSpec, buf: B) -> io::Result<()>
-    where
-        B: AsRef<[u8]>,
-    {
-        self.buf.set_color(spec)?;
-        self.write(buf)?;
-        self.buf.reset()
-    }
-
-    /// Writes `buf` into the internal print buffer.
-    pub fn write<B>(&mut self, buf: B) -> io::Result<()>
-    where
-        B: AsRef<[u8]>,
-    {
-        self.buf.write_all(buf.as_ref())
-    }
-
-    /// Prints the contents of the print buffer to stdout.
-    pub fn print(&self) -> io::Result<()> {
-        self.stdout.print(&self.buf)
     }
 }
