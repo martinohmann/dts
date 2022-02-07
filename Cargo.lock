@@ -477,9 +477,7 @@ dependencies = [
  "dts-json",
  "glob",
  "hcl",
- "indexmap",
  "json5",
- "jsonpath_lib",
  "pathdiff",
  "pest",
  "pest_derive",
@@ -807,17 +805,6 @@ dependencies = [
  "pest",
  "pest_derive",
  "serde",
-]
-
-[[package]]
-name = "jsonpath_lib"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaa63191d68230cccb81c5aa23abd53ed64d83337cacbb25a7b8c7979523774f"
-dependencies = [
- "log",
- "serde",
- "serde_json",
 ]
 
 [[package]]

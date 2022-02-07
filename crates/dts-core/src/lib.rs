@@ -13,11 +13,11 @@ pub mod de;
 mod encoding;
 mod error;
 pub mod jq;
+pub mod key;
 mod parsers;
 pub mod ser;
 mod sink;
 mod source;
-pub mod transform;
 
 trait PathExt {
     fn relative_to<P>(&self, path: P) -> Option<PathBuf>

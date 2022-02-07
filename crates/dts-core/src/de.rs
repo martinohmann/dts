@@ -1,8 +1,7 @@
 //! This module provides a `Deserializer` which supports deserializing input data with various
 //! encodings into a `Value`.
 
-use crate::parsers::gron;
-use crate::{Encoding, Result};
+use crate::{key::expand_keys, parsers::gron, Encoding, Result};
 use dts_json::{Map, Value};
 use regex::Regex;
 use serde::Deserialize;
@@ -253,7 +252,7 @@ where
             })
             .collect::<Result<Map<_, _>>>()?;
 
-        Ok(Value::Object(map))
+        Ok(expand_keys(Value::Object(map)))
     }
 
     fn deserialize_hcl(&mut self) -> Result<Value> {
