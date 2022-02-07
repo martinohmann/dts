@@ -462,6 +462,7 @@ dependencies = [
  "pretty_assertions",
  "rayon",
  "regex",
+ "serde_json",
  "shell-words",
  "temp-env",
  "termcolor",

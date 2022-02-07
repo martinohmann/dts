@@ -21,7 +21,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
 use dts_core::{
-    de::Deserializer, ser::Serializer, transform::Transform, Encoding, Error, Sink, Source,
+    de::Deserializer, jq::Jq, ser::Serializer, transform::Transform, Encoding, Error, Sink, Source,
 };
 use dts_json::Value;
 use rayon::prelude::*;
@@ -76,9 +76,24 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
 }
 
 fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
-    parse_expressions(&opts.expressions)
-        .map(|chain| chain.transform(value))
-        .context("Failed to build transformation chain")
+    match &opts.jq_expression {
+        Some(expr) => {
+            let jq = std::env::var("DTS_JQ")
+                .ok()
+                .map(Jq::with_executable)
+                .unwrap_or_else(Jq::new)
+                .context(
+                    "Install `jq` or provide the `jq` executable path \
+                    in the `DTS_JQ` environment variable",
+                )?;
+
+            jq.process(expr, &value)
+                .context("Failed to transform value")
+        }
+        None => parse_expressions(&opts.legacy_expressions)
+            .map(|chain| chain.transform(value))
+            .context("Failed to build transformation chain"),
+    }
 }
 
 fn serialize(sink: &Sink, value: Value, opts: &OutputOptions) -> Result<()> {
