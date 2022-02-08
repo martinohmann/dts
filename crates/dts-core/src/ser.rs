@@ -1,7 +1,7 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{transform, Encoding, Error, Result};
+use crate::{key::flatten_keys, Encoding, Error, Result};
 use dts_json::Value;
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
@@ -257,7 +257,7 @@ where
     }
 
     fn serialize_gron(&mut self, value: Value) -> Result<()> {
-        let output = transform::flatten_keys(value, "json")
+        let output = flatten_keys(value, "json")
             .as_object()
             .unwrap()
             .into_iter()

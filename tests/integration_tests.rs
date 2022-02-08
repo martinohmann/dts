@@ -85,7 +85,7 @@ fn gron_to_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.js")
-        .args(&["-i", "gron"])
+        .args(&["-i", "gron", "-n", "-j", ".json"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.js.ungron.json").unwrap());
@@ -130,7 +130,7 @@ fn glob_required_for_dirs() {
 }
 
 #[test]
-fn deep_merge_json() {
+fn merge_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")

@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 use criterion::{criterion_group, criterion_main, Criterion};
-use dts_core::transform::*;
+use dts_core::key::*;
 use dts_json::json;
 
 fn benchmark_transform(c: &mut Criterion) {
@@ -56,16 +56,6 @@ fn benchmark_transform(c: &mut Criterion) {
             });
 
             flatten_keys(value, "data")
-        })
-    });
-
-    c.bench_function("deep_merge", |b| {
-        b.iter(|| {
-            deep_merge(json!([{"foo": "bar"},
-                       {"foo": {"bar": "baz"}, "bar": [1], "qux": null},
-                       {"foo": {"bar": "qux"}, "bar": [2], "baz": 1},
-                       {"bar": {"bar": "baz", "bam": "boo"}, "bar": [null, 1], "qux": null},
-                       {"bar": {"bar": "qux", "buz": "foo"}, "bar": [2], "baz": 1}]))
         })
     });
 
