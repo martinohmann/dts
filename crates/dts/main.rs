@@ -22,19 +22,19 @@ use dts_core::{de::Deserializer, jq::Jq, ser::Serializer, Encoding, Error, Sink,
 use dts_json::Value;
 use rayon::prelude::*;
 use std::fs::File;
-use std::io::{self, BufReader, BufWriter};
+use std::io::{self, BufWriter};
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
-    let encoding = opts
-        .input_encoding
-        .or_else(|| source.encoding())
-        .context("Unable to detect input encoding, please provide it explicitly via -i")?;
-
     let reader = source
         .to_reader()
         .with_context(|| format!("Failed to create reader for source `{}`", source))?;
 
-    let mut de = Deserializer::with_options(BufReader::new(reader), opts.into());
+    let encoding = opts
+        .input_encoding
+        .or_else(|| reader.encoding())
+        .context("Unable to detect input encoding, please provide it explicitly via -i")?;
+
+    let mut de = Deserializer::with_options(reader, opts.into());
 
     de.deserialize(encoding)
         .with_context(|| format!("Failed to deserialize `{}` from `{}`", encoding, source))
