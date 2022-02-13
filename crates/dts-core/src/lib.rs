@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 pub use encoding::*;
 pub use error::*;
 pub use sink::Sink;
-pub use source::Source;
+pub use source::{Source, SourceReader};
 
 pub mod de;
 mod encoding;

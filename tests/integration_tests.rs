@@ -95,13 +95,23 @@ fn gron_to_json() {
 fn encoding_required_for_stdin() {
     Command::cargo_bin("dts")
         .unwrap()
-        .pipe_stdin("tests/fixtures/example.json")
+        .pipe_stdin("tests/fixtures/example.js")
         .unwrap()
         .assert()
         .failure()
         .stderr(predicate::str::contains(
             "Unable to detect input encoding, please provide it explicitly via -i",
         ));
+}
+
+#[test]
+fn encoding_inferred_from_first_line() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .pipe_stdin("tests/fixtures/example.json")
+        .unwrap()
+        .assert()
+        .success();
 }
 
 #[test]

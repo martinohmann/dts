@@ -66,7 +66,10 @@ pub struct Options {
 #[derive(Args, Debug)]
 #[clap(help_heading = "INPUT OPTIONS")]
 pub struct InputOptions {
-    /// Set the input encoding. If absent encoding will be detected from input file extension.
+    /// Set the input encoding.
+    ///
+    /// If absent, dts will attempt to detect the encoding from the input file extension (if
+    /// present) or the first line of input.
     #[clap(arg_enum, short = 'i', long, setting = ArgSettings::HidePossibleValues)]
     pub input_encoding: Option<Encoding>,
 
@@ -152,7 +155,9 @@ pub struct TransformOptions {
 #[derive(Args, Debug)]
 #[clap(help_heading = "OUTPUT OPTIONS")]
 pub struct OutputOptions {
-    /// Set the output encoding. If absent encoding will be detected from output file extension.
+    /// Set the output encoding.
+    ///
+    /// If absent, the encoding will be detected from output file extension.
     ///
     /// If the encoding is not explicitly set and it cannot be inferred from the output file
     /// extension (or the output is stdout), the fallback is to encode output as JSON.

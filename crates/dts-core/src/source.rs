@@ -1,7 +1,7 @@
 use crate::{Encoding, Error, PathExt, Result};
 use std::fmt;
 use std::fs;
-use std::io;
+use std::io::{self, BufRead, BufReader, Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use url::Url;
@@ -59,20 +59,20 @@ impl Source {
         }
     }
 
-    /// Returns a reader to read from the source.
+    /// Returns a `SourceReader` to read from the source.
     ///
     /// ## Errors
     ///
     /// May return an error if the source is `Source::Path` and the file cannot be opened of if
     /// source is `Source::Url` and there is an error requesting the remote url.
-    pub fn to_reader(&self) -> Result<impl io::Read> {
+    pub fn to_reader(&self) -> Result<SourceReader> {
         let reader: Box<dyn io::Read> = match self {
             Self::Stdin => Box::new(io::stdin()),
             Self::Path(path) => Box::new(fs::File::open(path)?),
             Self::Url(url) => Box::new(ureq::get(url.as_ref()).call()?.into_reader()),
         };
 
-        Ok(reader)
+        SourceReader::new(reader, self.encoding())
     }
 }
 
@@ -116,6 +116,62 @@ impl fmt::Display for Source {
                 .unwrap_or_else(|| path.clone())
                 .display()
                 .fmt(f),
+        }
+    }
+}
+
+/// A type that can read from a `Source`. It is able to detect the `Source`'s encoding by looking
+/// at the first line of the input.
+pub struct SourceReader {
+    first_line: Cursor<Vec<u8>>,
+    remainder: BufReader<Box<dyn Read>>,
+    encoding: Option<Encoding>,
+}
+
+impl SourceReader {
+    /// Creates a new `SourceReader` for an `io::Read` implementation and an optional encoding
+    /// hint.
+    ///
+    /// Reads the first line from `reader` upon creation.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if reading the first line from the reader fails.
+    pub fn new(reader: Box<dyn Read>, encoding: Option<Encoding>) -> Result<SourceReader> {
+        let mut remainder = BufReader::new(reader);
+        let mut buf = Vec::new();
+
+        remainder.read_until(b'\n', &mut buf)?;
+
+        let first_line = Cursor::new(buf);
+
+        Ok(SourceReader {
+            first_line,
+            remainder,
+            encoding,
+        })
+    }
+
+    /// Tries to detect the encoding of the source. If the source provides an encoding hint it is
+    /// returned as is. Otherwise the `SourceReader` attempts to detect the encoding based on the
+    /// contents of the first line of the input data.
+    ///
+    /// Returns `None` if the encoding cannot be detected.
+    pub fn encoding(&self) -> Option<Encoding> {
+        self.encoding.or_else(|| {
+            std::str::from_utf8(self.first_line.get_ref())
+                .ok()
+                .and_then(Encoding::from_first_line)
+        })
+    }
+}
+
+impl Read for SourceReader {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.first_line.position() < self.first_line.get_ref().len() as u64 {
+            self.first_line.read(buf)
+        } else {
+            self.remainder.read(buf)
         }
     }
 }
@@ -183,5 +239,18 @@ mod test {
             Source::from("src/").glob_files("***"),
             Err(Error::GlobPatternError { .. })
         ));
+    }
+
+    #[test]
+    fn test_source_reader() {
+        let input = Cursor::new("---\nfoo: bar\n");
+        let mut reader = SourceReader::new(Box::new(input), None).unwrap();
+
+        assert_eq!(reader.encoding(), Some(Encoding::Yaml));
+
+        let mut buf = String::new();
+        reader.read_to_string(&mut buf).unwrap();
+
+        assert_eq!(&buf, "---\nfoo: bar\n");
     }
 }
