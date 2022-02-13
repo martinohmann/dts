@@ -21,7 +21,7 @@ use unescape::unescape;
 #[clap(
     name = "dts",
     version,
-    after_help = "Hint: `dts -h` only provides a usage summary. Run `dts --help` for the full details to each flag.\n\nTo get help about the transformation expression syntax, run `dts --help-transform`."
+    after_help = "Hint: `dts -h` only provides a usage summary. Run `dts --help` for the full details to each flag."
 )]
 pub struct Options {
     /// Input sources.
@@ -258,10 +258,10 @@ fn parse_csv_delimiter(s: &str) -> Result<u8> {
     if bytes.len() == 1 {
         Ok(bytes[0])
     } else {
-        Err(anyhow!("Expected single byte delimiter"))
+        Err(anyhow!("expected single byte delimiter"))
     }
 }
 
 fn parse_unescaped(s: &str) -> Result<String> {
-    unescape(s).ok_or_else(|| anyhow!("String contains invalid escape sequences: `{}`", s))
+    unescape(s).ok_or_else(|| anyhow!("string contains invalid escape sequences: `{}`", s))
 }
