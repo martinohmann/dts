@@ -3,7 +3,7 @@ use thiserror::Error;
 
 /// Error emitted by all parsers in this module.
 #[derive(Error, Debug)]
-#[error("Failed to parse {kind}:\n{msg}")]
+#[error("failed to parse {kind}:\n{msg}")]
 pub struct ParseError {
     kind: ParseErrorKind,
     msg: String,

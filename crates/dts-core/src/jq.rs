@@ -20,11 +20,11 @@ pub enum Error {
     Unknown(String),
 
     /// Returned if the executable is not found.
-    #[error("Executable `{}` not found", .0.display())]
+    #[error("executable `{}` not found", .0.display())]
     ExecutableNotFound(PathBuf),
 
     /// Returned if the executable exists but does not appear to be `jq`.
-    #[error("Executable `{}` exists but does appear to be `jq`", .0.display())]
+    #[error("executable `{}` exists but does appear to be `jq`", .0.display())]
     InvalidExecutable(PathBuf),
 
     /// Represents generic IO errors.
