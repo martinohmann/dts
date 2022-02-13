@@ -55,7 +55,7 @@ impl Source {
                 .iter()
                 .map(|path| Self::from(path.as_path()))
                 .collect()),
-            None => Err(Error::new("Not a path source")),
+            None => Err(Error::new("not a path source")),
         }
     }
 

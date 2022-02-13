@@ -18,7 +18,7 @@ pub enum Error {
     Message(String),
 
     /// Represents errors of operations that are not supported by a certain encoding.
-    #[error("Operation is not supported for encoding `{0}`")]
+    #[error("operation is not supported for encoding `{0}`")]
     UnsupportedEncoding(Encoding),
 
     /// Error emitted by parsers from this crate.
@@ -34,7 +34,7 @@ pub enum Error {
     Io(#[from] io::Error),
 
     /// Represents an invalid glob pattern.
-    #[error("Invalid glob pattern `{pattern}`")]
+    #[error("invalid glob pattern `{pattern}`")]
     GlobPatternError {
         /// The pattern that caused the error.
         pattern: String,
@@ -43,7 +43,7 @@ pub enum Error {
     },
 
     /// Represents an error fetching a remote data source.
-    #[error("Unable to fetch remote data source")]
+    #[error("unable to fetch remote data source")]
     RequestError(#[from] ureq::Error),
 
     /// Represents errors emitted by serializers and deserializers.
