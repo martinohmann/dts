@@ -453,7 +453,6 @@ dependencies = [
  "clap_generate",
  "criterion",
  "dts-core",
- "dts-json",
  "grep-cli",
  "once_cell",
  "predicates",
@@ -473,7 +472,6 @@ version = "0.1.0"
 dependencies = [
  "clap 3.0.0-rc.7",
  "csv",
- "dts-json",
  "glob",
  "hcl-rs",
  "json5",
@@ -493,17 +491,6 @@ dependencies = [
  "toml",
  "ureq",
  "url",
-]
-
-[[package]]
-name = "dts-json"
-version = "0.1.0"
-dependencies = [
- "indexmap",
- "pretty_assertions",
- "serde",
- "serde_json",
- "thiserror",
 ]
 
 [[package]]
@@ -762,7 +749,6 @@ checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
 dependencies = [
  "autocfg",
  "hashbrown",
- "rayon",
  "serde",
 ]
 

@@ -1,23 +1,43 @@
-//! Extension methods for `Value` which may not be too useful outside of `dts`.
+//! Extension methods for `serde_json::Value`.
 
-use super::{Map, Value};
+use serde_json::{Map, Value};
 use std::fmt;
 use std::iter;
 
-impl Value {
+/// A trait to add extension methods to `serde_json::Value`.
+pub trait ValueExt {
     /// Converts value into an array. If the value is of variant `Value::Array`, the wrapped value
     /// will be returned. Otherwise the result is a `Vec` which contains the `Value`.
-    pub fn into_array(self) -> Vec<Value> {
+    fn into_array(self) -> Vec<Value>;
+
+    /// Converts value into an object. If the value is of variant `Value::Object`, the wrapped value
+    /// will be returned. Otherwise the result is a `Map` which contains a single entry with the
+    /// provided key.
+    fn into_object<K>(self, key: K) -> Map<String, Value>
+    where
+        K: fmt::Display;
+
+    /// Converts the value to its string representation but ensures that the resulting string is
+    /// not quoted.
+    fn into_string(self) -> String;
+
+    /// Deep merges `other` into `self`, replacing all values in `other` that were merged into
+    /// `self` with `Value::Null`.
+    fn deep_merge(&mut self, other: &mut Value);
+
+    /// Returns true if `self` is `Value::Null` or an empty array or map.
+    fn is_empty(&self) -> bool;
+}
+
+impl ValueExt for Value {
+    fn into_array(self) -> Vec<Value> {
         match self {
             Value::Array(array) => array,
             value => vec![value],
         }
     }
 
-    /// Converts value into an object. If the value is of variant `Value::Object`, the wrapped value
-    /// will be returned. Otherwise the result is a `Map` which contains a single entry with the
-    /// provided key.
-    pub fn into_object<K>(self, key: K) -> Map<String, Value>
+    fn into_object<K>(self, key: K) -> Map<String, Value>
     where
         K: fmt::Display,
     {
@@ -27,18 +47,14 @@ impl Value {
         }
     }
 
-    /// Converts the value to its string representation but ensures that the resulting string is
-    /// not quoted.
-    pub fn into_string(self) -> String {
+    fn into_string(self) -> String {
         match self {
             Value::String(s) => s,
             value => value.to_string(),
         }
     }
 
-    /// Deep merges `other` into `self`, replacing all values in `other` that were merged into
-    /// `self` with `Value::Null`.
-    pub fn deep_merge(&mut self, other: &mut Value) {
+    fn deep_merge(&mut self, other: &mut Value) {
         match (self, other) {
             (Value::Object(lhs), Value::Object(rhs)) => {
                 rhs.iter_mut().for_each(|(key, value)| {
@@ -59,8 +75,7 @@ impl Value {
         }
     }
 
-    /// Returns true if `self` is `Value::Null` or an empty array or map.
-    pub fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         match self {
             Value::Null => true,
             Value::Array(array) if array.is_empty() => true,
@@ -73,8 +88,8 @@ impl Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::json;
     use pretty_assertions::assert_eq;
+    use serde_json::json;
 
     #[test]
     fn test_into_array() {

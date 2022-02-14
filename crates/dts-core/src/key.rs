@@ -1,8 +1,11 @@
 //! Object key transformation utilities.
 
-use crate::parsers::flat_key::{self, KeyPart, KeyParts, StringKeyParts};
-use dts_json::{Map, Value};
+use crate::{
+    parsers::flat_key::{self, KeyPart, KeyParts, StringKeyParts},
+    value::ValueExt,
+};
 use rayon::prelude::*;
+use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::iter;
 
@@ -15,7 +18,7 @@ use std::iter;
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::key::flatten_keys;
-/// use dts_json::json;
+/// use serde_json::json;
 ///
 /// let value = json!({"foo": {"bar": ["baz", "qux"]}});
 ///
@@ -38,7 +41,7 @@ use std::iter;
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::key::flatten_keys;
-/// use dts_json::json;
+/// use serde_json::json;
 ///
 /// let value = json!(["foo", "bar", "baz"]);
 ///
@@ -60,7 +63,7 @@ use std::iter;
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::key::flatten_keys;
-/// use dts_json::json;
+/// use serde_json::json;
 ///
 /// let value = json!("foo");
 ///
@@ -79,7 +82,7 @@ where
 /// ```
 /// # use pretty_assertions::assert_eq;
 /// use dts_core::key::expand_keys;
-/// use dts_json::json;
+/// use serde_json::json;
 ///
 /// let value = json!([{"foo.bar": 1, "foo[\"bar-baz\"]": 2}]);
 /// let expected = json!([{"foo": {"bar": 1, "bar-baz": 2}}]);
@@ -89,6 +92,8 @@ where
 pub fn expand_keys(value: Value) -> Value {
     match value {
         Value::Object(object) => object
+            .into_iter()
+            .collect::<Vec<(String, Value)>>()
             .into_par_iter()
             .map(|(key, value)| match flat_key::parse(&key).ok() {
                 Some(mut parts) => {
@@ -180,8 +185,8 @@ impl<'a> KeyFlattener<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dts_json::json;
     use pretty_assertions::assert_eq;
+    use serde_json::json;
 
     #[test]
     fn test_expand_keys() {
