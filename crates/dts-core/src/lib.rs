@@ -18,6 +18,7 @@ mod parsers;
 pub mod ser;
 mod sink;
 mod source;
+mod value;
 
 trait PathExt {
     fn relative_to<P>(&self, path: P) -> Option<PathBuf>

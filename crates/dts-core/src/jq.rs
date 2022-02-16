@@ -1,6 +1,6 @@
 //! A wrapper for `jq`.
 
-use dts_json::Value;
+use serde_json::Value;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
@@ -56,7 +56,7 @@ impl Error {
 ///
 /// ```
 /// use dts_core::jq::Jq;
-/// use dts_json::json;
+/// use serde_json::json;
 /// # use std::error::Error;
 /// #
 /// # fn main() -> Result<(), Box<dyn Error>> {

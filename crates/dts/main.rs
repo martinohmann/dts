@@ -19,8 +19,8 @@ use anyhow::{anyhow, Context, Result};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
 use dts_core::{de::Deserializer, jq::Jq, ser::Serializer, Encoding, Error, Sink, Source};
-use dts_json::Value;
 use rayon::prelude::*;
+use serde_json::Value;
 use std::fs::File;
 use std::io::{self, BufWriter};
 

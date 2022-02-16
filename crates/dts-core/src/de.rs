@@ -2,9 +2,9 @@
 //! encodings into a `Value`.
 
 use crate::{key::expand_keys, parsers::gron, Encoding, Result};
-use dts_json::{Map, Value};
 use regex::Regex;
 use serde::Deserialize;
+use serde_json::{Map, Value};
 
 /// Options for the `Deserializer`. The options are context specific and may only be honored when
 /// deserializing from a certain `Encoding`.
@@ -117,7 +117,7 @@ where
     ///
     /// ```
     /// use dts_core::{de::DeserializerBuilder, Encoding};
-    /// use dts_json::json;
+    /// use serde_json::json;
     /// # use std::error::Error;
     /// #
     /// # fn main() -> Result<(), Box<dyn Error>> {
@@ -202,7 +202,7 @@ where
             }
         } else {
             Value::Array(
-                iter.map(|v| Ok(dts_json::to_value(v?)?))
+                iter.map(|v| Ok(serde_json::to_value(v?)?))
                     .collect::<Result<_>>()?,
             )
         };
@@ -233,8 +233,8 @@ where
             pattern
                 .split(&s)
                 .filter(|m| !m.is_empty())
-                .map(|v| Ok(dts_json::to_value(v)?))
-                .collect::<Result<_>>()?,
+                .map(serde_json::to_value)
+                .collect::<Result<_, serde_json::Error>>()?,
         ))
     }
 
@@ -263,8 +263,8 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use dts_json::json;
     use pretty_assertions::assert_eq;
+    use serde_json::json;
 
     #[track_caller]
     fn assert_builder_deserializes_to(

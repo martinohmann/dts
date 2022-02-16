@@ -1,8 +1,8 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{key::flatten_keys, Encoding, Error, Result};
-use dts_json::Value;
+use crate::{key::flatten_keys, value::ValueExt, Encoding, Error, Result};
+use serde_json::Value;
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
@@ -127,7 +127,7 @@ where
     ///
     /// ```
     /// use dts_core::{ser::SerializerBuilder, Encoding};
-    /// use dts_json::json;
+    /// use serde_json::json;
     /// # use std::error::Error;
     /// #
     /// # fn main() -> Result<(), Box<dyn Error>> {
@@ -271,8 +271,8 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use dts_json::json;
     use pretty_assertions::assert_eq;
+    use serde_json::json;
     use std::str;
 
     #[track_caller]

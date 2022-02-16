@@ -1,7 +1,7 @@
 use assert_cmd::Command;
 use criterion::{criterion_group, criterion_main, Criterion};
 use dts_core::key::*;
-use dts_json::json;
+use serde_json::json;
 
 fn benchmark_transform(c: &mut Criterion) {
     c.bench_function("expand_keys", |b| {
