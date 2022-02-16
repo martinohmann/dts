@@ -59,15 +59,6 @@ fn benchmark_transform(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("deserialize_hcl", |b| {
-        let fixture = std::fs::read_to_string("crates/hcl/fixtures/test.tf").unwrap();
-
-        b.iter(|| {
-            let value: hcl::Value = hcl::from_str(&fixture).unwrap();
-            value
-        })
-    });
-
     c.bench_function("dts", |b| {
         b.iter(|| {
             Command::cargo_bin("dts")
