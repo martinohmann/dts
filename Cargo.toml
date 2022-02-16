@@ -7,7 +7,6 @@ version = "0.1.0"
 members = [
     "crates/dts-core",
     "crates/dts-json",
-    "crates/hcl",
 ]
 
 [features]
@@ -49,7 +48,6 @@ version = "1.0.68"
 [dev-dependencies]
 assert_cmd = "2.0.2"
 criterion = "0.3"
-hcl = { path = "crates/hcl" }
 pretty_assertions = "1.0.0"
 predicates = "2.0.3"
 temp-env = "0.2.0"

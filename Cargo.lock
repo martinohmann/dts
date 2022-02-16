@@ -455,7 +455,6 @@ dependencies = [
  "dts-core",
  "dts-json",
  "grep-cli",
- "hcl",
  "once_cell",
  "predicates",
  "pretty_assertions",
@@ -476,7 +475,7 @@ dependencies = [
  "csv",
  "dts-json",
  "glob",
- "hcl",
+ "hcl-rs",
  "json5",
  "once_cell",
  "pathdiff",
@@ -715,15 +714,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
-name = "hcl"
+name = "hcl-rs"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5725a88ee04a9a40eddfb657c7e4717fa5ca5e2afd05c5dfab2371a3d8596239"
 dependencies = [
  "indexmap",
  "pest",
  "pest_derive",
- "pretty_assertions",
  "serde",
- "serde_json",
 ]
 
 [[package]]
