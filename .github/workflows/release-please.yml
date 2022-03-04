@@ -1,0 +1,26 @@
+---
+on:
+  push:
+    branches:
+      - main
+
+name: release-please
+jobs:
+  release-please-dts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        with:
+          release-type: rust
+          bump-minor-pre-major: true
+          package-name: dts
+
+  release-please-dts-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        with:
+          path: crates/dts-core
+          release-type: rust
+          bump-minor-pre-major: true
+          package-name: dts-core
