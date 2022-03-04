@@ -6,7 +6,7 @@ license = "MIT"
 description = "Core functionality of dts"
 repository = "https://github.com/martinohmann/dts"
 documentation = "https://docs.rs/dts/"
-categories = ["encoding", "data transformation"]
+categories = ["encoding"]
 readme = "README.md"
 edition = "2021"
 
