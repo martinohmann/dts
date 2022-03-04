@@ -9,9 +9,15 @@ it and _**serialize**_ it back into an output encoding.
 Uses [`jq`](https://stedolan.github.io/jq/) for data transformation and
 requires rust >= 1.56.0.
 
-## Installation from source
+## Installation
 
-This is the only install option available right now.
+### From crates.io
+
+```sh
+cargo install dts
+```
+
+### From source
 
 Clone the repository and run:
 
