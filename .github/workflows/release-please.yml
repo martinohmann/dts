@@ -1,0 +1,29 @@
+---
+on:
+  push:
+    branches:
+      - release-please-config
+      - main
+
+name: release-please
+jobs:
+  release-please-dts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        with:
+          bump-minor-pre-major: true
+          package-name: dts
+          release-type: rust
+
+  release-please-dts-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v3
+        with:
+          bump-minor-pre-major: true
+          changelog-path: crates/dts-core/CHANGELOG.md
+          monorepo-tags: true
+          package-name: dts-core
+          path: crates/dts-core
+          release-type: rust
