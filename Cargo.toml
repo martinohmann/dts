@@ -1,7 +1,18 @@
 [package]
-edition = "2021"
 name = "dts"
 version = "0.1.0"
+authors = ["Martin Ohmann <martinohmann@gmail.com>"]
+license = "MIT"
+description = "A tool to deserialize, transform and serialize data between different encodings"
+repository = "https://github.com/martinohmann/dts"
+documentation = "https://docs.rs/dts/"
+keywords = ["hcl", "json", "yaml", "jq"]
+categories = ["encoding", "data transformation"]
+readme = "README.md"
+edition = "2021"
+exclude = [
+    ".github/",
+]
 
 [workspace]
 members = [

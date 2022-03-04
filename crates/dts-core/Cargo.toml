@@ -1,6 +1,13 @@
 [package]
 name = "dts-core"
 version = "0.1.0"
+authors = ["Martin Ohmann <martinohmann@gmail.com>"]
+license = "MIT"
+description = "Core functionality of dts"
+repository = "https://github.com/martinohmann/dts"
+documentation = "https://docs.rs/dts/"
+categories = ["encoding", "data transformation"]
+readme = "README.md"
 edition = "2021"
 
 [dependencies]
