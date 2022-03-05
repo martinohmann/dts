@@ -11,6 +11,9 @@ requires rust >= 1.56.0.
 
 ## Installation
 
+Check out the [releases page](https://github.com/martinohmann/dts/releases)
+for prebuilt versions of `dts`.
+
 ### From crates.io
 
 ```sh
