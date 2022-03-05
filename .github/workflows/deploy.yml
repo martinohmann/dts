@@ -86,26 +86,13 @@ jobs:
         id: strip
         shell: bash
         run: |
-          case ${{ matrix.job.target }} in
-            arm-unknown-linux-*)
-              STRIP=arm-linux-gnueabihf-strip ;;
-            aarch64-unknown-linux-gnu)
-              STRIP=aarch64-linux-gnu-strip ;;
-            *)
-              STRIP=strip ;;
-          esac
-
-          # Setup paths
-          BIN_DIR="release-artifacts/"
+          BIN_DIR=release-artifacts/
+          BIN_PATH="${BIN_DIR}/dts"
 
           mkdir -p "$BIN_DIR"
 
-          BIN_PATH="${BIN_DIR}/dts"
-
-          # Copy the release build binary to the result location
-          cp "target/${{ matrix.job.target }}/release/${BIN_NAME}" "$BIN_DIR"
-
-          "$STRIP" "$BIN_PATH"
+          objcopy --strip-all \
+            "target/${{ matrix.job.target }}/release/dts" "$BIN_PATH"
 
           echo ::set-output name=BIN_PATH::${BIN_PATH}
 
@@ -113,7 +100,9 @@ jobs:
         id: package
         shell: bash
         run: |
-          PKG_BASENAME="dts-v${PROJECT_VERSION}-${{ matrix.job.target }}"
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+
+          PKG_BASENAME="dts-v${VERSION}-${{ matrix.job.target }}"
           PKG_NAME="${PKG_BASENAME}.tar.gz"
 
           echo ::set-output name=PKG_NAME::${PKG_NAME}
