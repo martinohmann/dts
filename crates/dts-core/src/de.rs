@@ -232,7 +232,6 @@ where
         Ok(Value::Array(
             pattern
                 .split(&s)
-                .filter(|m| !m.is_empty())
                 .map(serde_json::to_value)
                 .collect::<Result<_, serde_json::Error>>()?,
         ))
@@ -325,8 +324,8 @@ mod test {
         assert_deserializes_to(
             Encoding::Text,
             "one\ntwo\nthree\n",
-            json!(["one", "two", "three"]),
+            json!(["one", "two", "three", ""]),
         );
-        assert_deserializes_to(Encoding::Text, "", json!([]));
+        assert_deserializes_to(Encoding::Text, "", json!([""]));
     }
 }
