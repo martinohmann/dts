@@ -1,6 +1,6 @@
 [package]
 name = "dts"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Martin Ohmann <martinohmann@gmail.com>"]
 license = "MIT"
 description = "A tool to deserialize, transform and serialize data between different encodings"
@@ -27,7 +27,7 @@ color = ["bat", "bat/paging", "clap/color", "once_cell"]
 anyhow = "1.0.44"
 atty = "0.2.14"
 clap_generate = "= 3.0.0-rc.7"
-dts-core = { path = "crates/dts-core", version = "0.1.0" }
+dts-core = { path = "crates/dts-core", version = "0.2.0" }
 grep-cli = "0.1.6"
 rayon = "1.5.1"
 regex = "1.5.4"
