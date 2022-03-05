@@ -68,6 +68,7 @@ jobs:
 
       - name: Run tests
         uses: actions-rs/cargo@v1
+        if: "${{ matrix.job.os != 'windows-2019' && !endsWith(matrix.job.os, '-musl') }}"
         with:
           use-cross: ${{ matrix.job.use-cross }}
           command: test
