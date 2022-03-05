@@ -28,10 +28,6 @@ jobs:
             use-cross: true
           - target: x86_64-apple-darwin
             os: macos-10.15
-          - target: x86_64-pc-windows-gnu
-            os: windows-2019
-          - target: x86_64-pc-windows-msvc
-            os: windows-2019
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-20.04
           - target: x86_64-unknown-linux-musl
@@ -40,6 +36,18 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v2
+
+      - name: Install prerequisites
+        shell: bash
+        run: |
+          case ${{ matrix.job.target }} in
+            arm-unknown-linux-*)
+              sudo apt-get -y update
+              sudo apt-get -y install gcc-arm-linux-gnueabihf ;;
+            aarch64-unknown-linux-gnu)
+              sudo apt-get -y update
+              sudo apt-get -y install gcc-aarch64-linux-gnu ;;
+          esac
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -68,7 +76,6 @@ jobs:
 
       - name: Run tests
         uses: actions-rs/cargo@v1
-        if: "${{ matrix.job.os != 'windows-2019' && !endsWith(matrix.job.os, '-musl') }}"
         with:
           use-cross: ${{ matrix.job.use-cross }}
           command: test
