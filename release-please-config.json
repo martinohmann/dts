@@ -7,12 +7,11 @@
   "separate-pull-requests": false,
   "packages": {
     ".": {
-      "release-type": "rust",
       "package-name": "dts"
     },
     "crates/dts-core": {
-      "package-name": "dts-core",
-      "changelog-path": "crates/dts-core/CHANGELOG.md"
+      "changelog-path": "crates/dts-core/CHANGELOG.md",
+      "package-name": "dts-core"
     }
   }
 }
