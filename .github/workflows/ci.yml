@@ -7,7 +7,7 @@ on:
     branches:
       - main
     tags:
-      - 'v*'
+      - '*'
 
 jobs:
   test:
@@ -215,7 +215,7 @@ jobs:
 
       - name: Publish release archives
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           generate_release_notes: false
           files: ${{ steps.package.outputs.pkg_path }}
