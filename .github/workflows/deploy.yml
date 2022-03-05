@@ -76,6 +76,7 @@ jobs:
 
       - name: Run tests
         uses: actions-rs/cargo@v1
+        if: ${{ matrix.job.use-cross != true }}
         with:
           use-cross: ${{ matrix.job.use-cross }}
           command: test
