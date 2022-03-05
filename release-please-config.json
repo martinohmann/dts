@@ -10,7 +10,7 @@
       "package-name": "dts"
     },
     "crates/dts-core": {
-      "changelog-path": "crates/dts-core/CHANGELOG.md",
+      "changelog-path": "CHANGELOG.md",
       "package-name": "dts-core"
     }
   }
