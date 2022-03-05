@@ -10,8 +10,8 @@ on:
       - '*'
 
 jobs:
-  codestyle:
-    name: Codestyle
+  rustfmt:
+    name: rustfmt
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository
@@ -28,11 +28,8 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Clippy
-        run: cargo clippy --workspace
-
   docs:
-    name: Docs
+    name: docs
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository
@@ -119,7 +116,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.job.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build
         uses: actions-rs/cargo@v1
