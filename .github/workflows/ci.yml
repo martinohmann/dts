@@ -137,49 +137,55 @@ jobs:
         id: strip
         shell: bash
         run: |
-          BIN_DIR=release-artifacts/
-          BIN_PATH="${BIN_DIR}/dts"
+          bin_name=dts
+          bin_dir=release-artifacts/
+          bin_path="${bin_dir}/${bin_name}"
 
-          mkdir -p "$BIN_DIR"
+          mkdir -p "$bin_dir"
 
-          objcopy --strip-all \
-            "target/${{ matrix.job.target }}/release/dts" "$BIN_PATH"
+          case ${{ matrix.job.target }} in
+            arm-unknown-linux-*)
+              strip="arm-linux-gnueabihf-strip" ;;
+            aarch64-unknown-linux-gnu)
+              strip="aarch64-linux-gnu-strip" ;;
+            *)
+              strip=strip ;;
+          esac;
 
-          echo ::set-output name=BIN_PATH::${BIN_PATH}
+          "$strip" -o "$bin_path" \
+            "target/${{ matrix.job.target }}/release/${bin_name}"
+
+          echo ::set-output name=bin_name::${bin_name}
+          echo ::set-output name=bin_path::${bin_path}
 
       - name: Create tarball
         id: package
         shell: bash
         run: |
-          VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+          bin_name="${{ steps.strip.outputs.bin_name }}"
+          pkg_version="$(sed -n \
+            's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+          pkg_basename="${bin_name}-v${pkg_version}-${{ matrix.job.target }}"
+          pkg_name="${pkg_basename}.tar.gz"
+          pkg_staging="release-artifacts/package"
+          archive_dir="${pkg_staging}/${pkg_basename}/"
 
-          PKG_BASENAME="dts-v${VERSION}-${{ matrix.job.target }}"
-          PKG_NAME="${PKG_BASENAME}.tar.gz"
+          mkdir -p "$archive_dir"
 
-          echo ::set-output name=PKG_NAME::${PKG_NAME}
+          cp \
+            "${{ steps.strip.outputs.bin_path }}" \
+            "README.md" "LICENSE" \
+            "$archive_dir"
 
-          PKG_STAGING="release-artifacts/package"
-          ARCHIVE_DIR="${PKG_STAGING}/${PKG_BASENAME}/"
-
-          mkdir -p "$ARCHIVE_DIR"
-
-          # Binary
-          cp "${{ steps.strip.outputs.BIN_PATH }}" "$ARCHIVE_DIR"
-
-          # README, LICENSE and CHANGELOG files
-          cp "README.md" "LICENSE" "CHANGELOG.md" "$ARCHIVE_DIR"
-
-          # base compressed package
-          pushd "${PKG_STAGING}/" >/dev/null
-
-          tar czf "$PKG_NAME" "$PKG_BASENAME"/*
-
+          pushd "${pkg_staging}/" >/dev/null
+          tar czf "$pkg_name" "$pkg_basename"/*
           popd >/dev/null
 
-          echo ::set-output name=PKG_PATH::"${PKG_STAGING}/${PKG_NAME}"
+          echo ::set-output name=pkg_name::${pkg_name}
+          echo ::set-output name=pkg_path::"${pkg_staging}/${pkg_name}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@master
         with:
-          name: ${{ steps.package.outputs.PKG_NAME }}
-          path: ${{ steps.package.outputs.PKG_PATH }}
+          name: ${{ steps.package.outputs.pkg_name }}
+          path: ${{ steps.package.outputs.pkg_path }}
