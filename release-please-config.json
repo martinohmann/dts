@@ -1,0 +1,18 @@
+{
+  "bootstrap-sha": "13907b2ab15e90c55a1876e3fec43600841a55af",
+  "plugins": ["cargo-workspace"],
+  "release-type": "rust",
+  "bump-minor-pre-major": true,
+  "skip-github-release": false,
+  "separate-pull-requests": false,
+  "packages": {
+    ".": {
+      "release-type": "rust",
+      "package-name": "dts"
+    },
+    "crates/dts-core": {
+      "package-name": "dts-core",
+      "changelog-path": "crates/dts-core/CHANGELOG.md"
+    }
+  }
+}
