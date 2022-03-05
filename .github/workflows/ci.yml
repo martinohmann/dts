@@ -1,60 +1,17 @@
 ---
 name: ci
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
-      - main
+      - master
+    tags:
+      - '*'
 
 jobs:
-  test:
-    name: test
-    env:
-      # Emit backtraces on panics.
-      RUST_BACKTRACE: 1
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        build:
-          - stable
-          - nightly
-        include:
-          - build: stable
-            os: ubuntu-20.04
-            rust: stable
-          - build: nightly
-            os: ubuntu-20.04
-            rust: nightly
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          profile: minimal
-          override: true
-
-      - name: Load cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-${{ matrix.build }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Build
-        run: cargo build --workspace
-
-      - name: Run tests
-        run: cargo test --workspace
-
-  rustfmt:
-    name: rustfmt
+  codestyle:
+    name: Codestyle
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository
@@ -70,6 +27,9 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace
 
   docs:
     name: Docs
@@ -89,3 +49,140 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --no-deps --document-private-items --workspace
+
+  build:
+    env:
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+    name: ${{ matrix.job.target }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-20.04
+            use-cross: true
+          - target: arm-unknown-linux-gnueabihf
+            os: ubuntu-20.04
+            use-cross: true
+          - target: arm-unknown-linux-musleabihf
+            os: ubuntu-20.04
+            use-cross: true
+          - target: x86_64-apple-darwin
+            os: macos-10.15
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-20.04
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-20.04
+            use-cross: true
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Install prerequisites
+        shell: bash
+        run: |
+          case ${{ matrix.job.target }} in
+            arm-unknown-linux-*)
+              sudo apt-get -y update
+              sudo apt-get -y install gcc-arm-linux-gnueabihf ;;
+            aarch64-unknown-linux-gnu)
+              sudo apt-get -y update
+              sudo apt-get -y install gcc-aarch64-linux-gnu ;;
+          esac
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.job.target }}
+          override: true
+          profile: minimal
+
+      - name: Show version information (Rust, cargo, GCC)
+        shell: bash
+        run: |
+          gcc --version || true
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+
+      - name: Load cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.job.use-cross }}
+          command: build
+          args: --locked --release --target=${{ matrix.job.target }}
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        if: ${{ matrix.job.use-cross != true }}
+        with:
+          use-cross: ${{ matrix.job.use-cross }}
+          command: test
+          args: --locked --target=${{ matrix.job.target }}
+
+      - name: Strip debug information from executable
+        id: strip
+        shell: bash
+        run: |
+          BIN_DIR=release-artifacts/
+          BIN_PATH="${BIN_DIR}/dts"
+
+          mkdir -p "$BIN_DIR"
+
+          objcopy --strip-all \
+            "target/${{ matrix.job.target }}/release/dts" "$BIN_PATH"
+
+          echo ::set-output name=BIN_PATH::${BIN_PATH}
+
+      - name: Create tarball
+        id: package
+        shell: bash
+        run: |
+          VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+
+          PKG_BASENAME="dts-v${VERSION}-${{ matrix.job.target }}"
+          PKG_NAME="${PKG_BASENAME}.tar.gz"
+
+          echo ::set-output name=PKG_NAME::${PKG_NAME}
+
+          PKG_STAGING="release-artifacts/package"
+          ARCHIVE_DIR="${PKG_STAGING}/${PKG_BASENAME}/"
+
+          mkdir -p "$ARCHIVE_DIR"
+
+          # Binary
+          cp "${{ steps.strip.outputs.BIN_PATH }}" "$ARCHIVE_DIR"
+
+          # README, LICENSE and CHANGELOG files
+          cp "README.md" "LICENSE" "CHANGELOG.md" "$ARCHIVE_DIR"
+
+          # base compressed package
+          pushd "${PKG_STAGING}/" >/dev/null
+
+          tar czf "$PKG_NAME" "$PKG_BASENAME"/*
+
+          popd >/dev/null
+
+          echo ::set-output name=PKG_PATH::"${PKG_STAGING}/${PKG_NAME}"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@master
+        with:
+          name: ${{ steps.package.outputs.PKG_NAME }}
+          path: ${{ steps.package.outputs.PKG_PATH }}
