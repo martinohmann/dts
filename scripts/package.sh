@@ -32,16 +32,24 @@ create_package() {
 }
 
 create_archive() {
-  local package_dir="$1"
-  local package_basename="$2"
-  local archive_name="$3"
+  local target="$1"
+  local package_dir="$2"
+  local package_basename="$3"
+  local archive_name="$4"
+
+  case "$target" in
+    *-darwin)
+      sha512sum="gsha512sum" ;;
+    *)
+      sha512sum="sha512sum" ;;
+  esac
 
   pushd "$package_dir" >/dev/null || exit 1
   echo "creating archive ${package_dir}/${archive_name}"
   tar czf "$archive_name" "$package_basename"/*
 
   echo "creating checksum file for archive ${package_dir}/${archive_name}.sha512"
-  sha512sum "$archive_name" > "${archive_name}.sha512"
+  "$sha512sum" "$archive_name" > "${archive_name}.sha512"
   popd >/dev/null || exit 1
 }
 
@@ -76,7 +84,8 @@ package() {
   mkdir -p "$archive_dir"
 
   create_package "$archive_dir" "$stripped_bin_path"
-  create_archive "$package_dir" "$package_basename" "$archive_name"
+  create_archive "$target" "$package_dir" "$package_basename" \
+    "$archive_name"
 
   rm -rf "$archive_dir"
 
