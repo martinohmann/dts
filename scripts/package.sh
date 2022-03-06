@@ -32,14 +32,16 @@ create_package() {
 }
 
 create_archive() {
-  local pkg_dir="$1"
-  local pkg_name="$2"
-  local pkg_basename="$3"
+  local package_dir="$1"
+  local package_basename="$2"
+  local archive_name="$3"
 
-  echo "creating archive ${pkg_dir}/${pkg_name}"
+  pushd "$package_dir" >/dev/null || exit 1
+  echo "creating archive ${package_dir}/${archive_name}"
+  tar czf "$archive_name" "$package_basename"/*
 
-  pushd "${pkg_dir}/" >/dev/null || exit 1
-  tar czf "$pkg_name" "$pkg_basename"/*
+  echo "creating checksum file for archive ${package_dir}/${archive_name}.sha512"
+  sha512sum "$archive_name" > "${archive_name}.sha512"
   popd >/dev/null || exit 1
 }
 
@@ -65,18 +67,22 @@ package() {
 
   strip_binary "$target" "$bin_path" "$stripped_bin_path"
 
-  pkg_basename="${bin_name}-v${version}-${target}"
-  pkg_name="${pkg_basename}.tar.gz"
-  pkg_dir="${artifacts_dir}/package"
-  archive_dir="${pkg_dir}/${pkg_basename}/"
+  package_basename="${bin_name}-v${version}-${target}"
+  archive_name="${package_basename}.tar.gz"
+  package_dir="${artifacts_dir}/package"
+  archive_dir="${package_dir}/${package_basename}/"
+  archive_path="${package_dir}/${archive_name}"
 
   mkdir -p "$archive_dir"
 
   create_package "$archive_dir" "$stripped_bin_path"
-  create_archive "$pkg_dir" "$pkg_name" "$pkg_basename"
+  create_archive "$package_dir" "$package_basename" "$archive_name"
 
-  echo ::set-output name=pkg_name::"${pkg_name}"
-  echo ::set-output name=pkg_path::"${pkg_dir}/${pkg_name}"
+  rm -rf "$archive_dir"
+
+  echo ::set-output name=package_dir::"${package_dir}"
+  echo ::set-output name=archive_name::"${archive_name}"
+  echo ::set-output name=archive_path::"${archive_path}"
 }
 
 if [ $# -lt 2 ]; then

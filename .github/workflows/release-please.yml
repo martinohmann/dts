@@ -132,12 +132,12 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ steps.package.outputs.pkg_name }}
-          path: ${{ steps.package.outputs.pkg_path }}
+          name: ${{ steps.package.outputs.archive_name }}
+          path: ${{ steps.package.outputs.archive_path }}
 
       - name: Publish release archives
         uses: softprops/action-gh-release@v1
         with:
           generate_release_notes: false
           tag_name: "dts-v${{ steps.package-version.outputs.version }}"
-          files: ${{ steps.package.outputs.pkg_path }}
+          files: ${{ steps.package.outputs.package_dir }}/*
