@@ -1,14 +1,143 @@
 ---
+name: release-please
 on:
+  workflow_dispatch:
+    inputs:
+      force-publish:
+        required: true
+        type: boolean
+        description: Publish artifacts even if no new release was created.
   push:
     branches:
       - main
 
-name: release-please
 jobs:
   release-please:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    outputs:
+      release_created: ${{ steps.release-please.outputs.release_created }}
     steps:
-      - uses: google-github-actions/release-please-action@v3
+      - name: Run release-please
+        id: release-please
+        uses: google-github-actions/release-please-action@v3
         with:
           command: manifest
+
+  publish-crates:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish }}
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          cargo publish --package dts-core || true
+          cargo publish --package dts || true
+
+  publish-packages:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish }}
+    name: Package ${{ matrix.target }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    env:
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-20.04
+            use-cross: true
+          - target: arm-unknown-linux-gnueabihf
+            os: ubuntu-20.04
+            use-cross: true
+          - target: arm-unknown-linux-musleabihf
+            os: ubuntu-20.04
+            use-cross: true
+          - target: x86_64-apple-darwin
+            os: macos-10.15
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-20.04
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-20.04
+            use-cross: true
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Install prerequisites
+        shell: bash
+        run: |
+          case ${{ matrix.target }} in
+            arm-unknown-linux-*)
+              sudo apt-get -y update
+              sudo apt-get -y install gcc-arm-linux-gnueabihf ;;
+            aarch64-unknown-linux-gnu)
+              sudo apt-get -y update
+              sudo apt-get -y install gcc-aarch64-linux-gnu ;;
+          esac
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+          profile: minimal
+
+      - name: Package version
+        id: package-version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+
+          echo ::set-output name=version::${version}
+
+      - name: Show version information (Rust, cargo, GCC)
+        shell: bash
+        run: |
+          gcc --version || true
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+          echo 'Package version: ${{ steps.package-version.outputs.version }}'
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.use-cross }}
+          command: build
+          args: --locked --release --target=${{ matrix.target }}
+
+      - name: Package
+        id: package
+        run: |
+          scripts/package.sh ${{ matrix.target }} \
+            ${{ steps.package-version.outputs.version }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.package.outputs.pkg_name }}
+          path: ${{ steps.package.outputs.pkg_path }}
+
+      - name: Publish release archives
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: false
+          tag_name: "dts-v${{ steps.package-version.outputs.version }}"
+          files: ${{ steps.package.outputs.pkg_path }}
