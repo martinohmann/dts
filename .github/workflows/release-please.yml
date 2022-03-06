@@ -28,7 +28,7 @@ jobs:
     if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish }}
     runs-on: ubuntu-20.04
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v2
 
       - name: Install Rust
@@ -74,7 +74,7 @@ jobs:
             os: ubuntu-20.04
             use-cross: true
     steps:
-      - name: Checkout source code
+      - name: Checkout
         uses: actions/checkout@v2
 
       - name: Install prerequisites
@@ -88,7 +88,7 @@ jobs:
               sudo apt-get -y update
               sudo apt-get -y install gcc-aarch64-linux-gnu ;;
             *-darwin)
-              brew install coreutils ;;
+              brew install automake coreutils ;;
           esac
 
       - name: Install Rust toolchain

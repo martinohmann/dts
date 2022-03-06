@@ -138,10 +138,6 @@ impl From<&InputOptions> for DeserializeOptions {
 pub struct TransformOptions {
     /// A jq expression for transforming the input data.
     ///
-    /// The usage of this flag requires the `jq` executable to be present in the `PATH`. You may
-    /// also point `dts` to a different `jq` executable by setting the `DTS_JQ` environment
-    /// variable.
-    ///
     /// If the expression starts with an `@` it is treated as a local file path and the expression
     /// is read from there instead.
     ///

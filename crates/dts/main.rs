@@ -74,21 +74,13 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
 fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
     match &opts.jq_expression {
         Some(expr) => {
-            let jq = std::env::var("DTS_JQ")
-                .ok()
-                .map(Jq::with_executable)
-                .unwrap_or_else(Jq::new)
-                .context(
-                    "install `jq` or provide the `jq` executable path \
-                    in the `DTS_JQ` environment variable",
-                )?;
-
-            let res = match expr.strip_prefix('@') {
-                Some(path) => jq.process_file(path, &value),
-                None => jq.process(expr, &value),
+            let jq = match expr.strip_prefix('@') {
+                Some(path) => Jq::from_path(path),
+                None => Jq::new(expr),
             };
 
-            res.context("failed to transform value")
+            jq.and_then(|jq| jq.process(&value))
+                .context("failed to transform value")
         }
         None => Ok(value),
     }

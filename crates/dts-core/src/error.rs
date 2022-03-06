@@ -1,6 +1,6 @@
 //! Defines the `Error` and `Result` types used by this crate.
 
-use crate::{jq, parsers::ParseError, Encoding};
+use crate::{parsers::ParseError, Encoding};
 use std::error::Error as StdError;
 use std::fmt::Display;
 use std::io;
@@ -24,10 +24,6 @@ pub enum Error {
     /// Error emitted by parsers from this crate.
     #[error(transparent)]
     ParseError(#[from] ParseError),
-
-    /// Represents an error emitted while invoking `jq`.
-    #[error(transparent)]
-    Jq(#[from] jq::Error),
 
     /// Represents generic IO errors.
     #[error(transparent)]
@@ -161,5 +157,11 @@ impl From<hcl::Error> for Error {
             hcl::Error::Io(io_err) => Error::io(io_err),
             other => Error::serde(other),
         }
+    }
+}
+
+impl From<jq_rs::Error> for Error {
+    fn from(err: jq_rs::Error) -> Self {
+        Error::new(err)
     }
 }
