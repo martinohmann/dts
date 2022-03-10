@@ -2,6 +2,11 @@
   "bootstrap-sha": "f617297717c4d8d0187ea447c7bdd28c26e2a5be",
   "plugins": ["cargo-workspace"],
   "release-type": "rust",
+  "changelog-sections": [
+    {"type":"feat", "section":"Features", "hidden":false},
+    {"type":"fix", "section":"Bug Fixes", "hidden":false},
+    {"type":"chore", "section":"Miscellaneous", "hidden":false}
+  ],
   "bump-minor-pre-major": true,
   "skip-github-release": false,
   "separate-pull-requests": false,
