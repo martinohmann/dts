@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -75,7 +75,7 @@ jobs:
             use-cross: true
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install prerequisites
         shell: bash
