@@ -10,15 +10,6 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-  - package-ecosystem: "cargo"
-    directory: "/crates/dts-core"
-    schedule:
-      interval: "monthly"
-    labels:
-      - dependencies
-    commit-message:
-      prefix: "chore"
-      include: "scope"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
