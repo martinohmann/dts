@@ -52,7 +52,7 @@ version = "1.9.0"
 
 [dependencies.serde_json]
 features = ["preserve_order"]
-version = "1.0.68"
+version = "1.0.79"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
