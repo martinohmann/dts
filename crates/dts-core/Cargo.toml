@@ -40,7 +40,7 @@ version = "1.0.130"
 
 [dependencies.serde_json]
 features = ["preserve_order"]
-version = "1.0.68"
+version = "1.0.79"
 
 [dev-dependencies]
 pretty_assertions = "1.0.0"
