@@ -3,10 +3,14 @@ name: release-please
 on:
   workflow_dispatch:
     inputs:
-      force-publish:
+      force-publish-crates:
         required: true
         type: boolean
-        description: Publish artifacts even if no new release was created.
+        description: Publish crates even if no new release was created.
+      force-publish-packages:
+        required: true
+        type: boolean
+        description: Publish packages even if no new release was created.
   push:
     branches:
       - main
@@ -25,7 +29,7 @@ jobs:
 
   publish-crates:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish }}
+    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish-crates }}
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository
@@ -41,13 +45,11 @@ jobs:
       - name: Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          cargo publish --package dts-core || true
-          cargo publish --package dts || true
+        run: scripts/publish-crates.sh
 
   publish-packages:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish }}
+    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish-packages }}
     name: Package ${{ matrix.target }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     env:
