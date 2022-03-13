@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#
+# Packages up releases as tar archives.
 
 set -euo pipefail
 
