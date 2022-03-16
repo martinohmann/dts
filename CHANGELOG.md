@@ -1,5 +1,20 @@
 # Changelog
 
+### [0.2.4](https://github.com/martinohmann/dts/compare/dts-v0.2.3...dts-v0.2.4) (2022-03-16)
+
+
+### Bug Fixes
+
+* disable termcap initialization for `less` ([#55](https://github.com/martinohmann/dts/issues/55)) ([07c002f](https://github.com/martinohmann/dts/commit/07c002f554711f150d5060ee732b5cc4bd99b2ac)), closes [#54](https://github.com/martinohmann/dts/issues/54)
+* optimize release build for binary size ([#53](https://github.com/martinohmann/dts/issues/53)) ([36eefb8](https://github.com/martinohmann/dts/commit/36eefb83ecf2ee920f6262316f7acfc9b681d710))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * dts-core bumped from 0.2.3 to 0.2.4
+
 ### [0.2.3](https://github.com/martinohmann/dts/compare/dts-v0.2.2...dts-v0.2.3) (2022-03-10)
 
 
