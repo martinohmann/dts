@@ -23,7 +23,7 @@ publish_crate() {
   local log_file
   local -i ret=0
   local -i attempt_num=1
-  local -i max_attempts=5
+  local -i max_attempts=10
 
   while true; do
     log_file="$(mktemp -t cargo-log.XXXXXXX)"
