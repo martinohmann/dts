@@ -104,6 +104,8 @@ impl StdoutWriter {
                         if let PagingChoice::Auto = config.paging_choice() {
                             cmd.arg("--quit-if-one-screen");
                         }
+
+                        cmd.arg("--no-init");
                     } else {
                         cmd.args(args);
                     }
