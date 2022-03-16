@@ -29,7 +29,7 @@ jobs:
 
   publish-crates:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish-crates }}
+    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish-crates == 'true' }}
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository
@@ -49,7 +49,7 @@ jobs:
 
   publish-packages:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish-packages }}
+    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish-packages == 'true' }}
     name: Package ${{ matrix.target }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     env:
