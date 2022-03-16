@@ -21,7 +21,7 @@ members = [
 
 [features]
 default = ["color"]
-color = ["bat", "bat/paging", "clap/color", "once_cell"]
+color = ["bat", "bat/paging", "clap/color"]
 
 [dependencies]
 anyhow = "1.0.56"
@@ -39,16 +39,12 @@ unescape = "0.1.0"
 optional = true
 default-features = false
 features = ["regex-onig"]
-version = "0.18.3"
+version = "0.20.0"
 
 [dependencies.clap]
 default-features = false
 features = ["std", "derive", "env", "suggestions"]
 version = "= 3.0.0-rc.7"
-
-[dependencies.once_cell]
-optional = true
-version = "1.10.0"
 
 [dependencies.serde_json]
 features = ["preserve_order"]

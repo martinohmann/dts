@@ -7,14 +7,9 @@ use crate::{
 };
 use bat::{assets::HighlightingAssets, config::Config, controller::Controller, Input, PagingMode};
 use dts_core::Encoding;
-use once_cell::sync::Lazy;
 use std::io::{self, Write};
 use std::path::Path;
 use termcolor::{ColorSpec, StandardStream, WriteColor};
-
-/// Lazyloaded instance of `HighlightingAssets`. For performance reasons this should only be done
-/// once as it's a very heavy operation.
-static HIGHLIGHTING_ASSETS: Lazy<HighlightingAssets> = Lazy::new(HighlightingAssets::from_binary);
 
 /// ColoredStdoutWriter writes data to stdout and may or may not colorize it.
 pub struct ColoredStdoutWriter<'a> {
@@ -83,19 +78,29 @@ impl From<PagingChoice> for PagingMode {
 }
 
 /// Configuration for the `SyntaxHighlighter`.
-#[derive(Default)]
 pub struct HighlightingConfig<'a> {
     paging_config: PagingConfig<'a>,
+    assets: &'a HighlightingAssets,
     theme: Option<&'a str>,
 }
 
 impl<'a> HighlightingConfig<'a> {
     /// Creates a new `HighlightingConfig`.
-    pub fn new(paging_config: PagingConfig<'a>, theme: Option<&'a str>) -> Self {
+    pub fn new(
+        assets: &'a HighlightingAssets,
+        paging_config: PagingConfig<'a>,
+        theme: Option<&'a str>,
+    ) -> Self {
         HighlightingConfig {
+            assets,
             paging_config,
             theme,
         }
+    }
+
+    /// Returns a reference to the wrapped `HighlightingAssets`.
+    pub fn assets(&self) -> &HighlightingAssets {
+        self.assets
     }
 
     /// Returns the default theme.
@@ -109,7 +114,7 @@ impl<'a> HighlightingConfig<'a> {
         self.theme
             .and_then(|requested| {
                 let requested = requested.to_lowercase();
-                highlighting_assets()
+                self.assets
                     .themes()
                     .find(|known| known.to_lowercase() == requested)
                     .map(|theme| theme.to_owned())
@@ -165,7 +170,7 @@ impl<'a> SyntaxHighlighter<'a> {
         let pseudo_filename = Path::new("out").with_extension(encoding.as_str());
         let input = Input::from_bytes(buf).name(pseudo_filename).into();
 
-        let ctrl = Controller::new(&config, highlighting_assets());
+        let ctrl = Controller::new(&config, self.config.assets());
 
         match ctrl.run(vec![input]) {
             Ok(_) => Ok(()),
@@ -174,18 +179,15 @@ impl<'a> SyntaxHighlighter<'a> {
     }
 }
 
-/// Returns the `HighlightingAssets` used for syntax highlighting.
-///
-/// This is a lazy operation, the assets are only loaded once on the first invocation. Returns a
-/// reference to the globally loaded assets thereafter.
-pub fn highlighting_assets() -> &'static HighlightingAssets {
-    &HIGHLIGHTING_ASSETS
+/// Loads the `HighlightingAssets` used for syntax highlighting.
+pub fn load_assets() -> HighlightingAssets {
+    HighlightingAssets::from_binary()
 }
 
 /// Prints available themes to stdout.
 pub fn print_themes(color_choice: ColorChoice) -> io::Result<()> {
     let example = include_bytes!("assets/example.json");
-    let assets = highlighting_assets();
+    let assets = load_assets();
 
     if color_choice.should_colorize() {
         let max_len = assets.themes().map(str::len).max().unwrap_or(0);
@@ -193,7 +195,7 @@ pub fn print_themes(color_choice: ColorChoice) -> io::Result<()> {
         let mut stdout = StandardStream::stdout(color_choice.into());
 
         for theme in assets.themes() {
-            let config = HighlightingConfig::new(PagingConfig::default(), Some(theme));
+            let config = HighlightingConfig::new(&assets, PagingConfig::default(), Some(theme));
             let highlighter = SyntaxHighlighter::new(&config);
 
             stdout.set_color(ColorSpec::new().set_bold(true))?;
