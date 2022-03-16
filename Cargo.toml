@@ -73,3 +73,9 @@ name = "dts"
 [[test]]
 name = "integration"
 path = "tests/integration_tests.rs"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
