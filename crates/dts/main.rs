@@ -102,11 +102,14 @@ fn serialize(sink: &Sink, value: Value, opts: &OutputOptions) -> Result<()> {
 
     let paging_config = PagingConfig::new(opts.paging, opts.pager.as_deref());
 
+    #[cfg(feature = "color")]
+    let assets = highlighting::load_assets();
+
     let writer: Box<dyn io::Write> = match sink {
         #[cfg(feature = "color")]
         Sink::Stdout => {
             if opts.color.should_colorize() {
-                let config = HighlightingConfig::new(paging_config, opts.theme.as_deref());
+                let config = HighlightingConfig::new(&assets, paging_config, opts.theme.as_deref());
                 Box::new(ColoredStdoutWriter::new(encoding, config))
             } else {
                 Box::new(StdoutWriter::new(paging_config))

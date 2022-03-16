@@ -458,7 +458,6 @@ dependencies = [
  "criterion",
  "dts-core",
  "grep-cli",
- "once_cell",
  "predicates",
  "pretty_assertions",
  "rayon",
