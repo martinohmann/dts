@@ -1,5 +1,27 @@
 # Changelog
 
+### [0.2.5](https://github.com/martinohmann/dts/compare/dts-v0.2.4...dts-v0.2.5) (2022-03-23)
+
+
+### Bug Fixes
+
+* remove `strip` feature from release profile ([#58](https://github.com/martinohmann/dts/issues/58)) ([b9c04b8](https://github.com/martinohmann/dts/commit/b9c04b80698e38363df3539ed89b1669a09803a8))
+
+
+### Miscellaneous
+
+* **deps:** bump actions/cache from 2 to 3 ([#61](https://github.com/martinohmann/dts/issues/61)) ([cfc48e7](https://github.com/martinohmann/dts/commit/cfc48e7ace8edcb7b14019964fda84cc698311b3))
+* **deps:** bump bat from 0.18.3 to 0.20.0 ([#48](https://github.com/martinohmann/dts/issues/48)) ([bfb4c88](https://github.com/martinohmann/dts/commit/bfb4c88e92cb310d5c37e32e12d7be62cee0d6e5))
+* **deps:** bump hcl-rs from 0.2.0 to 0.2.1 ([#60](https://github.com/martinohmann/dts/issues/60)) ([e84d9e1](https://github.com/martinohmann/dts/commit/e84d9e1aba497a2aa9d3501813bde81267953027))
+* **deps:** bump pretty_assertions from 1.1.0 to 1.2.0 ([#59](https://github.com/martinohmann/dts/issues/59)) ([9855f34](https://github.com/martinohmann/dts/commit/9855f3446ff431feb4d34a85067747fcb3b5a06c))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * dts-core bumped from 0.2.4 to 0.2.5
+
 ### [0.2.4](https://github.com/martinohmann/dts/compare/dts-v0.2.3...dts-v0.2.4) (2022-03-16)
 
 
