@@ -1,6 +1,6 @@
 [package]
 name = "dts-core"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Martin Ohmann <martinohmann@gmail.com>"]
 license = "MIT"
 description = "Core functionality of dts"

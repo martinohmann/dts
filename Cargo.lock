@@ -447,7 +447,7 @@ checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
 name = "dts"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -471,7 +471,7 @@ dependencies = [
 
 [[package]]
 name = "dts-core"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "clap 3.0.0-rc.7",
  "csv",
