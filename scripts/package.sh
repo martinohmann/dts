@@ -4,6 +4,25 @@
 
 set -euo pipefail
 
+strip_binary() {
+  local target="$1"
+  local bin_path="$2"
+  local stripped_bin_path="$3"
+
+  case "$target" in
+    arm-unknown-linux-*)
+      strip="arm-linux-gnueabihf-strip" ;;
+    aarch64-unknown-linux-gnu)
+      strip="aarch64-linux-gnu-strip" ;;
+    *)
+      strip="strip" ;;
+  esac
+
+  echo "stripping binary $bin_path -> $stripped_bin_path"
+
+  "$strip" -o "$stripped_bin_path" "$bin_path"
+}
+
 create_package() {
   local archive_dir="$1"
   local bin_path="$2"
@@ -51,9 +70,12 @@ package() {
   fi
 
   artifacts_dir=release-artifacts
+  stripped_bin_path="${artifacts_dir}/${bin_name}"
 
   rm -rf "$artifacts_dir"
   mkdir -p "$artifacts_dir"
+
+  strip_binary "$target" "$bin_path" "$stripped_bin_path"
 
   package_basename="${bin_name}-v${version}-${target}"
   archive_name="${package_basename}.tar.gz"
@@ -63,7 +85,7 @@ package() {
 
   mkdir -p "$archive_dir"
 
-  create_package "$archive_dir" "$bin_path"
+  create_package "$archive_dir" "$stripped_bin_path"
   create_archive "$target" "$package_dir" "$package_basename" \
     "$archive_name"
 
