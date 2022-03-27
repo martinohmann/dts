@@ -1,5 +1,19 @@
 # Changelog
 
+### [0.2.6](https://github.com/martinohmann/dts/compare/dts-v0.2.5...dts-v0.2.6) (2022-03-27)
+
+
+### Miscellaneous
+
+* **deps:** bump hcl-rs from 0.2.1 to 0.3.3 ([#62](https://github.com/martinohmann/dts/issues/62)) ([9d9758c](https://github.com/martinohmann/dts/commit/9d9758c71ea7488ecc57f822eb60473ff5373821))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * dts-core bumped from 0.2.5 to 0.2.6
+
 ### [0.2.5](https://github.com/martinohmann/dts/compare/dts-v0.2.4...dts-v0.2.5) (2022-03-23)
 
 
