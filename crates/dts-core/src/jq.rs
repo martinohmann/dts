@@ -1,52 +1,11 @@
 //! A wrapper for `jq`.
 
+use crate::{Error, Result};
 use serde_json::Value;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Output, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::thread;
-use thiserror::Error;
-
-/// The error returned by the `Jq` wrapper.
-#[non_exhaustive]
-#[derive(Error, Debug)]
-pub enum Error {
-    /// Represents a compile error.
-    #[error("{0}")]
-    Compile(String),
-
-    /// Represents an unknown error.
-    #[error("{0}")]
-    Unknown(String),
-
-    /// Returned if the executable is not found.
-    #[error("executable `{}` not found", .0.display())]
-    ExecutableNotFound(PathBuf),
-
-    /// Returned if the executable exists but does not appear to be `jq`.
-    #[error("executable `{}` exists but does appear to be `jq`", .0.display())]
-    InvalidExecutable(PathBuf),
-
-    /// Represents generic IO errors.
-    #[error(transparent)]
-    Io(#[from] io::Error),
-
-    /// Represents JSON (de-)serialization errors.
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
-}
-
-impl Error {
-    pub(crate) fn from_output(output: &Output) -> Self {
-        let msg = String::from_utf8_lossy(&output.stderr).into_owned();
-
-        if let Some(3) = output.status.code() {
-            Error::Compile(msg)
-        } else {
-            Error::Unknown(msg)
-        }
-    }
-}
 
 /// A wrapper for the `jq` command.
 ///
@@ -80,7 +39,7 @@ impl Jq {
     /// ## Errors
     ///
     /// If the `jq` executable cannot be found in the `PATH` or is invalid an error is returned.
-    pub fn new() -> Result<Jq, Error> {
+    pub fn new() -> Result<Jq> {
         Jq::with_executable("jq")
     }
 
@@ -90,7 +49,7 @@ impl Jq {
     ///
     /// If `executable` cannot be found in `PATH`, does not exist (if absolute) or is invalid an
     /// error is returned.
-    pub fn with_executable<P>(executable: P) -> Result<Jq, Error>
+    pub fn with_executable<P>(executable: P) -> Result<Jq>
     where
         P: AsRef<Path>,
     {
@@ -101,7 +60,7 @@ impl Jq {
             .output()
             .map_err(|err| {
                 if let io::ErrorKind::NotFound = err.kind() {
-                    Error::ExecutableNotFound(executable.to_path_buf())
+                    Error::new(format!("executable `{}` not found", executable.display()))
                 } else {
                     Error::Io(err)
                 }
@@ -113,7 +72,10 @@ impl Jq {
         if version.starts_with("jq-") {
             Ok(Jq { executable })
         } else {
-            Err(Error::InvalidExecutable(executable))
+            Err(Error::new(format!(
+                "executable `{}` exists but does appear to be `jq`",
+                executable.display()
+            )))
         }
     }
 
@@ -123,9 +85,8 @@ impl Jq {
     ///
     /// - `Error::Io` if spawning `jq` fails or if there are other I/O errors.
     /// - `Error::Json` if the data returned by `jq` cannot be deserialized.
-    /// - `Error::Compile` if the `&str` expression is invalid.
-    /// - `Error::Unknown` on any other error.
-    pub fn process(&self, expr: &str, value: &Value) -> Result<Value, Error> {
+    /// - `Error::Message` on any other error.
+    pub fn process(&self, expr: &str, value: &Value) -> Result<Value> {
         let mut cmd = self.spawn_cmd(expr)?;
         let mut stdin = cmd.stdin.take().unwrap();
 
@@ -138,7 +99,7 @@ impl Jq {
         if output.status.success() {
             process_output(&output.stdout)
         } else {
-            Err(Error::from_output(&output))
+            Err(Error::new(String::from_utf8_lossy(&output.stderr)))
         }
     }
 
@@ -149,9 +110,8 @@ impl Jq {
     /// - `Error::Io` if `path` cannot be read or spawning `jq` fails or if there are other I/O
     ///   errors.
     /// - `Error::Json` if the data returned by `jq` cannot be deserialized.
-    /// - `Error::Compile` if the `&str` expression is invalid.
-    /// - `Error::Unknown` on any other error.
-    pub fn process_file<P>(&self, path: P, value: &Value) -> Result<Value, Error>
+    /// - `Error::Message` on any other error.
+    pub fn process_file<P>(&self, path: P, value: &Value) -> Result<Value>
     where
         P: AsRef<Path>,
     {
