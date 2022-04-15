@@ -103,22 +103,6 @@ impl Jq {
         }
     }
 
-    /// Reads a jq expression from the file at `path` and processes the `Value` with it.
-    ///
-    /// ## Errors
-    ///
-    /// - `Error::Io` if `path` cannot be read or spawning `jq` fails or if there are other I/O
-    ///   errors.
-    /// - `Error::Json` if the data returned by `jq` cannot be deserialized.
-    /// - `Error::Message` on any other error.
-    pub fn process_file<P>(&self, path: P, value: &Value) -> Result<Value>
-    where
-        P: AsRef<Path>,
-    {
-        let expr = std::fs::read_to_string(path)?;
-        self.process(&expr, value)
-    }
-
     fn spawn_cmd(&self, expr: &str) -> io::Result<Child> {
         Command::new(&self.executable)
             .arg("--compact-output")

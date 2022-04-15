@@ -42,7 +42,7 @@ impl fmt::Display for KeyPart {
                 if no_quote {
                     write!(f, "{}", key)
                 } else {
-                    write!(f, "[\"{}\"]", key.replace("\"", "\\\""))
+                    write!(f, "[\"{}\"]", key.replace('\"', "\\\""))
                 }
             }
         }

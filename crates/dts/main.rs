@@ -21,7 +21,7 @@ use clap_generate::{generate, Shell};
 use dts_core::{de::Deserializer, jq::Jq, ser::Serializer, Encoding, Error, Sink, Source};
 use rayon::prelude::*;
 use serde_json::Value;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{self, BufWriter};
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
@@ -83,12 +83,13 @@ fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
                     in the `DTS_JQ` environment variable",
                 )?;
 
-            let res = match expr.strip_prefix('@') {
-                Some(path) => jq.process_file(path, &value),
-                None => jq.process(expr, &value),
+            let expr = match expr.strip_prefix('@') {
+                Some(path) => fs::read_to_string(path)?,
+                None => expr.to_owned(),
             };
 
-            res.context("failed to transform value")
+            jq.process(&expr, &value)
+                .context("failed to transform value")
         }
         None => Ok(value),
     }
