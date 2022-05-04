@@ -20,7 +20,7 @@ pathdiff = "0.2.1"
 regex = "1.5.5"
 serde-xml-rs = "0.5.1"
 serde_qs = "0.9.1"
-serde_yaml = "0.8.21"
+serde_yaml = "0.8.24"
 thiserror = "1.0.31"
 toml = "0.5.8"
 ureq = "2.3.0"
@@ -43,4 +43,4 @@ features = ["preserve_order"]
 version = "1.0.79"
 
 [dev-dependencies]
-pretty_assertions = "1.2.0"
+pretty_assertions = "1.2.1"
