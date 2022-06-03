@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.8](https://github.com/martinohmann/dts/compare/dts-v0.2.7...dts-v0.2.8) (2022-06-03)
+
+
+### Bug Fixes
+
+* update `Cargo.lock` ([0575496](https://github.com/martinohmann/dts/commit/0575496b3bf3b42d22890a9ec1165ff9840fe675))
+
 ## [0.2.7](https://github.com/martinohmann/dts/compare/dts-v0.2.6...dts-v0.2.7) (2022-06-03)
 
 
