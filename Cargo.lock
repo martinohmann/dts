@@ -471,7 +471,7 @@ dependencies = [
 
 [[package]]
 name = "dts-core"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "clap 3.0.0-rc.7",
  "csv",
