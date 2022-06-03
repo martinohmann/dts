@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.2.7](https://github.com/martinohmann/dts/compare/dts-v0.2.6...dts-v0.2.7) (2022-06-03)
+
+
+### Bug Fixes
+
+* remove custom jq error type ([a392342](https://github.com/martinohmann/dts/commit/a392342eaedd8171a692a610fd0234a30319356a))
+
+
+### Miscellaneous
+
+* **deps:** bump anyhow from 1.0.56 to 1.0.57 ([#68](https://github.com/martinohmann/dts/issues/68)) ([cca04ad](https://github.com/martinohmann/dts/commit/cca04ad9e06571f649a827d3fdfc44bf0e801856))
+* **deps:** bump bat from 0.20.0 to 0.21.0 ([#75](https://github.com/martinohmann/dts/issues/75)) ([5dad3fb](https://github.com/martinohmann/dts/commit/5dad3fbad170ce83f88d10ac167a88dc28bba02a))
+* **deps:** bump once_cell from 1.10.0 to 1.12.0 ([#76](https://github.com/martinohmann/dts/issues/76)) ([e11374e](https://github.com/martinohmann/dts/commit/e11374e799f869d2dd95951cf5d04f524e08ea5c))
+* **deps:** bump pretty_assertions from 1.2.0 to 1.2.1 ([#65](https://github.com/martinohmann/dts/issues/65)) ([d445cef](https://github.com/martinohmann/dts/commit/d445cef0206407d66725b549ac4fd62cf5c72ef8))
+* **deps:** bump rayon from 1.5.1 to 1.5.2 ([#66](https://github.com/martinohmann/dts/issues/66)) ([2bf7485](https://github.com/martinohmann/dts/commit/2bf7485bd813331746d681fcee4818945fb6a164))
+* **deps:** bump rayon from 1.5.2 to 1.5.3 ([#77](https://github.com/martinohmann/dts/issues/77)) ([9389f3f](https://github.com/martinohmann/dts/commit/9389f3fe89c9a298e41341e64019af8a1896cdb6))
+* **deps:** bump regex from 1.5.5 to 1.5.6 ([#78](https://github.com/martinohmann/dts/issues/78)) ([13f7ae5](https://github.com/martinohmann/dts/commit/13f7ae5f36a1456562721d7bb4dd7aafaaf322cf))
+* **deps:** bump serde from 1.0.136 to 1.0.137 ([#70](https://github.com/martinohmann/dts/issues/70)) ([a3b424c](https://github.com/martinohmann/dts/commit/a3b424ca6da96aa4287758870cc77047d7f37c22))
+* **deps:** bump serde_json from 1.0.79 to 1.0.80 ([#67](https://github.com/martinohmann/dts/issues/67)) ([6a867ac](https://github.com/martinohmann/dts/commit/6a867acedead329309d0a1768fd4275bda7c451a))
+* **deps:** bump serde_qs from 0.9.1 to 0.9.2 ([#74](https://github.com/martinohmann/dts/issues/74)) ([752bbc6](https://github.com/martinohmann/dts/commit/752bbc6aa171c8520ce23dfbc72e9e08e8b90433))
+* **deps:** bump serde_yaml from 0.8.23 to 0.8.24 ([#72](https://github.com/martinohmann/dts/issues/72)) ([0f8f63e](https://github.com/martinohmann/dts/commit/0f8f63e47021c2817df50cb59c59bc7d97d2e182))
+* **deps:** bump thiserror from 1.0.30 to 1.0.31 ([#69](https://github.com/martinohmann/dts/issues/69)) ([9839ed6](https://github.com/martinohmann/dts/commit/9839ed6636b01e25f34c77c2434b5bf2de45613d))
+* **deps:** bump toml from 0.5.8 to 0.5.9 ([#73](https://github.com/martinohmann/dts/issues/73)) ([3b027f4](https://github.com/martinohmann/dts/commit/3b027f4ac4f1cdf3d4b96f8c249954b85474be4b))
+
 ### [0.2.6](https://github.com/martinohmann/dts/compare/dts-v0.2.5...dts-v0.2.6) (2022-03-27)
 
 
