@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.1](https://github.com/martinohmann/dts/compare/v0.3.0...v0.3.1) (2022-06-17)
+
+
+### Bug Fixes
+
+* **security:** bump crossbeam-utils to 0.8.9 ([f6fcaa9](https://github.com/martinohmann/dts/commit/f6fcaa92b62f1f3e72a4fc78bb18d63b0451eaa1))
+
+
+### Miscellaneous
+
+* **deps:** upgrade clap to 3.2.5 ([82eb321](https://github.com/martinohmann/dts/commit/82eb321fe69f96997a522cb82f11b7612a548459))
+
 ## [0.3.0](https://github.com/martinohmann/dts/compare/v0.2.0...v0.3.0) (2022-06-17)
 
 
