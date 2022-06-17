@@ -14,7 +14,7 @@ use crate::{
 };
 use anyhow::{anyhow, Context, Result};
 use clap::{App, IntoApp, Parser};
-use clap_generate::{generate, Shell};
+use clap_complete::{generate, Shell};
 use dts::{de::Deserializer, jq::Jq, ser::Serializer, Encoding, Error, Sink, Source};
 use rayon::prelude::*;
 use serde_json::Value;

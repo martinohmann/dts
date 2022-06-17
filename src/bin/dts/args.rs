@@ -5,7 +5,7 @@ use crate::output::ColorChoice;
 use crate::paging::PagingChoice;
 use anyhow::{anyhow, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};
-use clap_generate::Shell;
+use clap_complete::Shell;
 use dts::{de::DeserializeOptions, ser::SerializeOptions, Encoding, Sink, Source};
 use regex::Regex;
 use unescape::unescape;
