@@ -456,32 +456,16 @@ dependencies = [
  "clap 3.0.0-rc.7",
  "clap_generate",
  "criterion",
- "dts-core",
- "grep-cli",
- "predicates",
- "pretty_assertions",
- "rayon",
- "regex",
- "serde_json",
- "shell-words",
- "temp-env",
- "termcolor",
- "unescape",
-]
-
-[[package]]
-name = "dts-core"
-version = "0.2.7"
-dependencies = [
- "clap 3.0.0-rc.7",
  "csv",
  "glob",
+ "grep-cli",
  "hcl-rs",
  "json5",
  "once_cell",
  "pathdiff",
  "pest",
  "pest_derive",
+ "predicates",
  "pretty_assertions",
  "rayon",
  "regex",
@@ -490,8 +474,12 @@ dependencies = [
  "serde_json",
  "serde_qs",
  "serde_yaml",
+ "shell-words",
+ "temp-env",
+ "termcolor",
  "thiserror",
  "toml",
+ "unescape",
  "ureq",
  "url",
 ]

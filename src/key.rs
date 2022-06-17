@@ -17,7 +17,7 @@ use std::iter;
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts_core::key::flatten_keys;
+/// use dts::key::flatten_keys;
 /// use serde_json::json;
 ///
 /// let value = json!({"foo": {"bar": ["baz", "qux"]}});
@@ -40,7 +40,7 @@ use std::iter;
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts_core::key::flatten_keys;
+/// use dts::key::flatten_keys;
 /// use serde_json::json;
 ///
 /// let value = json!(["foo", "bar", "baz"]);
@@ -62,7 +62,7 @@ use std::iter;
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts_core::key::flatten_keys;
+/// use dts::key::flatten_keys;
 /// use serde_json::json;
 ///
 /// let value = json!("foo");
@@ -81,7 +81,7 @@ where
 ///
 /// ```
 /// # use pretty_assertions::assert_eq;
-/// use dts_core::key::expand_keys;
+/// use dts::key::expand_keys;
 /// use serde_json::json;
 ///
 /// let value = json!([{"foo.bar": 1, "foo[\"bar-baz\"]": 2}]);

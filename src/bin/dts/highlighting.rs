@@ -6,7 +6,7 @@ use crate::{
     utils::resolve_cmd,
 };
 use bat::{assets::HighlightingAssets, config::Config, controller::Controller, Input, PagingMode};
-use dts_core::Encoding;
+use dts::Encoding;
 use std::io::{self, Write};
 use std::path::Path;
 use termcolor::{ColorSpec, StandardStream, WriteColor};

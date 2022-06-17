@@ -3,10 +3,10 @@ name: release-please
 on:
   workflow_dispatch:
     inputs:
-      force-publish-crates:
+      force-publish-crate:
         required: true
         type: boolean
-        description: Publish crates even if no new release was created.
+        description: Publish crate even if no new release was created.
       force-publish-packages:
         required: true
         type: boolean
@@ -25,11 +25,14 @@ jobs:
         id: release-please
         uses: google-github-actions/release-please-action@v3
         with:
-          command: manifest
+          release-type: rust
+          bump-minor-pre-major: true
+          package-name: dts
+          changelog-types: '[{"type":"feat","section":"Features","hidden":false},{"type":"fix","section":"Bug Fixes","hidden":false},{"type":"chore","section":"Miscellaneous","hidden":false}]'
 
-  publish-crates:
+  publish-crate:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish-crates == 'true' }}
+    if: ${{ needs.release-please.outputs.release_created || github.event.inputs.force-publish-crate == 'true' }}
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout repository
@@ -45,7 +48,7 @@ jobs:
       - name: Publish to crates.io
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: scripts/publish-crates.sh
+        run: cargo publish
 
   publish-packages:
     needs: release-please
@@ -130,7 +133,7 @@ jobs:
       - name: Package
         id: package
         run: |
-          scripts/package.sh ${{ matrix.target }} \
+          .github/scripts/package.sh ${{ matrix.target }} \
             ${{ steps.package-version.outputs.version }}
 
       - name: Upload artifacts
@@ -143,5 +146,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           generate_release_notes: false
-          tag_name: "dts-v${{ steps.package-version.outputs.version }}"
+          tag_name: "v${{ steps.package-version.outputs.version }}"
           files: ${{ steps.package.outputs.package_dir }}/*

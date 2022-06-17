@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 use criterion::{criterion_group, criterion_main, Criterion};
-use dts_core::key::*;
+use dts::key::*;
 use serde_json::json;
 
 fn benchmark_transform(c: &mut Criterion) {
