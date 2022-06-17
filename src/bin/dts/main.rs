@@ -1,6 +1,3 @@
-#![doc = include_str!("../../README.md")]
-#![deny(missing_docs)]
-
 mod args;
 #[cfg(feature = "color")]
 mod highlighting;
@@ -18,7 +15,7 @@ use crate::{
 use anyhow::{anyhow, Context, Result};
 use clap::{App, IntoApp, Parser};
 use clap_generate::{generate, Shell};
-use dts_core::{de::Deserializer, jq::Jq, ser::Serializer, Encoding, Error, Sink, Source};
+use dts::{de::Deserializer, jq::Jq, ser::Serializer, Encoding, Error, Sink, Source};
 use rayon::prelude::*;
 use serde_json::Value;
 use std::fs::{self, File};

@@ -14,7 +14,7 @@ use std::thread;
 /// ## Example
 ///
 /// ```
-/// use dts_core::jq::Jq;
+/// use dts::jq::Jq;
 /// use serde_json::json;
 /// # use std::error::Error;
 /// #

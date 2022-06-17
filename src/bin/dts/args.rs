@@ -6,7 +6,7 @@ use crate::paging::PagingChoice;
 use anyhow::{anyhow, Result};
 use clap::{ArgSettings, Args, Parser, ValueHint};
 use clap_generate::Shell;
-use dts_core::{de::DeserializeOptions, ser::SerializeOptions, Encoding, Sink, Source};
+use dts::{de::DeserializeOptions, ser::SerializeOptions, Encoding, Sink, Source};
 use regex::Regex;
 use unescape::unescape;
 

@@ -64,7 +64,7 @@ jobs:
         with:
           use-cross: ${{ matrix.use-cross }}
           command: build
-          args: --workspace --target=${{ matrix.target }}
+          args: --target=${{ matrix.target }}
 
       - name: Run tests
         if: ${{ !matrix.use-cross }}
@@ -72,7 +72,7 @@ jobs:
         with:
           use-cross: ${{ matrix.use-cross }}
           command: test
-          args: --workspace --target=${{ matrix.target }}
+          args: --target=${{ matrix.target }}
 
   rustfmt:
     name: rustfmt
@@ -115,4 +115,4 @@ jobs:
           RUSTDOCFLAGS: -D warnings
         with:
           command: doc
-          args: --no-deps --document-private-items --workspace
+          args: --no-deps --document-private-items

@@ -37,7 +37,7 @@ impl SerializeOptions {
 /// ## Example
 ///
 /// ```
-/// use dts_core::{ser::SerializerBuilder, Encoding};
+/// use dts::{ser::SerializerBuilder, Encoding};
 ///
 /// let writer = std::io::stdout();
 /// let mut serializer = SerializerBuilder::new()
@@ -126,7 +126,7 @@ where
     /// ## Example
     ///
     /// ```
-    /// use dts_core::{ser::SerializerBuilder, Encoding};
+    /// use dts::{ser::SerializerBuilder, Encoding};
     /// use serde_json::json;
     /// # use std::error::Error;
     /// #
