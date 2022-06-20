@@ -15,7 +15,11 @@ use crate::{
 use anyhow::{anyhow, Context, Result};
 use clap::{App, IntoApp, Parser};
 use clap_complete::{generate, Shell};
-use dts::{de::Deserializer, jq::Jq, ser::Serializer, Encoding, Error, Sink, Source};
+#[cfg(feature = "jaq")]
+use dts::jaq::Jaq;
+#[cfg(not(feature = "jaq"))]
+use dts::jq::Jq;
+use dts::{de::Deserializer, ser::Serializer, Encoding, Error, Sink, Source};
 use rayon::prelude::*;
 use serde_json::Value;
 use std::fs::{self, File};
@@ -71,22 +75,37 @@ fn deserialize_many(sources: &[Source], opts: &InputOptions) -> Result<Value> {
 fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
     match &opts.jq_expression {
         Some(expr) => {
-            let jq = std::env::var("DTS_JQ")
-                .ok()
-                .map(Jq::with_executable)
-                .unwrap_or_else(Jq::new)
-                .context(
-                    "install `jq` or provide the `jq` executable path \
+            #[cfg(feature = "jaq")]
+            {
+                let expr = match expr.strip_prefix('@') {
+                    Some(path) => fs::read_to_string(path)?,
+                    None => expr.to_owned(),
+                };
+
+                Jaq::parse(&expr)?
+                    .process(value)
+                    .context("failed to transform value")
+            }
+
+            #[cfg(not(feature = "jaq"))]
+            {
+                let jq = std::env::var("DTS_JQ")
+                    .ok()
+                    .map(Jq::with_executable)
+                    .unwrap_or_else(Jq::new)
+                    .context(
+                        "install `jq` or provide the `jq` executable path \
                     in the `DTS_JQ` environment variable",
-                )?;
+                    )?;
 
-            let expr = match expr.strip_prefix('@') {
-                Some(path) => fs::read_to_string(path)?,
-                None => expr.to_owned(),
-            };
+                let expr = match expr.strip_prefix('@') {
+                    Some(path) => fs::read_to_string(path)?,
+                    None => expr.to_owned(),
+                };
 
-            jq.process(&expr, &value)
-                .context("failed to transform value")
+                jq.process(&expr, &value)
+                    .context("failed to transform value")
+            }
         }
         None => Ok(value),
     }

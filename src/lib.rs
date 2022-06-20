@@ -12,6 +12,9 @@ pub use source::{Source, SourceReader};
 pub mod de;
 mod encoding;
 mod error;
+#[cfg(feature = "jaq")]
+pub mod jaq;
+#[cfg(not(feature = "jaq"))]
 pub mod jq;
 pub mod key;
 mod parsers;
