@@ -149,6 +149,7 @@ where
             Encoding::Xml => self.serialize_xml(value)?,
             Encoding::Text => self.serialize_text(value)?,
             Encoding::Gron => self.serialize_gron(value)?,
+            Encoding::Hcl => self.serialize_hcl(value)?,
             encoding => return Err(Error::UnsupportedEncoding(encoding)),
         };
 
@@ -266,6 +267,10 @@ where
 
         Ok(self.writer.write_all(output.as_bytes())?)
     }
+
+    fn serialize_hcl(&mut self, value: Value) -> Result<()> {
+        Ok(hcl::to_writer(&mut self.writer, &value)?)
+    }
 }
 
 #[cfg(test)]
@@ -292,6 +297,14 @@ mod test {
 
         ser.serialize(encoding, value).unwrap();
         assert_eq!(str::from_utf8(&buf).unwrap(), expected);
+    }
+
+    #[track_caller]
+    fn assert_serialize_error(encoding: Encoding, value: Value) {
+        let mut buf = Vec::new();
+        let mut ser = SerializerBuilder::new().build(&mut buf);
+
+        assert!(ser.serialize(encoding, value).is_err())
     }
 
     #[test]
@@ -355,5 +368,15 @@ mod test {
             "{\"foo\":\"bar\"}\nbaz",
         );
         assert_serializes_to(Encoding::Text, json!({"foo": "bar"}), "{\"foo\":\"bar\"}");
+    }
+
+    #[test]
+    fn test_serialize_hcl() {
+        assert_serializes_to(Encoding::Hcl, json!([{"foo": "bar"}]), "foo = \"bar\"\n");
+        assert_serializes_to(
+            Encoding::Hcl,
+            json!({"foo": "bar", "bar": 2}),
+            "foo = \"bar\"\nbar = 2\n",
+        );
     }
 }

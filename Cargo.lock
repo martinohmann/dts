@@ -731,14 +731,17 @@ checksum = "db0d4cf898abf0081f964436dc980e96670a0f36863e4b83aaacdb65c9d7ccc3"
 
 [[package]]
 name = "hcl-rs"
-version = "0.3.3"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00dafe227671efe33c624ab75ddd1647f876cba59d0517bda2980323c3ea258e"
+checksum = "df5bfa9669dfdda9faf8f6e95468f161306db44ffa205b4147105b34f954fce0"
 dependencies = [
  "indexmap",
+ "itoa 1.0.1",
  "pest",
  "pest_derive",
+ "ryu",
  "serde",
+ "unicode-ident",
 ]
 
 [[package]]
@@ -1593,6 +1596,12 @@ name = "unicode-bidi"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a01404663e3db436ed2746d9fefef640d868edae3cceb81c3b8d5732fda678f"
+
+[[package]]
+name = "unicode-ident"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bd2fe26506023ed7b5e1e315add59d6f584c621d037f9368fea9cfb988f368c"
 
 [[package]]
 name = "unicode-normalization"
