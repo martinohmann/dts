@@ -15,12 +15,7 @@ use crate::{
 use anyhow::{anyhow, Context, Result};
 use clap::{App, IntoApp, Parser};
 use clap_complete::{generate, Shell};
-use dts::{
-    de::Deserializer,
-    filter::{Filter, FilterImpl},
-    ser::Serializer,
-    Encoding, Error, Sink, Source,
-};
+use dts::{de::Deserializer, filter::Filter, ser::Serializer, Encoding, Error, Sink, Source};
 use rayon::prelude::*;
 use serde_json::Value;
 use std::fs::{self, File};
@@ -81,9 +76,9 @@ fn transform(value: Value, opts: &TransformOptions) -> Result<Value> {
                 None => expr.to_owned(),
             };
 
-            FilterImpl::parse(&expr)?
-                .apply(value)
-                .context("failed to transform value")
+            let filter = Filter::new(&expr)?;
+
+            filter.apply(value).context("failed to transform value")
         }
         None => Ok(value),
     }

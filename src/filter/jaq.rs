@@ -32,14 +32,12 @@ impl std::error::Error for ParseError {}
 /// A wrapper for a `jaq` filter.
 ///
 /// This can be used to transform a `Value` using a `jq`-like expression.
-pub struct Filter {
+pub(crate) struct Filter {
     filter: jaq_core::Filter,
 }
 
-impl super::Filter for Filter {
-    type Item = Filter;
-
-    fn parse(expr: &str) -> Result<Self::Item> {
+impl Filter {
+    pub(crate) fn new(expr: &str) -> Result<Filter> {
         let mut errs = Vec::new();
         let mut defs = Definitions::core();
 
@@ -62,11 +60,17 @@ impl super::Filter for Filter {
         }
     }
 
-    fn apply(&self, value: Value) -> Result<Value> {
-        self.filter
+    pub(crate) fn apply(&self, value: Value) -> Result<Value> {
+        let mut values = self
+            .filter
             .run(Val::from(value))
             .map(|out| Ok(Value::from(out.map_err(Error::new)?)))
-            .collect::<Result<Vec<_>, _>>()
-            .map(Value::Array)
+            .collect::<Result<Vec<_>, Error>>()?;
+
+        if values.len() == 1 {
+            Ok(values.remove(0))
+        } else {
+            Ok(Value::Array(values))
+        }
     }
 }
