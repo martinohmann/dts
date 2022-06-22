@@ -1,19 +1,19 @@
 //! A wrapper for `jaq`.
 
 use crate::{Error, Result};
-use jaq_core::{Definitions, Filter, Val};
+use jaq_core::{self, Definitions, Val};
 use serde_json::Value;
 use std::fmt;
 
 #[derive(Debug)]
 struct ParseError {
-    filter: String,
+    expr: String,
     errs: Vec<jaq_core::parse::Error>,
 }
 
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid filter `{}`: ", self.filter)?;
+        write!(f, "invalid filter expression `{}`: ", self.expr)?;
 
         for (i, err) in self.errs.iter().enumerate() {
             if i > 0 {
@@ -32,13 +32,14 @@ impl std::error::Error for ParseError {}
 /// A wrapper for a `jaq` filter.
 ///
 /// This can be used to transform a `Value` using a `jq`-like expression.
-pub struct Jaq {
-    filter: Filter,
+pub struct Filter {
+    filter: jaq_core::Filter,
 }
 
-impl Jaq {
-    /// Parses the filter and creates a new `Jaq` instance if the filter is valid.
-    pub fn parse(filter: &str) -> Result<Jaq> {
+impl super::Filter for Filter {
+    type Item = Filter;
+
+    fn parse(expr: &str) -> Result<Self::Item> {
         let mut errs = Vec::new();
         let mut defs = Definitions::core();
 
@@ -48,25 +49,24 @@ impl Jaq {
 
         assert!(errs.is_empty());
 
-        let (main, mut errs) = jaq_core::parse::parse(filter, jaq_core::parse::main());
+        let (main, mut errs) = jaq_core::parse::parse(expr, jaq_core::parse::main());
         let f = main.map(|main| defs.finish(main, &mut errs));
 
         if errs.is_empty() {
-            Ok(Jaq { filter: f.unwrap() })
+            Ok(Filter { filter: f.unwrap() })
         } else {
             Err(Error::new(ParseError {
-                filter: filter.to_owned(),
+                expr: expr.to_owned(),
                 errs,
             }))
         }
     }
 
-    /// Processes a `Value` and returns the result.
-    pub fn process(&self, input: Value) -> Result<Value> {
+    fn apply(&self, value: Value) -> Result<Value> {
         self.filter
-            .run(Val::from(input))
+            .run(Val::from(value))
             .map(|out| Ok(Value::from(out.map_err(Error::new)?)))
-            .collect::<Result<Vec<Value>, Error>>()
+            .collect::<Result<Vec<_>, _>>()
             .map(Value::Array)
     }
 }
