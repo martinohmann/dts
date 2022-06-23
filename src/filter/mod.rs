@@ -40,8 +40,10 @@ pub struct Filter {
 }
 
 impl Filter {
-    /// Constructs the filter from the `&str` expression. Depending on the underlying
-    /// implementation this may return an error if parsing the expression fails.
+    /// Constructs the filter from the `&str` expression.
+    ///
+    /// Depending on the underlying implementation this may return an error if parsing the
+    /// expression fails.
     pub fn new(expr: &str) -> Result<Filter> {
         let inner = FilterImpl::new(expr)?;
         Ok(Filter { inner })

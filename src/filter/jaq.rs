@@ -1,7 +1,7 @@
 //! A wrapper for `jaq`.
 
 use crate::{Error, Result};
-use jaq_core::{self, Definitions, Val};
+use jaq_core::{self, Ctx, Definitions, Val};
 use serde_json::Value;
 use std::fmt;
 
@@ -29,9 +29,6 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-/// A wrapper for a `jaq` filter.
-///
-/// This can be used to transform a `Value` using a `jq`-like expression.
 pub(crate) struct Filter {
     filter: jaq_core::Filter,
 }
@@ -48,7 +45,7 @@ impl Filter {
         assert!(errs.is_empty());
 
         let (main, mut errs) = jaq_core::parse::parse(expr, jaq_core::parse::main());
-        let f = main.map(|main| defs.finish(main, &mut errs));
+        let f = main.map(|main| defs.finish(main, Vec::new(), &mut errs));
 
         if errs.is_empty() {
             Ok(Filter { filter: f.unwrap() })
@@ -63,7 +60,7 @@ impl Filter {
     pub(crate) fn apply(&self, value: Value) -> Result<Value> {
         let mut values = self
             .filter
-            .run(Val::from(value))
+            .run(Ctx::new(), Val::from(value))
             .map(|out| Ok(Value::from(out.map_err(Error::new)?)))
             .collect::<Result<Vec<_>, Error>>()?;
 

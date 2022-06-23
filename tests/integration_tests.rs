@@ -144,7 +144,7 @@ fn merge_json() {
     Command::cargo_bin("dts")
         .unwrap()
         .arg("tests/fixtures/example.json")
-        .args(&["-j", "reduce .users[] as $item ({}; . * $item)", "-n"])
+        .args(&["-j", "reduce .users[] as $item ({}; . + $item)", "-n"])
         .assert()
         .success()
         .stdout(read("tests/fixtures/example.merged.json").unwrap());
@@ -173,7 +173,7 @@ fn continue_on_error() {
             "-i",
             "json",
             "-j",
-            ".[] | reduce .users[] as $item ({}; . * $item)",
+            ".[] | reduce .users[] as $item ({}; . + $item)",
             "-n",
         ])
         .assert()
@@ -187,7 +187,7 @@ fn continue_on_error() {
             "-i",
             "json",
             "-j",
-            ".[] | reduce .users[] as $item ({}; . * $item)",
+            ".[] | reduce .users[] as $item ({}; . + $item)",
             "-n",
             "--continue-on-error",
         ])

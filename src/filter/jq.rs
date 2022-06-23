@@ -14,11 +14,6 @@ pub(crate) struct Filter {
 }
 
 impl Filter {
-    /// Creates a new `Jq` instance.
-    ///
-    /// ## Errors
-    ///
-    /// If the `jq` executable cannot be found in the `PATH` or is invalid an error is returned.
     pub(crate) fn new(expr: &str) -> Result<Filter> {
         let exe = std::env::var("DTS_JQ")
             .ok()
