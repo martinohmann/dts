@@ -105,7 +105,7 @@ Right now `dts` supports the following encodings:
 - XML
 - Text
 - Gron
-- HCL _(deserialize only)_
+- HCL _(deserialize, serialize only supports HCL attributes)_
 
 ## Feature flags
 
