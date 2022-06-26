@@ -12,7 +12,7 @@ pub use source::{Source, SourceReader};
 pub mod de;
 mod encoding;
 mod error;
-pub mod jq;
+pub mod filter;
 pub mod key;
 mod parsers;
 pub mod ser;
