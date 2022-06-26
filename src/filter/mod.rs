@@ -4,9 +4,9 @@ use crate::Result;
 use serde_json::Value;
 
 #[cfg(feature = "jaq")]
-pub mod jaq;
+mod jaq;
 #[cfg(not(feature = "jaq"))]
-pub mod jq;
+mod jq;
 
 #[cfg(feature = "jaq")]
 use jaq::Filter as FilterImpl;
