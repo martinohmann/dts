@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/martinohmann/dts/compare/v0.3.1...v0.4.0) (2022-06-26)
+
+
+### Features
+
+* add `jaq` feature ([#84](https://github.com/martinohmann/dts/issues/84)) ([6525db7](https://github.com/martinohmann/dts/commit/6525db75037ad48b09e9a5025996cb05fece9166))
+* serialization support for HCL ([#85](https://github.com/martinohmann/dts/issues/85)) ([a90e23b](https://github.com/martinohmann/dts/commit/a90e23b0e03de08d549b0d8c5fbf0abfc859703d))
+
+
+### Bug Fixes
+
+* unexport filter modules ([6a59d64](https://github.com/martinohmann/dts/commit/6a59d64bfa6a2b6cd24e302fdde3740d31d55891))
+
 ## [0.3.1](https://github.com/martinohmann/dts/compare/v0.3.0...v0.3.1) (2022-06-17)
 
 
