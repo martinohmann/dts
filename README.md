@@ -90,7 +90,7 @@ dts --list-themes
 ```
 
 **Hint**: The `color` feature can be disabled at compile time if you don't want
-to have colors at all. See the [Cargo feature](#cargo-features) section below.
+to have colors at all. See the [feature flags](#feature-flags) section below.
 
 ## Supported Encodings
 
@@ -107,18 +107,27 @@ Right now `dts` supports the following encodings:
 - Gron
 - HCL _(deserialize only)_
 
-## Cargo features
+## Feature flags
 
-Support for colored output is provided by the `color` feature which is enabled
-by default. The feature increases binary size and may be disabled via:
+To build `dts` without its default features enabled, run:
 
 ```sh
 cargo build --no-default-features --release
 ```
 
-If you just want to disable colors by default with the option to enable them
-conditionally, you can also set the [`NO_COLOR`](https://no-color.org/)
-environment variable or set `DTS_COLOR=never`.
+The following feature flags are available:
+
+* `color`: Enables support for colored output. This feature is enabled by
+  default.
+
+  If you just want to disable colors by default with the option to enable them
+  conditionally, you can also set the [`NO_COLOR`](https://no-color.org/)
+  environment variable or set `DTS_COLOR=never`.
+
+* `jaq`: Use [`jaq-core`](https://docs.rs/jaq-core/latest/jaq_core/) to
+  process transformation filters instead of shelling out to `jq`.
+
+  This feature is experimental and not enabled by default yet.
 
 ## License
 

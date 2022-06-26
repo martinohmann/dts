@@ -133,6 +133,23 @@ impl From<&InputOptions> for DeserializeOptions {
 }
 
 /// Options that configure the behaviour of data transformation.
+#[cfg(feature = "jaq")]
+#[derive(Args, Debug)]
+#[clap(help_heading = "TRANSFORM OPTIONS")]
+pub struct TransformOptions {
+    /// A jq expression for transforming the input data.
+    ///
+    /// If the expression starts with an `@` it is treated as a local file path and the expression
+    /// is read from there instead.
+    ///
+    /// See <https://stedolan.github.io/jq/manual/> for supported operators, filters and
+    /// functions.
+    #[clap(short = 'j', long = "--jq", value_name = "EXPRESSION")]
+    pub jq_expression: Option<String>,
+}
+
+/// Options that configure the behaviour of data transformation.
+#[cfg(not(feature = "jaq"))]
 #[derive(Args, Debug)]
 #[clap(help_heading = "TRANSFORM OPTIONS")]
 pub struct TransformOptions {
