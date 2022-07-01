@@ -20,7 +20,7 @@ color = ["bat", "bat/paging", "clap/color"]
 jaq = ["jaq-core", "jaq-std"]
 
 [dependencies]
-anyhow = "1.0.57"
+anyhow = "1.0.58"
 atty = "0.2.14"
 crossbeam-utils = "0.8.10"
 csv = "1.1.6"
