@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.1](https://github.com/martinohmann/dts/compare/v0.4.0...v0.4.1) (2022-07-01)
+
+
+### Miscellaneous
+
+* **deps:** bump anyhow from 1.0.57 to 1.0.58 ([#89](https://github.com/martinohmann/dts/issues/89)) ([8ff8106](https://github.com/martinohmann/dts/commit/8ff8106e87bd554c27a2cb25d444bd7ecff4ec3c))
+* **deps:** bump clap from 3.2.5 to 3.2.8 ([#91](https://github.com/martinohmann/dts/issues/91)) ([fbf73c8](https://github.com/martinohmann/dts/commit/fbf73c87483525d7cd194056ea1e219f94fc8039))
+* **deps:** bump clap_complete from 3.2.1 to 3.2.3 ([#88](https://github.com/martinohmann/dts/issues/88)) ([8fd14b6](https://github.com/martinohmann/dts/commit/8fd14b6391e18b9216b55f6866bd2c66d23cb466))
+* **deps:** bump crossbeam-utils from 0.8.9 to 0.8.10 ([#90](https://github.com/martinohmann/dts/issues/90)) ([8d387e4](https://github.com/martinohmann/dts/commit/8d387e4c080caf23f72e81d46d283c741c0b1e96))
+* **deps:** bump serde_json from 1.0.81 to 1.0.82 ([#87](https://github.com/martinohmann/dts/issues/87)) ([7fa2cda](https://github.com/martinohmann/dts/commit/7fa2cda147c0535184b43eeca0b7a6bd310c906e))
+
 ## [0.4.0](https://github.com/martinohmann/dts/compare/v0.3.1...v0.4.0) (2022-06-26)
 
 
