@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.2](https://github.com/martinohmann/dts/compare/v0.4.1...v0.4.2) (2022-07-13)
+
+
+### Miscellaneous
+
+* **deps:** bump clap from 3.2.8 to 3.2.11 ([#96](https://github.com/martinohmann/dts/issues/96)) ([148e54e](https://github.com/martinohmann/dts/commit/148e54e2be3f61a85abfacaa7dc5c1e9920d97a8))
+* **deps:** bump criterion from 0.3.5 to 0.3.6 ([#94](https://github.com/martinohmann/dts/issues/94)) ([47adb70](https://github.com/martinohmann/dts/commit/47adb70a29ab5aba91697cca6a430624e53f97d9))
+* **deps:** bump hcl-rs from 0.6.1 to 0.6.2 ([#95](https://github.com/martinohmann/dts/issues/95)) ([922797b](https://github.com/martinohmann/dts/commit/922797b370d287dfd60f075d241ea4db76a417c5))
+* **deps:** bump once_cell from 1.12.0 to 1.13.0 ([#97](https://github.com/martinohmann/dts/issues/97)) ([e8cd71a](https://github.com/martinohmann/dts/commit/e8cd71ab2dc7428606f9a651c14a7f3eb9eaaf5c))
+* **deps:** bump regex from 1.5.6 to 1.6.0 ([#99](https://github.com/martinohmann/dts/issues/99)) ([774c602](https://github.com/martinohmann/dts/commit/774c6029d9ec82753b374f90721db84ba11824cf))
+* **deps:** bump serde from 1.0.137 to 1.0.139 ([#93](https://github.com/martinohmann/dts/issues/93)) ([1e9069c](https://github.com/martinohmann/dts/commit/1e9069c091076dfe2222c2d5198639bf8d2071f4))
+* **deps:** bump serde_qs from 0.9.2 to 0.10.1 ([#102](https://github.com/martinohmann/dts/issues/102)) ([ceaada2](https://github.com/martinohmann/dts/commit/ceaada2f5b4b2bda5c7dd7bbc577338a199d60dd))
+* **deps:** bump serde_yaml from 0.8.24 to 0.8.25 ([#100](https://github.com/martinohmann/dts/issues/100)) ([0bb90c8](https://github.com/martinohmann/dts/commit/0bb90c822734339855d42f8c50834dacdc2514f5))
+* **deps:** bump ureq from 2.4.0 to 2.5.0 ([#101](https://github.com/martinohmann/dts/issues/101)) ([54847b2](https://github.com/martinohmann/dts/commit/54847b2cf738cbfe7eea3a5d609e32e08d1d5dd3))
+
 ## [0.4.1](https://github.com/martinohmann/dts/compare/v0.4.0...v0.4.1) (2022-07-01)
 
 
