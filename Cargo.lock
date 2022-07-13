@@ -731,9 +731,9 @@ checksum = "db0d4cf898abf0081f964436dc980e96670a0f36863e4b83aaacdb65c9d7ccc3"
 
 [[package]]
 name = "hcl-rs"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df5bfa9669dfdda9faf8f6e95468f161306db44ffa205b4147105b34f954fce0"
+checksum = "3de9c3974a8d292b9f2248e43b83318e2eb6cd7e7e9ea64e317d990a7bbffa78"
 dependencies = [
  "indexmap",
  "itoa 1.0.1",
@@ -1383,9 +1383,9 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.8.24"
+version = "0.8.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "707d15895415db6628332b737c838b88c598522e4dc70647e59b72312924aebc"
+checksum = "1ec0091e1f5aa338283ce049bd9dfefd55e1f168ac233e85c1ffe0038fb48cbe"
 dependencies = [
  "indexmap",
  "ryu",
