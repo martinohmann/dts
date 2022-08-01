@@ -57,7 +57,7 @@ version = "0.21.0"
 [dependencies.clap]
 default-features = false
 features = ["std", "derive", "env", "suggestions"]
-version = "3.2.11"
+version = "3.2.16"
 
 [dependencies.serde]
 features = ["derive"]
