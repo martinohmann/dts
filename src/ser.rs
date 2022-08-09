@@ -299,14 +299,6 @@ mod test {
         assert_eq!(str::from_utf8(&buf).unwrap(), expected);
     }
 
-    #[track_caller]
-    fn assert_serialize_error(encoding: Encoding, value: Value) {
-        let mut buf = Vec::new();
-        let mut ser = SerializerBuilder::new().build(&mut buf);
-
-        assert!(ser.serialize(encoding, value).is_err())
-    }
-
     #[test]
     fn test_serialize_json() {
         assert_builder_serializes_to(
