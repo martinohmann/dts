@@ -20,7 +20,7 @@ color = ["bat", "bat/paging", "clap/color"]
 jaq = ["jaq-core", "jaq-std"]
 
 [dependencies]
-anyhow = "1.0.58"
+anyhow = "1.0.63"
 atty = "0.2.14"
 crossbeam-utils = "0.8.11"
 csv = "1.1.6"
@@ -57,7 +57,7 @@ version = "0.21.0"
 [dependencies.clap]
 default-features = false
 features = ["std", "derive", "env", "suggestions"]
-version = "3.2.16"
+version = "3.2.19"
 
 [dependencies.serde]
 features = ["derive"]
