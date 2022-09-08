@@ -737,9 +737,9 @@ checksum = "db0d4cf898abf0081f964436dc980e96670a0f36863e4b83aaacdb65c9d7ccc3"
 
 [[package]]
 name = "hcl-rs"
-version = "0.6.2"
+version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3de9c3974a8d292b9f2248e43b83318e2eb6cd7e7e9ea64e317d990a7bbffa78"
+checksum = "78ea8dc0e1292cedb65b7f00fd1c6ae3f67cf808ac35137ec4920d9a010043a2"
 dependencies = [
  "indexmap",
  "itoa 1.0.1",
@@ -1656,13 +1656,12 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.2.2"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a507c383b2d33b5fc35d1861e77e6b383d158b2da5e14fe51b83dfedf6fd578c"
+checksum = "22fe195a4f217c25b25cb5058ced57059824a678474874038dc88d211bf508d3"
 dependencies = [
  "form_urlencoded",
  "idna",
- "matches",
  "percent-encoding",
 ]
 

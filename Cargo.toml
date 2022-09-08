@@ -27,7 +27,7 @@ csv = "1.1.6"
 glob = "0.3.0"
 clap_complete = "3.2.4"
 grep-cli = "0.1.6"
-hcl-rs = "0.6.2"
+hcl-rs = "0.6.4"
 jaq-core = { version = "0.7.0", optional = true }
 jaq-std = { version = "0.7.0", optional = true }
 json5 = "0.4.1"
@@ -46,7 +46,7 @@ thiserror = "1.0.33"
 toml = "0.5.9"
 unescape = "0.1.0"
 ureq = "2.5.0"
-url = "2.2.2"
+url = "2.3.0"
 
 [dependencies.bat]
 optional = true
