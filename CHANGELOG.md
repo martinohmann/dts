@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.4.3](https://github.com/martinohmann/dts/compare/v0.4.2...v0.4.3) (2022-09-30)
+
+
+### Miscellaneous
+
+* **deps:** bump anyhow from 1.0.58 to 1.0.63 ([#119](https://github.com/martinohmann/dts/issues/119)) ([cf070ed](https://github.com/martinohmann/dts/commit/cf070ed3f1bba1da6032bb24c780162c5292021f))
+* **deps:** bump clap from 3.2.11 to 3.2.16 ([#103](https://github.com/martinohmann/dts/issues/103)) ([e610b43](https://github.com/martinohmann/dts/commit/e610b43e0870370b6c7aa088ecb7e81567c3eefc))
+* **deps:** bump clap from 3.2.16 to 3.2.19 ([#120](https://github.com/martinohmann/dts/issues/120)) ([f098ae0](https://github.com/martinohmann/dts/commit/f098ae0e43066fa89d70f097ef96f5a100f24535))
+* **deps:** bump clap from 3.2.19 to 3.2.21 ([#124](https://github.com/martinohmann/dts/issues/124)) ([e6c3cdc](https://github.com/martinohmann/dts/commit/e6c3cdcd78fe6cbae072ac1a0ff7f5e64c373643))
+* **deps:** bump clap_complete from 3.2.3 to 3.2.4 ([#113](https://github.com/martinohmann/dts/issues/113)) ([a07d865](https://github.com/martinohmann/dts/commit/a07d865f120e01255365ac5b0438bf9ff6a00dd7))
+* **deps:** bump crossbeam-utils from 0.8.10 to 0.8.11 ([#104](https://github.com/martinohmann/dts/issues/104)) ([b974a78](https://github.com/martinohmann/dts/commit/b974a783afcace2b832a243ce00122d7b9377aef))
+* **deps:** bump hcl-rs from 0.6.2 to 0.6.4 ([#111](https://github.com/martinohmann/dts/issues/111)) ([5b63075](https://github.com/martinohmann/dts/commit/5b63075863fa7eeebf28a446388b84103b60d2d9))
+* **deps:** bump once_cell from 1.13.0 to 1.13.1 ([#114](https://github.com/martinohmann/dts/issues/114)) ([5a837d7](https://github.com/martinohmann/dts/commit/5a837d79d722735b53598459c3317100823e7bfc))
+* **deps:** bump pest from 2.1.3 to 2.2.1 ([#107](https://github.com/martinohmann/dts/issues/107)) ([11ae94f](https://github.com/martinohmann/dts/commit/11ae94f865e76378ece7baf8076db3b9a4077394))
+* **deps:** bump pest from 2.2.1 to 2.3.1 ([#126](https://github.com/martinohmann/dts/issues/126)) ([ee3ac6e](https://github.com/martinohmann/dts/commit/ee3ac6e5aec29572f7cb981ec7fdddf2b2a5e0a2))
+* **deps:** bump pretty_assertions from 1.2.1 to 1.3.0 ([#109](https://github.com/martinohmann/dts/issues/109)) ([d1d238f](https://github.com/martinohmann/dts/commit/d1d238f305d07f5c4117357cbb135dddcaac1f3b))
+* **deps:** bump serde from 1.0.139 to 1.0.140 ([#106](https://github.com/martinohmann/dts/issues/106)) ([447fe65](https://github.com/martinohmann/dts/commit/447fe65b28d393206b636ffe8a14c6f5b50f2e72))
+* **deps:** bump serde from 1.0.140 to 1.0.145 ([#129](https://github.com/martinohmann/dts/issues/129)) ([d94c858](https://github.com/martinohmann/dts/commit/d94c858c752b725e79bfbbc498dd32cf9013395c))
+* **deps:** bump serde_json from 1.0.82 to 1.0.85 ([#110](https://github.com/martinohmann/dts/issues/110)) ([e1fc956](https://github.com/martinohmann/dts/commit/e1fc9561edeb003aad9968be711bfc9abe666ac5))
+* **deps:** bump serde-xml-rs from 0.5.1 to 0.6.0 ([#116](https://github.com/martinohmann/dts/issues/116)) ([330c468](https://github.com/martinohmann/dts/commit/330c4681eba4518334d7bfa4db798d1413eea76b))
+* **deps:** bump thiserror from 1.0.31 to 1.0.33 ([#118](https://github.com/martinohmann/dts/issues/118)) ([fc62928](https://github.com/martinohmann/dts/commit/fc62928ccf1bc1fd439438e45a66e53c25fdf0d7))
+* **test:** remove unused test function ([86a1174](https://github.com/martinohmann/dts/commit/86a1174b1e83552611a647e4ca595be81b14b13c))
+
 ## [0.4.2](https://github.com/martinohmann/dts/compare/v0.4.1...v0.4.2) (2022-07-13)
 
 
