@@ -25,7 +25,7 @@ atty = "0.2.14"
 crossbeam-utils = "0.8.12"
 csv = "1.1.6"
 glob = "0.3.0"
-clap_complete = "3.2.4"
+clap_complete = "4.0.2"
 grep-cli = "0.1.6"
 hcl-rs = "0.6.4"
 jaq-core = { version = "0.7.0", optional = true }
