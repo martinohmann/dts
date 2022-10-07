@@ -46,7 +46,7 @@ thiserror = "1.0.33"
 toml = "0.5.9"
 unescape = "0.1.0"
 ureq = "2.5.0"
-url = "2.3.0"
+url = "2.3.1"
 
 [dependencies.bat]
 optional = true
