@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.4](https://github.com/martinohmann/dts/compare/v0.4.3...v0.4.4) (2022-10-12)
+
+
+### Miscellaneous
+
+* **deps:** bump anyhow from 1.0.63 to 1.0.65 ([#130](https://github.com/martinohmann/dts/issues/130)) ([6e62116](https://github.com/martinohmann/dts/commit/6e62116c7c916d5ddf2fada949eefb265d12a737))
+* **deps:** bump bat from 0.21.0 to 0.22.1 ([#135](https://github.com/martinohmann/dts/issues/135)) ([3a6948c](https://github.com/martinohmann/dts/commit/3a6948c9737ea93209c945f080568eb775038bb3))
+* **deps:** bump clap from 3.2.21 to 3.2.22 ([#142](https://github.com/martinohmann/dts/issues/142)) ([0aa05f4](https://github.com/martinohmann/dts/commit/0aa05f48cb6d3ba412c16c66fc83ecd1b072cc73))
+* **deps:** bump crossbeam-utils from 0.8.11 to 0.8.12 ([#131](https://github.com/martinohmann/dts/issues/131)) ([6c96fe5](https://github.com/martinohmann/dts/commit/6c96fe52dc20cb256a15c3b100e52f6349f470ff))
+* **deps:** bump hcl-rs from 0.6.4 to 0.8.5 ([f4c188c](https://github.com/martinohmann/dts/commit/f4c188cca9be6182d6a34e0d589c892b036fa902))
+* **deps:** bump once_cell from 1.13.1 to 1.15.0 ([#139](https://github.com/martinohmann/dts/issues/139)) ([1ec7d5e](https://github.com/martinohmann/dts/commit/1ec7d5ed9300544997d3a22dc908eee943b016f6))
+* **deps:** bump pest_derive from 2.1.0 to 2.3.1 ([#141](https://github.com/martinohmann/dts/issues/141)) ([5b4c6e1](https://github.com/martinohmann/dts/commit/5b4c6e1fd4d2390a21e7ed13761a59b2fc003897))
+* **deps:** bump temp-env from 0.2.0 to 0.3.1 ([#144](https://github.com/martinohmann/dts/issues/144)) ([a9bdb6e](https://github.com/martinohmann/dts/commit/a9bdb6e8965c46360661343e7ee3d5447df27d0f))
+* **deps:** bump thiserror from 1.0.33 to 1.0.37 ([#145](https://github.com/martinohmann/dts/issues/145)) ([5d2e253](https://github.com/martinohmann/dts/commit/5d2e253725201a5dfcdf20a03e155126bbc81bc1))
+* **deps:** bump url from 2.2.2 to 2.3.0 ([#121](https://github.com/martinohmann/dts/issues/121)) ([e192768](https://github.com/martinohmann/dts/commit/e1927687b0f5393d9c4f4e5284888a17a5db4e42))
+* **deps:** bump url from 2.3.0 to 2.3.1 ([#136](https://github.com/martinohmann/dts/issues/136)) ([475ee57](https://github.com/martinohmann/dts/commit/475ee57102d04430420987055b15c79711959a12))
+
 ## [0.4.3](https://github.com/martinohmann/dts/compare/v0.4.2...v0.4.3) (2022-09-30)
 
 
