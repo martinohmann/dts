@@ -125,9 +125,8 @@ The following feature flags are available:
   environment variable or set `DTS_COLOR=never`.
 
 * `jaq`: Use [`jaq-core`](https://docs.rs/jaq-core/latest/jaq_core/) to
-  process transformation filters instead of shelling out to `jq`.
-
-  This feature is experimental and not enabled by default yet.
+  process transformation filters instead of shelling out to `jq`. This feature
+  is enabled by default.
 
 ## License
 

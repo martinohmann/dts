@@ -15,7 +15,7 @@ exclude = [
 ]
 
 [features]
-default = ["color"]
+default = ["color", "jaq"]
 color = ["bat", "bat/paging", "clap/color"]
 jaq = ["jaq-core", "jaq-std"]
 
