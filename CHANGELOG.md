@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.0](https://github.com/martinohmann/dts/compare/v0.4.4...v0.5.0) (2022-10-14)
+
+
+### Features
+
+* enable `jaq` feature by default ([#149](https://github.com/martinohmann/dts/issues/149)) ([33f68e7](https://github.com/martinohmann/dts/commit/33f68e721aa5d4fc26b47a0c9858d4e93c31f942))
+
+
+### Miscellaneous
+
+* **clippy:** address some new warnings ([60614ec](https://github.com/martinohmann/dts/commit/60614ecaadcd328f02ef7df3a7db984d70b6acee))
+* **deps:** bump jaq-core from 0.7.0 to 0.8.2 ([9d7a36c](https://github.com/martinohmann/dts/commit/9d7a36c0519ab36269ca765e8ec812beb89d5a36))
+* **deps:** bump pest from 2.3.1 to 2.4.0 ([#143](https://github.com/martinohmann/dts/issues/143)) ([da31810](https://github.com/martinohmann/dts/commit/da3181052f5cf79fbd4ebceceddb5221087c2be2))
+* **deps:** bump serde_json from 1.0.85 to 1.0.86 ([#147](https://github.com/martinohmann/dts/issues/147)) ([8b7e171](https://github.com/martinohmann/dts/commit/8b7e17149c75fe48ab2f81df86e73272cfc9c284))
+
 ## [0.4.4](https://github.com/martinohmann/dts/compare/v0.4.3...v0.4.4) (2022-10-12)
 
 
