@@ -1,7 +1,7 @@
 //! A wrapper for `jaq`.
 
 use crate::{Error, Result};
-use jaq_core::{self, Ctx, Definitions, Val};
+use jaq_core::{self, Ctx, Definitions, RcIter, Val};
 use serde_json::Value;
 use std::fmt;
 
@@ -58,9 +58,11 @@ impl Filter {
     }
 
     pub(crate) fn apply(&self, value: Value) -> Result<Value> {
+        let empty: Vec<Result<Val, String>> = Vec::new();
+        let iter = RcIter::new(empty.into_iter());
         let mut values = self
             .filter
-            .run(Ctx::new(), Val::from(value))
+            .run(Ctx::new(Vec::new(), &iter), Val::from(value))
             .map(|out| Ok(Value::from(out.map_err(Error::new)?)))
             .collect::<Result<Vec<_>, Error>>()?;
 
