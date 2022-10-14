@@ -10,7 +10,7 @@ use std::io::{self, Stdout};
 use std::process::{Child, Command, Stdio};
 
 /// ColorChoice represents the color preference of a user.
-#[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
+#[derive(ArgEnum, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ColorChoice {
     /// Always color output even if stdout is a file.
     Always,

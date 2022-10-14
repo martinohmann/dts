@@ -7,7 +7,7 @@ use std::str::FromStr;
 use url::Url;
 
 /// A source for data that needs to be deserialized.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Source {
     /// Stdin source.
     Stdin,

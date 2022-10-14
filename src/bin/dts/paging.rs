@@ -3,7 +3,7 @@
 use clap::ArgEnum;
 
 /// PagingChoice represents the paging preference of a user.
-#[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
+#[derive(ArgEnum, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PagingChoice {
     /// Always page output even if you would fit on the screen.
     Always,

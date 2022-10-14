@@ -26,7 +26,7 @@ pub fn parse(key: &str) -> Result<KeyParts, ParseError> {
     Ok(parts)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum KeyPart {
     Index(usize),
     Ident(String),
@@ -49,7 +49,7 @@ impl fmt::Display for KeyPart {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct KeyParts {
     inner: Vec<KeyPart>,
 }
@@ -91,7 +91,7 @@ impl IntoIterator for KeyParts {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct StringKeyParts {
     inner: Vec<String>,
 }

@@ -12,7 +12,7 @@ use std::path::Path;
 /// hjson only allow deserialization of encoded data but are not able to serialize back into the
 /// original representation.
 #[non_exhaustive]
-#[derive(ArgEnum, Debug, PartialEq, Clone, Copy)]
+#[derive(ArgEnum, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Encoding {
     /// JavaScript Object Notation
     Json,

@@ -6,7 +6,7 @@ use serde_json::Value;
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SerializeOptions {
     /// Emit output data in a compact format. This will disable pretty printing for encodings that
     /// support it.

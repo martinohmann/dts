@@ -31,7 +31,7 @@ pub fn parse(s: &str) -> Result<Statements<'_>, ParseError> {
     Ok(statements)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Statement<'a> {
     path: &'a str,
     value: &'a str,
@@ -51,7 +51,7 @@ impl<'a> Statement<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Statements<'a> {
     inner: Vec<Statement<'a>>,
 }
