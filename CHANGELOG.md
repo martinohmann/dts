@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.1](https://github.com/martinohmann/dts/compare/v0.5.0...v0.5.1) (2022-11-03)
+
+
+### Miscellaneous
+
+* **deps:** bump hcl-rs from 0.8.5 to 0.9.0 ([#151](https://github.com/martinohmann/dts/issues/151)) ([0654a37](https://github.com/martinohmann/dts/commit/0654a37299e925b25fbbe11dbbad67a87c1f5b27))
+* **deps:** bump once_cell from 1.15.0 to 1.16.0 ([#154](https://github.com/martinohmann/dts/issues/154)) ([d43a1d9](https://github.com/martinohmann/dts/commit/d43a1d989fcedd24e0c59c7945614741e85cd55f))
+* **deps:** bump serde from 1.0.145 to 1.0.147 ([#150](https://github.com/martinohmann/dts/issues/150)) ([454ec1f](https://github.com/martinohmann/dts/commit/454ec1f8c121cbb8541ab85cb1a9745f8fa5f666))
+* **deps:** bump serde_json from 1.0.86 to 1.0.87 ([#152](https://github.com/martinohmann/dts/issues/152)) ([05956e3](https://github.com/martinohmann/dts/commit/05956e3750d173f8d191af07173735e197e70bf6))
+
 ## [0.5.0](https://github.com/martinohmann/dts/compare/v0.4.4...v0.5.0) (2022-10-14)
 
 
