@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.2](https://github.com/martinohmann/dts/compare/v0.5.1...v0.5.2) (2022-12-01)
+
+
+### Miscellaneous
+
+* **deps:** bump anyhow from 1.0.65 to 1.0.66 ([#159](https://github.com/martinohmann/dts/issues/159)) ([728f5f6](https://github.com/martinohmann/dts/commit/728f5f65408b9e4703ae1765afb5a9081a72d312))
+* **deps:** bump crossbeam-utils from 0.8.12 to 0.8.14 ([#157](https://github.com/martinohmann/dts/issues/157)) ([11395d9](https://github.com/martinohmann/dts/commit/11395d9fa11e069177822a1e0159a20010e08048))
+
 ## [0.5.1](https://github.com/martinohmann/dts/compare/v0.5.0...v0.5.1) (2022-11-03)
 
 
