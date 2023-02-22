@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.3](https://github.com/martinohmann/dts/compare/v0.5.2...v0.5.3) (2023-02-22)
+
+
+### Miscellaneous
+
+* **deps:** bump hcl-rs from 0.9.0 to 0.10.0 ([#162](https://github.com/martinohmann/dts/issues/162)) ([7a323a6](https://github.com/martinohmann/dts/commit/7a323a677586a08e90119b0e38457f04570a07e0))
+* **deps:** bump regex from 1.6.0 to 1.7.0 ([#161](https://github.com/martinohmann/dts/issues/161)) ([9346eff](https://github.com/martinohmann/dts/commit/9346eff97fb84d4905a472b7d3e715fb133f8164))
+* **deps:** bump serde_json from 1.0.87 to 1.0.91 ([#166](https://github.com/martinohmann/dts/issues/166)) ([2bc786e](https://github.com/martinohmann/dts/commit/2bc786e580d7e8dcef0a473bb1ce4b3e4ecd46f5))
+
 ## [0.5.2](https://github.com/martinohmann/dts/compare/v0.5.1...v0.5.2) (2022-12-01)
 
 
