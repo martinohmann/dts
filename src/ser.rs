@@ -161,6 +161,7 @@ where
     }
 
     fn serialize_yaml(&mut self, value: Value) -> Result<()> {
+        self.writer.write_all(b"---\n")?;
         Ok(serde_yaml::to_writer(&mut self.writer, &value)?)
     }
 
