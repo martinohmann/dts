@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.4](https://github.com/martinohmann/dts/compare/v0.5.3...v0.5.4) (2023-06-23)
+
+
+### Miscellaneous
+
+* **deps:** bump jaq-core from 0.8.2 to 0.10.0 ([#172](https://github.com/martinohmann/dts/issues/172)) ([79c679f](https://github.com/martinohmann/dts/commit/79c679fb8bc2846c945c22efccc358b8c85cd669))
+* **deps:** bump pest from 2.4.0 to 2.5.5 ([#168](https://github.com/martinohmann/dts/issues/168)) ([51269cf](https://github.com/martinohmann/dts/commit/51269cfc2a17c984da1beffaea6e5a3f6e068616))
+* **deps:** bump serde_json from 1.0.91 to 1.0.96 ([#175](https://github.com/martinohmann/dts/issues/175)) ([3f913c3](https://github.com/martinohmann/dts/commit/3f913c33ac184bdbe0a9b376dadea284c9312560))
+* **deps:** bump serde_yaml from 0.8.25 to 0.9.21 ([#176](https://github.com/martinohmann/dts/issues/176)) ([8207336](https://github.com/martinohmann/dts/commit/82073368b76ac13729e036d2e0c30bd164586307))
+* **deps:** bump thiserror from 1.0.37 to 1.0.40 ([#171](https://github.com/martinohmann/dts/issues/171)) ([3681236](https://github.com/martinohmann/dts/commit/36812367f6bc98d59b2ca59a695001aaa7b8e05a))
+* **deps:** bump toml from 0.5.9 to 0.7.4 ([#177](https://github.com/martinohmann/dts/issues/177)) ([48723cb](https://github.com/martinohmann/dts/commit/48723cb6b4ab85dbadf58ae61c2d51ee7e7eba92))
+
 ## [0.5.3](https://github.com/martinohmann/dts/compare/v0.5.2...v0.5.3) (2023-02-22)
 
 
