@@ -164,9 +164,9 @@ where
     }
 
     fn deserialize_toml(&mut self) -> Result<Value> {
-        let mut buf = Vec::new();
-        self.reader.read_to_end(&mut buf)?;
-        Ok(toml::de::from_slice(&buf)?)
+        let mut s = String::new();
+        self.reader.read_to_string(&mut s)?;
+        Ok(toml::from_str(&s)?)
     }
 
     fn deserialize_json5(&mut self) -> Result<Value> {
