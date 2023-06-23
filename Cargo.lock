@@ -825,7 +825,7 @@ dependencies = [
  "dyn-clone",
  "indexmap",
  "itertools",
- "jaq-parse",
+ "jaq-parse 0.8.1",
  "log",
  "serde_json",
 ]
@@ -841,13 +841,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "jaq-std"
-version = "0.8.1"
+name = "jaq-parse"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a4e500b9659999d54b9c0cba3fd68117b728339b70c7d92a411b4168e2d319f"
+checksum = "0a2130a59d64a5476f6feeb6b7e48cbe52ef05d8bc1b9174f50baa93e49052fd"
+dependencies = [
+ "chumsky",
+ "serde",
+]
+
+[[package]]
+name = "jaq-std"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36ab73d2079279e784a52dbbf5f3a5e0d792c89b41fd2c857de87cf698a4e24a"
 dependencies = [
  "bincode",
- "jaq-parse",
+ "jaq-parse 0.9.0",
 ]
 
 [[package]]
