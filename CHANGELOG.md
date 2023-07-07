@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.5](https://github.com/martinohmann/dts/compare/v0.5.4...v0.5.5) (2023-07-07)
+
+
+### Miscellaneous
+
+* **deps:** bump anyhow from 1.0.66 to 1.0.71 ([#180](https://github.com/martinohmann/dts/issues/180)) ([31e10f3](https://github.com/martinohmann/dts/commit/31e10f31e7d61f72f35fccddee9d7b03beb8258e))
+* **deps:** bump assert_cmd from 2.0.4 to 2.0.8 ([#183](https://github.com/martinohmann/dts/issues/183)) ([8bf37ab](https://github.com/martinohmann/dts/commit/8bf37ab8b8f1cdfa2981b730e8c75bce377f3aef))
+* **deps:** bump regex from 1.7.0 to 1.7.3 ([#181](https://github.com/martinohmann/dts/issues/181)) ([f4bcdaa](https://github.com/martinohmann/dts/commit/f4bcdaad6523d41277426ca218e50ca7af79a715))
+* **deps:** bump serde from 1.0.147 to 1.0.164 ([#179](https://github.com/martinohmann/dts/issues/179)) ([1aa2f44](https://github.com/martinohmann/dts/commit/1aa2f44f3b9b08fb333efb4692514fc7c5e07ecf))
+* **deps:** bump serde from 1.0.164 to 1.0.167 ([#185](https://github.com/martinohmann/dts/issues/185)) ([6a569cb](https://github.com/martinohmann/dts/commit/6a569cb96fa955015437960afee59a3fd64c48d7))
+* **deps:** bump url from 2.3.1 to 2.4.0 ([#182](https://github.com/martinohmann/dts/issues/182)) ([035e193](https://github.com/martinohmann/dts/commit/035e193a10c486102101b6e9c9815c494ec615ab))
+
 ## [0.5.4](https://github.com/martinohmann/dts/compare/v0.5.3...v0.5.4) (2023-06-23)
 
 
