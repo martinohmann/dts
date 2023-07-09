@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.5.6](https://github.com/martinohmann/dts/compare/v0.5.5...v0.5.6) (2023-07-09)
+
+
+### Miscellaneous
+
+* **deps:** bump assert_cmd from 2.0.8 to 2.0.11 ([#194](https://github.com/martinohmann/dts/issues/194)) ([ad41f5b](https://github.com/martinohmann/dts/commit/ad41f5b56f60a0f441959450b2eb6cfa40bf7c61))
+* **deps:** bump crossbeam-utils from 0.8.14 to 0.8.16 ([#203](https://github.com/martinohmann/dts/issues/203)) ([4d17ef3](https://github.com/martinohmann/dts/commit/4d17ef3e8d2bf6b6e48be364b22b68446c4e3598))
+* **deps:** bump csv from 1.1.6 to 1.2.2 ([#189](https://github.com/martinohmann/dts/issues/189)) ([d5decac](https://github.com/martinohmann/dts/commit/d5decac7f919e2e9f361d1b8fc8c7a50c40f6af0))
+* **deps:** bump glob from 0.3.0 to 0.3.1 ([#195](https://github.com/martinohmann/dts/issues/195)) ([99d569a](https://github.com/martinohmann/dts/commit/99d569a13eabd732e8134a613cbcb7e39b6006a4))
+* **deps:** bump grep-cli from 0.1.6 to 0.1.7 ([#186](https://github.com/martinohmann/dts/issues/186)) ([45f4e42](https://github.com/martinohmann/dts/commit/45f4e42c79407173014df6bcbaaa08bfbc8bb2ef))
+* **deps:** bump grep-cli from 0.1.7 to 0.1.8 ([#197](https://github.com/martinohmann/dts/issues/197)) ([39899fb](https://github.com/martinohmann/dts/commit/39899fb41461ae6f9c62384cb7d9e04e9df40380))
+* **deps:** bump pest from 2.5.5 to 2.7.0 ([#198](https://github.com/martinohmann/dts/issues/198)) ([b418e3e](https://github.com/martinohmann/dts/commit/b418e3e9bf0af89231890fa3a55a1ef7044cb448))
+* **deps:** bump pest_derive from 2.3.1 to 2.5.5 ([#188](https://github.com/martinohmann/dts/issues/188)) ([b2c2141](https://github.com/martinohmann/dts/commit/b2c2141f581b0ecd02c537b0d8381e60b73dcd57))
+* **deps:** bump predicates from 2.1.1 to 3.0.3 ([#201](https://github.com/martinohmann/dts/issues/201)) ([cce360c](https://github.com/martinohmann/dts/commit/cce360c8c5fd561c00aac98ddad502c3e88e7aff))
+* **deps:** bump rayon from 1.5.3 to 1.7.0 ([#199](https://github.com/martinohmann/dts/issues/199)) ([700864b](https://github.com/martinohmann/dts/commit/700864b5a6ae2f269b87982df87635054d27820c))
+* **deps:** bump serde_json from 1.0.96 to 1.0.100 ([#187](https://github.com/martinohmann/dts/issues/187)) ([82910ba](https://github.com/martinohmann/dts/commit/82910bab039cf16f54e6882419083f38a5f3b0c9))
+* **deps:** bump serde_qs from 0.10.1 to 0.12.0 ([#192](https://github.com/martinohmann/dts/issues/192)) ([391d3d5](https://github.com/martinohmann/dts/commit/391d3d545c002428171b1de5cae046d863e0c25a))
+* **deps:** bump serde_yaml from 0.9.21 to 0.9.22 ([#196](https://github.com/martinohmann/dts/issues/196)) ([d99c0d5](https://github.com/martinohmann/dts/commit/d99c0d5871c0abd9d0c3f3fd831785a5458fe433))
+* **deps:** bump termcolor from 1.1.3 to 1.2.0 ([#193](https://github.com/martinohmann/dts/issues/193)) ([012824e](https://github.com/martinohmann/dts/commit/012824eecdcb53969465c0ff1cc0cd1f6b687407))
+* **deps:** bump thiserror from 1.0.40 to 1.0.43 ([#190](https://github.com/martinohmann/dts/issues/190)) ([02c56ff](https://github.com/martinohmann/dts/commit/02c56ffb9d2cdf597d2c13d5cfa1fa26d852da39))
+* **deps:** bump toml from 0.7.4 to 0.7.6 ([#202](https://github.com/martinohmann/dts/issues/202)) ([6e31189](https://github.com/martinohmann/dts/commit/6e31189acbae33a4287669de78ee567dab60dcec))
+
 ## [0.5.5](https://github.com/martinohmann/dts/compare/v0.5.4...v0.5.5) (2023-07-07)
 
 
