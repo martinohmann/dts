@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.7](https://github.com/martinohmann/dts/compare/v0.5.6...v0.5.7) (2023-07-13)
+
+
+### Miscellaneous
+
+* **deps:** bump hcl-rs from 0.10.0 to 0.16.0 ([47f45c4](https://github.com/martinohmann/dts/commit/47f45c4d12ef83e6ac362542eaf0e4e038244930))
+* **deps:** bump pretty_assertions from 1.3.0 to 1.4.0 ([#205](https://github.com/martinohmann/dts/issues/205)) ([c674d2b](https://github.com/martinohmann/dts/commit/c674d2bc3da16bc497b79ce7f0b5c63d4f429489))
+* **deps:** bump serde from 1.0.167 to 1.0.169 ([#206](https://github.com/martinohmann/dts/issues/206)) ([2496958](https://github.com/martinohmann/dts/commit/24969585a609355265904231eb3d78525c874e85))
+* **deps:** remove `atty` dependency in favor of `std::io::IsTerminal` ([afb1244](https://github.com/martinohmann/dts/commit/afb1244ce9a446aa04d2532a03d5737168d5e50d))
+
 ## [0.5.6](https://github.com/martinohmann/dts/compare/v0.5.5...v0.5.6) (2023-07-09)
 
 
