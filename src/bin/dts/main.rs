@@ -19,7 +19,7 @@ use dts::{de::Deserializer, filter::Filter, ser::Serializer, Encoding, Error, Si
 use rayon::prelude::*;
 use serde_json::Value;
 use std::fs::{self, File};
-use std::io::{self, BufWriter};
+use std::io::{self, BufWriter, IsTerminal};
 
 fn deserialize(source: &Source, opts: &InputOptions) -> Result<Value> {
     let reader = source
@@ -203,7 +203,7 @@ fn main() -> Result<()> {
         }
     }
 
-    if sources.is_empty() && !atty::is(atty::Stream::Stdin) {
+    if sources.is_empty() && !io::stdin().is_terminal() {
         // Input is piped on stdin.
         sources.push(Source::Stdin);
     }

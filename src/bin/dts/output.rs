@@ -6,7 +6,7 @@ use crate::{
     utils::resolve_cmd,
 };
 use clap::ArgEnum;
-use std::io::{self, Stdout};
+use std::io::{self, IsTerminal, Stdout};
 use std::process::{Child, Command, Stdio};
 
 /// ColorChoice represents the color preference of a user.
@@ -44,7 +44,7 @@ impl ColorChoice {
         match *self {
             ColorChoice::Always => true,
             ColorChoice::Never => false,
-            ColorChoice::Auto => self.env_allows_color() && atty::is(atty::Stream::Stdout),
+            ColorChoice::Auto => self.env_allows_color() && io::stdout().is_terminal(),
         }
     }
 
