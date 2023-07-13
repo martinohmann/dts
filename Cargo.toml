@@ -69,7 +69,7 @@ version = "1.0.100"
 [dev-dependencies]
 assert_cmd = "2.0.11"
 criterion = "0.4"
-pretty_assertions = "1.3.0"
+pretty_assertions = "1.4.0"
 predicates = "3.0.3"
 temp-env = "0.3.1"
 
