@@ -19,11 +19,25 @@ body = """
 {% else %}\
     ## [unreleased]
 {% endif %}\
+
+{% macro commit(commit) -%}
+    - {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{% if commit.breaking %}[**breaking**] {% endif %}\
+        {{ commit.message | upper_first }} - ([{{ commit.id | truncate(length=7, end="") }}](<REPO>/commit/{{ commit.id }}))\
+{% endmacro -%}
+
 {% for group, commits in commits | group_by(attribute="group") %}
-    ### {{ group | upper_first }}
-    {% for commit in commits %}
-        - {% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message | upper_first }}\
-    {% endfor %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits
+    | filter(attribute="scope")
+    | sort(attribute="scope") %}
+        {{ self::commit(commit=commit) }}
+    {%- endfor -%}
+    {% raw %}\n{% endraw %}\
+    {%- for commit in commits %}
+        {%- if not commit.scope -%}
+            {{ self::commit(commit=commit) }}
+        {% endif -%}
+    {% endfor -%}
 {% endfor %}\n
 """
 # remove the leading and trailing whitespace from the template
@@ -34,7 +48,7 @@ footer = """
 """
 # postprocessors
 postprocessors = [
-  # { pattern = '<REPO>', replace = "https://github.com/orhun/git-cliff" }, # replace repository URL
+  { pattern = '<REPO>', replace = "https://github.com/martinohmann/dts" },
 ]
 [git]
 # parse the commits based on https://www.conventionalcommits.org
