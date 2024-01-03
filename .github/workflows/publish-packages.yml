@@ -65,7 +65,7 @@ jobs:
         run: |
           version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
 
-          echo ::set-output name=version::${version}
+          echo "version=${version}" >> $GITHUB_OUTPUT
 
       - name: Show version information (Rust, cargo, GCC)
         shell: bash
