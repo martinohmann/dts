@@ -1,0 +1,105 @@
+---
+name: publish-packages
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '**[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  publish-packages:
+    name: Package ${{ matrix.target }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    env:
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            use-cross: true
+          - target: arm-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            use-cross: true
+          - target: arm-unknown-linux-musleabihf
+            os: ubuntu-latest
+            use-cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            use-cross: true
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Install prerequisites
+        shell: bash
+        run: |
+          case ${{ matrix.target }} in
+            arm-unknown-linux-*)
+              sudo apt-get -y update
+              sudo apt-get -y install gcc-arm-linux-gnueabihf ;;
+            aarch64-unknown-linux-gnu)
+              sudo apt-get -y update
+              sudo apt-get -y install gcc-aarch64-linux-gnu ;;
+            *-darwin)
+              brew install coreutils ;;
+          esac
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+          profile: minimal
+
+      - name: Package version
+        id: package-version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+
+          echo ::set-output name=version::${version}
+
+      - name: Show version information (Rust, cargo, GCC)
+        shell: bash
+        run: |
+          gcc --version || true
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+          echo 'Package version: ${{ steps.package-version.outputs.version }}'
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.use-cross }}
+          command: build
+          args: --locked --release --target=${{ matrix.target }}
+
+      - name: Package
+        id: package
+        run: |
+          .github/scripts/package.sh ${{ matrix.target }} \
+            ${{ steps.package-version.outputs.version }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.package.outputs.archive_name }}
+          path: ${{ steps.package.outputs.archive_path }}
+
+      - name: Publish release archives
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: false
+          tag_name: "v${{ steps.package-version.outputs.version }}"
+          files: ${{ steps.package.outputs.package_dir }}/*
