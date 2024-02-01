@@ -92,7 +92,7 @@ jobs:
             ${{ steps.package-version.outputs.version }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.package.outputs.archive_name }}
           path: ${{ steps.package.outputs.archive_path }}
