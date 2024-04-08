@@ -1,6 +1,6 @@
 //! Supported encodings for serialization and deserialization.
 
-use clap::ArgEnum;
+use clap::ValueEnum;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
@@ -12,7 +12,7 @@ use std::path::Path;
 /// hjson only allow deserialization of encoded data but are not able to serialize back into the
 /// original representation.
 #[non_exhaustive]
-#[derive(ArgEnum, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(ValueEnum, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Encoding {
     /// JavaScript Object Notation
     Json,

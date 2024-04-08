@@ -13,7 +13,7 @@ use crate::{
     paging::PagingConfig,
 };
 use anyhow::{anyhow, Context, Result};
-use clap::{App, IntoApp, Parser};
+use clap::{Command, CommandFactory, Parser};
 use clap_complete::{generate, Shell};
 use dts::{de::Deserializer, filter::Filter, ser::Serializer, Encoding, Error, Sink, Source};
 use rayon::prelude::*;
@@ -155,21 +155,21 @@ fn serialize_many(sinks: &[Sink], value: Value, opts: &OutputOptions) -> Result<
         .try_for_each(|(file, value)| serialize(file, value, opts))
 }
 
-fn print_completions(app: &mut App, shell: Shell) {
-    generate(shell, app, app.get_name().to_string(), &mut io::stdout());
+fn print_completions(cmd: &mut Command, shell: Shell) {
+    generate(shell, cmd, cmd.get_name().to_string(), &mut io::stdout());
 }
 
 fn main() -> Result<()> {
     let opts = Options::parse();
 
     if let Some(shell) = opts.generate_completion {
-        let mut app = Options::into_app();
-        print_completions(&mut app, shell);
+        let mut cmd = Options::command();
+        print_completions(&mut cmd, shell);
         std::process::exit(0);
     }
 
     #[cfg(feature = "color")]
-    if opts.output.list_themes {
+    if opts.list_themes {
         print_themes(opts.output.color)?;
         std::process::exit(0);
     }

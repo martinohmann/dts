@@ -1,9 +1,9 @@
 //! Utilities to facilitate output paging.
 
-use clap::ArgEnum;
+use clap::ValueEnum;
 
 /// PagingChoice represents the paging preference of a user.
-#[derive(ArgEnum, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(ValueEnum, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PagingChoice {
     /// Always page output even if you would fit on the screen.
     Always,
