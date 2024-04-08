@@ -64,7 +64,7 @@ version = "1.0.196"
 
 [dependencies.serde_json]
 features = ["preserve_order"]
-version = "1.0.110"
+version = "1.0.115"
 
 [dev-dependencies]
 assert_cmd = "2.0.14"
