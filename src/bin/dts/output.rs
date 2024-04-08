@@ -5,12 +5,12 @@ use crate::{
     paging::{PagingChoice, PagingConfig},
     utils::resolve_cmd,
 };
-use clap::ArgEnum;
+use clap::ValueEnum;
 use std::io::{self, IsTerminal, Stdout};
 use std::process::{Child, Command, Stdio};
 
 /// ColorChoice represents the color preference of a user.
-#[derive(ArgEnum, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(ValueEnum, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ColorChoice {
     /// Always color output even if stdout is a file.
     Always,

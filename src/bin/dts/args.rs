@@ -4,7 +4,7 @@
 use crate::output::ColorChoice;
 use crate::paging::PagingChoice;
 use anyhow::{anyhow, Result};
-use clap::{ArgSettings, Args, Parser, ValueHint};
+use clap::{Args, Parser, ValueHint};
 use clap_complete::Shell;
 use dts::{de::DeserializeOptions, ser::SerializeOptions, Encoding, Sink, Source};
 use regex::Regex;
@@ -18,7 +18,7 @@ use unescape::unescape;
 ///
 /// Refer to the input, transform and output options below.
 #[derive(Parser, Debug)]
-#[clap(
+#[command(
     name = "dts",
     version,
     after_help = "Hint: `dts -h` only provides a usage summary. Run `dts --help` for the full details to each flag."
@@ -30,7 +30,7 @@ pub struct Options {
     /// many also be remote URLs. Data may also be provided on stdin. If stdin is used in
     /// combination with one or more input files, the data from stdin will be read into the first
     /// element of the resulting array.
-    #[clap(name = "SOURCE", value_hint = ValueHint::AnyPath)]
+    #[arg(name = "SOURCE", value_hint = ValueHint::AnyPath)]
     pub sources: Vec<Source>,
 
     /// Output sink. Can be specified multiple times. Defaults to stdout if omitted.
@@ -40,8 +40,7 @@ pub struct Options {
     /// there are more elements than files.
     ///
     /// Passing '-' as filename or providing no output files will write the data to stdout instead.
-    #[clap(short = 'O', long = "sink", value_name = "SINK", value_hint = ValueHint::FilePath)]
-    #[clap(multiple_occurrences = true)]
+    #[arg(short = 'O', long = "sink", value_name = "SINK", value_hint = ValueHint::FilePath)]
     pub sinks: Vec<Sink>,
 
     /// Options for deserializing the input.
@@ -58,26 +57,30 @@ pub struct Options {
     pub output: OutputOptions,
 
     /// If provided, outputs the completion file for the given shell.
-    #[clap(arg_enum, long, value_name = "SHELL")]
+    #[arg(value_enum, long, value_name = "SHELL", group = "generate-completion")]
     pub generate_completion: Option<Shell>,
+
+    /// List available color themes and exit.
+    #[cfg(feature = "color")]
+    #[arg(long, conflicts_with = "generate-completion")]
+    pub list_themes: bool,
 }
 
 /// Options that configure the behaviour of input deserialization.
 #[derive(Args, Debug)]
-#[clap(help_heading = "INPUT OPTIONS")]
 pub struct InputOptions {
     /// Set the input encoding.
     ///
     /// If absent, dts will attempt to detect the encoding from the input file extension (if
     /// present) or the first line of input.
-    #[clap(arg_enum, short = 'i', long, setting = ArgSettings::HidePossibleValues)]
+    #[arg(value_enum, short = 'i', long, help_heading = "Input Options")]
     pub input_encoding: Option<Encoding>,
 
     /// Indicate that CSV input does not include a header row.
     ///
     /// If this flag is absent, the first line of CSV input is treated as headers and will be
     /// discarded.
-    #[clap(long)]
+    #[arg(long, help_heading = "Input Options")]
     pub csv_without_headers: bool,
 
     /// Use CSV headers as keys for the row columns.
@@ -85,21 +88,21 @@ pub struct InputOptions {
     /// When reading CSV, this flag will deserialize the input into an array of maps with each
     /// field keyed by the corresponding header value. Otherwise, the input is deserialized into an
     /// array of arrays.
-    #[clap(short = 'H', long)]
+    #[arg(short = 'H', long, help_heading = "Input Options")]
     pub csv_headers_as_keys: bool,
 
     /// Custom delimiter for CSV input.
-    #[clap(short = 'd', long, parse(try_from_str = parse_csv_delimiter))]
+    #[arg(short = 'd', long, value_parser = parse_csv_delimiter, help_heading = "Input Options")]
     pub csv_input_delimiter: Option<u8>,
 
     /// Regex pattern to split text input at.
-    #[clap(short = 's', long)]
+    #[arg(short = 's', long, help_heading = "Input Options")]
     pub text_split_pattern: Option<Regex>,
 
     /// Glob pattern for directories.
     ///
     /// Required if any of the input paths is a directory. Ignored otherwise.
-    #[clap(long)]
+    #[arg(long, help_heading = "Input Options")]
     pub glob: Option<String>,
 
     /// Read input into a map keyed by file path of the origin file.
@@ -107,7 +110,7 @@ pub struct InputOptions {
     /// If multiple input files or at least one directory is provided, this reads the result into
     /// a map keyed by file path instead of an array. If only one input file is provided, this
     /// option is ignored.
-    #[clap(short = 'P', long)]
+    #[arg(short = 'P', long, help_heading = "Input Options")]
     pub file_paths: bool,
 
     /// Continue on errors that occur while reading or deserializing input data.
@@ -117,7 +120,7 @@ pub struct InputOptions {
     /// and one of the files is malformed. In this case a warning is logged to stderr and the
     /// source is skipped. This flag is ignored if input is read only from a single source that is
     /// not a directory.
-    #[clap(short = 'C', long)]
+    #[arg(short = 'C', long, help_heading = "Input Options")]
     pub continue_on_error: bool,
 }
 
@@ -135,7 +138,6 @@ impl From<&InputOptions> for DeserializeOptions {
 /// Options that configure the behaviour of data transformation.
 #[cfg(feature = "jaq")]
 #[derive(Args, Debug)]
-#[clap(help_heading = "TRANSFORM OPTIONS")]
 pub struct TransformOptions {
     /// A jq expression for transforming the input data.
     ///
@@ -144,14 +146,18 @@ pub struct TransformOptions {
     ///
     /// See <https://stedolan.github.io/jq/manual/> for supported operators, filters and
     /// functions.
-    #[clap(short = 'j', long = "--jq", value_name = "EXPRESSION")]
+    #[arg(
+        short = 'j',
+        long = "jq",
+        value_name = "EXPRESSION",
+        help_heading = "Transform Options"
+    )]
     pub jq_expression: Option<String>,
 }
 
 /// Options that configure the behaviour of data transformation.
 #[cfg(not(feature = "jaq"))]
 #[derive(Args, Debug)]
-#[clap(help_heading = "TRANSFORM OPTIONS")]
 pub struct TransformOptions {
     /// A jq expression for transforming the input data.
     ///
@@ -164,13 +170,17 @@ pub struct TransformOptions {
     ///
     /// See <https://stedolan.github.io/jq/manual/> for supported operators, filters and
     /// functions.
-    #[clap(short = 'j', long = "--jq", value_name = "EXPRESSION")]
+    #[arg(
+        short = 'j',
+        long = "jq",
+        value_name = "EXPRESSION",
+        help_heading = "Transform Options"
+    )]
     pub jq_expression: Option<String>,
 }
 
 /// Options that configure the behaviour of output serialization.
 #[derive(Args, Debug)]
-#[clap(help_heading = "OUTPUT OPTIONS")]
 pub struct OutputOptions {
     /// Set the output encoding.
     ///
@@ -178,7 +188,7 @@ pub struct OutputOptions {
     ///
     /// If the encoding is not explicitly set and it cannot be inferred from the output file
     /// extension (or the output is stdout), the fallback is to encode output as JSON.
-    #[clap(arg_enum, short = 'o', long, setting = ArgSettings::HidePossibleValues)]
+    #[arg(value_enum, short = 'o', long, help_heading = "Output Options")]
     pub output_encoding: Option<Encoding>,
 
     /// Controls when to use colors.
@@ -190,21 +200,22 @@ pub struct OutputOptions {
     ///
     /// Use color `always` to enforce coloring.
     #[cfg(feature = "color")]
-    #[clap(arg_enum, long, value_name = "WHEN")]
-    #[clap(default_value = "auto", env = "DTS_COLOR")]
+    #[arg(
+        value_enum,
+        long,
+        value_name = "WHEN",
+        default_value = "auto",
+        env = "DTS_COLOR",
+        help_heading = "Output Options"
+    )]
     pub color: ColorChoice,
 
     /// Controls the color theme to use.
     ///
     /// See --list-themes for available color themes.
     #[cfg(feature = "color")]
-    #[clap(long, env = "DTS_THEME")]
+    #[arg(long, env = "DTS_THEME", help_heading = "Output Options")]
     pub theme: Option<String>,
-
-    /// List available color themes and exit.
-    #[cfg(feature = "color")]
-    #[clap(long, conflicts_with = "generate-completion")]
-    pub list_themes: bool,
 
     /// Controls when to page output.
     ///
@@ -213,25 +224,31 @@ pub struct OutputOptions {
     /// in use.
     ///
     /// Use paging `always` to enforce paging even if the output fits onto the screen.
-    #[clap(arg_enum, long, value_name = "WHEN")]
-    #[clap(default_value = "auto", env = "DTS_PAGING")]
+    #[arg(
+        value_enum,
+        long,
+        value_name = "WHEN",
+        default_value = "auto",
+        env = "DTS_PAGING",
+        help_heading = "Output Options"
+    )]
     pub paging: PagingChoice,
 
     /// Controls the output pager to use.
     ///
     /// By default the pager configured via the `PAGER` environment variable will be used. The
     /// fallback is `less`.
-    #[clap(long, env = "DTS_PAGER")]
+    #[arg(long, env = "DTS_PAGER", help_heading = "Output Options")]
     pub pager: Option<String>,
 
     /// Emit output data in a compact format.
     ///
     /// This will disable pretty printing for encodings that support it.
-    #[clap(short = 'c', long)]
+    #[arg(short = 'c', long, help_heading = "Output Options")]
     pub compact: bool,
 
     /// Add a trailing newline to the output.
-    #[clap(short = 'n', long)]
+    #[arg(short = 'n', long, help_heading = "Output Options")]
     pub newline: bool,
 
     /// Use object keys of the first item as CSV headers.
@@ -240,19 +257,19 @@ pub struct OutputOptions {
     /// the first object will be used as CSV headers. Field values of all following objects will be
     /// matched to the right CSV column based on their key. Missing fields produce empty columns
     /// while excess fields are ignored.
-    #[clap(short = 'K', long)]
+    #[arg(short = 'K', long, help_heading = "Output Options")]
     pub keys_as_csv_headers: bool,
 
     /// Custom delimiter for CSV output.
-    #[clap(short = 'D', long, parse(try_from_str = parse_csv_delimiter))]
+    #[arg(short = 'D', long, value_parser = parse_csv_delimiter, help_heading = "Output Options")]
     pub csv_output_delimiter: Option<u8>,
 
     /// Custom separator to join text output with.
-    #[clap(short = 'J', long, parse(try_from_str = parse_unescaped))]
+    #[arg(short = 'J', long, value_parser = parse_unescaped, help_heading = "Output Options")]
     pub text_join_separator: Option<String>,
 
     /// Overwrite output files if they exist.
-    #[clap(long)]
+    #[arg(long)]
     pub overwrite: bool,
 }
 
