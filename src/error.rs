@@ -40,7 +40,7 @@ pub enum Error {
 
     /// Represents an error fetching a remote data source.
     #[error("unable to fetch remote data source")]
-    RequestError(#[from] ureq::Error),
+    RequestError(Box<ureq::Error>),
 
     /// Represents errors emitted by serializers and deserializers.
     #[error(transparent)]
@@ -157,5 +157,11 @@ impl From<hcl::Error> for Error {
             hcl::Error::Io(io_err) => Error::io(io_err),
             other => Error::serde(other),
         }
+    }
+}
+
+impl From<ureq::Error> for Error {
+    fn from(err: ureq::Error) -> Self {
+        Error::RequestError(Box::new(err))
     }
 }
