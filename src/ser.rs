@@ -3,6 +3,7 @@
 
 use crate::{key::flatten_keys, value::ValueExt, Encoding, Error, Result};
 use serde_json::Value;
+use std::fmt::Write;
 
 /// Options for the `Serializer`. The options are context specific and may only be honored when
 /// serializing into a certain `Encoding`.
@@ -263,8 +264,10 @@ where
             .as_object()
             .unwrap()
             .into_iter()
-            .map(|(k, v)| format!("{} = {};\n", k, v))
-            .collect::<String>();
+            .fold(String::new(), |mut output, (k, v)| {
+                let _ = writeln!(output, "{k} = {v};");
+                output
+            });
 
         Ok(self.writer.write_all(output.as_bytes())?)
     }

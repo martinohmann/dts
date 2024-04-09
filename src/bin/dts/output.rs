@@ -10,7 +10,7 @@ use std::io::{self, IsTerminal, Stdout};
 use std::process::{Child, Command, Stdio};
 
 /// ColorChoice represents the color preference of a user.
-#[derive(ValueEnum, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(ValueEnum, Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum ColorChoice {
     /// Always color output even if stdout is a file.
     Always,
@@ -19,13 +19,8 @@ pub enum ColorChoice {
     /// environment variable.
     Auto,
     /// Never color output.
+    #[default]
     Never,
-}
-
-impl Default for ColorChoice {
-    fn default() -> Self {
-        ColorChoice::Never
-    }
 }
 
 impl From<ColorChoice> for termcolor::ColorChoice {

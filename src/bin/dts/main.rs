@@ -151,7 +151,7 @@ fn serialize_many(sinks: &[Sink], value: Value, opts: &OutputOptions) -> Result<
 
     sinks
         .iter()
-        .zip(values.into_iter())
+        .zip(values)
         .try_for_each(|(file, value)| serialize(file, value, opts))
 }
 
@@ -240,7 +240,7 @@ fn main() -> Result<()> {
     let value = transform(value, &opts.transform)?;
 
     if sinks.len() <= 1 {
-        serialize(sinks.get(0).unwrap_or(&Sink::Stdout), value, &opts.output)
+        serialize(sinks.first().unwrap_or(&Sink::Stdout), value, &opts.output)
     } else {
         serialize_many(&sinks, value, &opts.output)
     }

@@ -1,7 +1,7 @@
 //! A wrapper for `jaq`.
 
 use crate::{Error, Result};
-use jaq_core::{self, Ctx, Definitions, RcIter, Val};
+use jaq_core::{Ctx, Definitions, RcIter, Val};
 use serde_json::Value;
 use std::fmt;
 

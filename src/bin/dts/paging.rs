@@ -3,7 +3,7 @@
 use clap::ValueEnum;
 
 /// PagingChoice represents the paging preference of a user.
-#[derive(ValueEnum, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(ValueEnum, Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum PagingChoice {
     /// Always page output even if you would fit on the screen.
     Always,
@@ -11,13 +11,8 @@ pub enum PagingChoice {
     /// the screen.
     Auto,
     /// Never page output.
+    #[default]
     Never,
-}
-
-impl Default for PagingChoice {
-    fn default() -> Self {
-        PagingChoice::Never
-    }
 }
 
 /// PagingConfig holds configuration related to output paging.

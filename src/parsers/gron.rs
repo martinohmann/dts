@@ -12,7 +12,6 @@ struct GronParser;
 pub fn parse(s: &str) -> Result<Statements<'_>, ParseError> {
     let statements = GronParser::parse(Rule::Statements, s)
         .map_err(|e| ParseError::new(ParseErrorKind::Gron, e))?
-        .into_iter()
         .filter_map(|pair| match pair.as_rule() {
             Rule::Statement => {
                 let mut inner = pair.into_inner();

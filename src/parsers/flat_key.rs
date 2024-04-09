@@ -12,7 +12,6 @@ struct FlatKeyParser;
 pub fn parse(key: &str) -> Result<KeyParts, ParseError> {
     let parts = FlatKeyParser::parse(Rule::Parts, key)
         .map_err(|e| ParseError::new(ParseErrorKind::FlatKey, e))?
-        .into_iter()
         .filter_map(|pair| match pair.as_rule() {
             Rule::Key => Some(KeyPart::Ident(pair.as_str().to_owned())),
             Rule::StringDq => Some(KeyPart::Ident(pair.as_str().replace("\\\"", "\""))),
