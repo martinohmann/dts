@@ -12,11 +12,11 @@ use unescape::unescape;
 
 /// Simple tool to transcode between different encodings.
 ///
-/// The tool first deserializes data from the input data into an internal representation which
-/// resembles JSON. As an optional step certain transformations can be applied to the data before
-/// serializing into the output encoding.
+/// The tool first deserializes data from the input into an internal representation which resembles
+/// JSON. As an optional step certain transformations can be applied before serializing back into
+/// the output encoding.
 ///
-/// Refer to the input, transform and output options below.
+/// Refer to the documentation of the input, transform and output options below.
 #[derive(Parser, Debug)]
 #[command(
     name = "dts",
@@ -26,10 +26,10 @@ use unescape::unescape;
 pub struct Options {
     /// Input sources.
     ///
-    /// If multiple files are provides, the decoded data is read into an array. The input files
-    /// many also be remote URLs. Data may also be provided on stdin. If stdin is used in
-    /// combination with one or more input files, the data from stdin will be read into the first
-    /// element of the resulting array.
+    /// If multiple files are provided, the decoded data is read into an array. Input files many
+    /// also be remote URLs. Data may also be provided on stdin. If stdin is used in combination
+    /// with one or more input files, the data from stdin will be read into the first element of
+    /// the resulting array.
     #[arg(name = "SOURCE", value_hint = ValueHint::AnyPath)]
     pub sources: Vec<Source>,
 
@@ -48,7 +48,7 @@ pub struct Options {
     pub input: InputOptions,
 
     /// Options for data transformations performed after deserializing from the input encoding but
-    /// before serializing to the output encoding.
+    /// before serializing back into the output encoding.
     #[clap(flatten)]
     pub transform: TransformOptions,
 
@@ -72,7 +72,7 @@ pub struct InputOptions {
     /// Set the input encoding.
     ///
     /// If absent, dts will attempt to detect the encoding from the input file extension (if
-    /// present) or the first line of input.
+    /// present) or from the first line of input.
     #[arg(value_enum, short = 'i', long, help_heading = "Input Options")]
     pub input_encoding: Option<Encoding>,
 
@@ -184,7 +184,7 @@ pub struct TransformOptions {
 pub struct OutputOptions {
     /// Set the output encoding.
     ///
-    /// If absent, the encoding will be detected from output file extension.
+    /// If absent, the encoding will be detected from the output file extension.
     ///
     /// If the encoding is not explicitly set and it cannot be inferred from the output file
     /// extension (or the output is stdout), the fallback is to encode output as JSON.
@@ -194,9 +194,9 @@ pub struct OutputOptions {
     /// Controls when to use colors.
     ///
     /// The default setting is `auto`, which means dts will try to guess when to use colors. For
-    /// example, if dts is printing to a terminal, then it will use colors, but if it is redirected
-    /// to a file or a pipe, then it will suppress color output. Output is also not colored if the
-    /// TERM environment variable isn't set or the terminal is `dumb`.
+    /// example, if dts is printing to a terminal, it will use colors. If it is redirected to a
+    /// file or a pipe, it will suppress color output. Output is also not colored if the TERM
+    /// environment variable isn't set or the terminal is `dumb`.
     ///
     /// Use color `always` to enforce coloring.
     #[cfg(feature = "color")]
@@ -219,11 +219,11 @@ pub struct OutputOptions {
 
     /// Controls when to page output.
     ///
-    /// The default setting is `auto`, which means dts will try to guess when to page output. For
-    /// example, if the output does fit onto the screen it may not be paged depending on the pager
-    /// in use.
+    /// The default setting is `auto`. dts will try to guess when to page output when `auto` is
+    /// enabled. For example, if the output does fit onto the screen it may not be paged depending
+    /// on the pager in use.
     ///
-    /// Use paging `always` to enforce paging even if the output fits onto the screen.
+    /// Use `always` to enforce paging even if the output fits onto the screen.
     #[arg(
         value_enum,
         long,
