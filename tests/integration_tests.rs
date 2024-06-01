@@ -81,6 +81,28 @@ fn json_to_gron() {
 }
 
 #[test]
+fn json_to_hcl() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .arg("tests/fixtures/example.json")
+        .args(&["-o", "hcl"])
+        .assert()
+        .success()
+        .stdout(read("tests/fixtures/example.hcl").unwrap());
+}
+
+#[test]
+fn json_to_hcl_compact() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .arg("tests/fixtures/example.json")
+        .args(&["-o", "hcl", "--compact"])
+        .assert()
+        .success()
+        .stdout(read("tests/fixtures/example.compact.hcl").unwrap());
+}
+
+#[test]
 fn gron_to_json() {
     Command::cargo_bin("dts")
         .unwrap()
