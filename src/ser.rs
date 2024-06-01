@@ -273,7 +273,17 @@ where
     }
 
     fn serialize_hcl(&mut self, value: Value) -> Result<()> {
-        Ok(hcl::to_writer(&mut self.writer, &value)?)
+        if self.opts.compact {
+            let fmt = hcl::format::Formatter::builder()
+                .compact(self.opts.compact)
+                .build(&mut self.writer);
+            let mut ser = hcl::ser::Serializer::with_formatter(fmt);
+            ser.serialize(&value)?;
+        } else {
+            hcl::to_writer(&mut self.writer, &value)?;
+        }
+
+        Ok(())
     }
 }
 
