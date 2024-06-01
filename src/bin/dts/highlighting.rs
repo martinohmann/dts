@@ -172,7 +172,7 @@ impl<'a> SyntaxHighlighter<'a> {
 
         let ctrl = Controller::new(&config, self.config.assets());
 
-        match ctrl.run(vec![input]) {
+        match ctrl.run(vec![input], None) {
             Ok(_) => Ok(()),
             Err(err) => Err(io::Error::new(io::ErrorKind::Other, err.to_string())),
         }
