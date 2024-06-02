@@ -122,6 +122,14 @@ pub struct InputOptions {
     /// not a directory.
     #[arg(short = 'C', long, help_heading = "Input Options")]
     pub continue_on_error: bool,
+
+    /// Simplify input if the encoding supports it.
+    ///
+    /// Some encodings like HCL support partial expression evaluation, where an expression like
+    /// `1 + 2` can be evaluated to `3`. This flag controls if input simplifications like this
+    /// should be performed or not.
+    #[arg(long, help_heading = "Input Options")]
+    pub simplify: bool,
 }
 
 impl From<&InputOptions> for DeserializeOptions {
@@ -131,6 +139,7 @@ impl From<&InputOptions> for DeserializeOptions {
             csv_without_headers: opts.csv_without_headers,
             csv_delimiter: opts.csv_input_delimiter,
             text_split_pattern: opts.text_split_pattern.clone(),
+            simplify: opts.simplify,
         }
     }
 }
