@@ -2,6 +2,7 @@
 //! encodings into a `Value`.
 
 use crate::{key::expand_keys, parsers::gron, Encoding, Result};
+use hcl::eval::Evaluate;
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::{Map, Value};
@@ -21,6 +22,8 @@ pub struct DeserializeOptions {
     pub csv_delimiter: Option<u8>,
     /// Optional regex pattern to split text input at.
     pub text_split_pattern: Option<Regex>,
+    /// Simplify input if the encoding supports it.
+    pub simplify: bool,
 }
 
 impl DeserializeOptions {
@@ -79,6 +82,12 @@ impl DeserializerBuilder {
     /// Sets regex pattern to split text at.
     pub fn text_split_pattern(&mut self, pattern: Regex) -> &mut Self {
         self.opts.text_split_pattern = Some(pattern);
+        self
+    }
+
+    /// Simplify input if the encoding supports it.
+    pub fn simplifiy(&mut self, yes: bool) -> &mut Self {
+        self.opts.simplify = yes;
         self
     }
 
@@ -255,7 +264,16 @@ where
     }
 
     fn deserialize_hcl(&mut self) -> Result<Value> {
-        Ok(hcl::from_reader(&mut self.reader)?)
+        let value = if self.opts.simplify {
+            let mut body: hcl::Body = hcl::from_reader(&mut self.reader)?;
+            let ctx = hcl::eval::Context::new();
+            let _ = body.evaluate_in_place(&ctx);
+            hcl::from_body(body)?
+        } else {
+            hcl::from_reader(&mut self.reader)?
+        };
+
+        Ok(value)
     }
 }
 
