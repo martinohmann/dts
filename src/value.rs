@@ -24,9 +24,6 @@ pub trait ValueExt {
     /// Deep merges `other` into `self`, replacing all values in `other` that were merged into
     /// `self` with `Value::Null`.
     fn deep_merge(&mut self, other: &mut Value);
-
-    /// Returns true if `self` is `Value::Null` or an empty array or map.
-    fn is_empty(&self) -> bool;
 }
 
 impl ValueExt for Value {
@@ -72,15 +69,6 @@ impl ValueExt for Value {
             }
             (_, Value::Null) => (),
             (lhs, rhs) => *lhs = rhs.take(),
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        match self {
-            Value::Null => true,
-            Value::Array(array) if array.is_empty() => true,
-            Value::Object(object) if object.is_empty() => true,
-            _ => false,
         }
     }
 }
