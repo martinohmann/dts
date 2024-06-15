@@ -1,0 +1,43 @@
+---
+name: check-strip
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+
+jobs:
+  check-strip:
+    env:
+      # Emit backtraces on panics.
+      RUST_BACKTRACE: 1
+    name: test ${{ matrix.target }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          profile: minimal
+          override: true
+
+      - name: Check strip
+        run: |
+          strip || true
+
+      - name: Check aarch64-apple-darwin-strip
+        run: |
+          aarch64-apple-darwin-strip || true
