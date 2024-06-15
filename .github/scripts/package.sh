@@ -4,6 +4,8 @@
 
 set -euo pipefail
 
+GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
+
 strip_binary() {
   local target="$1"
   local bin_path="$2"
@@ -91,9 +93,10 @@ package() {
 
   rm -rf "$archive_dir"
 
-  echo ::set-output name=package_dir::"${package_dir}"
-  echo ::set-output name=archive_name::"${archive_name}"
-  echo ::set-output name=archive_path::"${archive_path}"
+  # shellcheck disable=SC2129
+  echo "package_dir=${package_dir}" >> "$GITHUB_OUTPUT"
+  echo "archive_name=${archive_name}" >> "$GITHUB_OUTPUT"
+  echo "archive_path=${archive_path}" >> "$GITHUB_OUTPUT"
 }
 
 if [ $# -lt 2 ]; then
