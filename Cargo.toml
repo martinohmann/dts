@@ -58,7 +58,7 @@ version = "0.24.0"
 [dependencies.clap]
 default-features = false
 features = ["std", "derive", "env", "help", "suggestions"]
-version = "4.5.4"
+version = "4.5.8"
 
 [dependencies.serde]
 features = ["derive"]
