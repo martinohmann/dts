@@ -40,7 +40,7 @@ impl<'a> ColoredStdoutWriter<'a> {
     }
 }
 
-impl<'a> io::Write for ColoredStdoutWriter<'a> {
+impl io::Write for ColoredStdoutWriter<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.buf.as_mut() {
             Some(w) => w.write(buf),
@@ -61,7 +61,7 @@ impl<'a> io::Write for ColoredStdoutWriter<'a> {
     }
 }
 
-impl<'a> Drop for ColoredStdoutWriter<'a> {
+impl Drop for ColoredStdoutWriter<'_> {
     fn drop(&mut self) {
         let _ = self.flush();
     }
