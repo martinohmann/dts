@@ -239,3 +239,14 @@ fn continue_on_error() {
         .success()
         .stdout(read("tests/fixtures/example.merged.json").unwrap());
 }
+
+#[test]
+fn yaml_to_multi_doc_yaml() {
+    Command::cargo_bin("dts")
+        .unwrap()
+        .arg("tests/fixtures/example.yaml")
+        .args(&["-o", "yaml", "--multi-doc-yaml", "-j", ".users[]"])
+        .assert()
+        .success()
+        .stdout(read("tests/fixtures/example.multi-doc.yaml").unwrap());
+}

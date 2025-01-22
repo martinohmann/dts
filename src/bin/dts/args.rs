@@ -277,6 +277,13 @@ pub struct OutputOptions {
     #[arg(short = 'J', long, value_parser = parse_unescaped, help_heading = "Output Options")]
     pub text_join_separator: Option<String>,
 
+    /// Treat output arrays as multiple YAML documents.
+    ///
+    /// If the output is an array and the output format is YAML, treat the array members as
+    /// multiple YAML documents that get written to the same file.
+    #[arg(long, help_heading = "Output Options")]
+    pub multi_doc_yaml: bool,
+
     /// Overwrite output files if they exist.
     #[arg(long)]
     pub overwrite: bool,
@@ -290,6 +297,7 @@ impl From<&OutputOptions> for SerializeOptions {
             keys_as_csv_headers: opts.keys_as_csv_headers,
             csv_delimiter: opts.csv_output_delimiter,
             text_join_separator: opts.text_join_separator.clone(),
+            multi_doc_yaml: opts.multi_doc_yaml,
         }
     }
 }

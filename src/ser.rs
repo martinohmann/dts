@@ -23,6 +23,8 @@ pub struct SerializeOptions {
     pub csv_delimiter: Option<u8>,
     /// Optional seprator to join text output with.
     pub text_join_separator: Option<String>,
+    /// Treat output arrays as multiple YAML documents.
+    pub multi_doc_yaml: bool,
 }
 
 impl SerializeOptions {
@@ -90,6 +92,12 @@ impl SerializerBuilder {
         S: AsRef<str>,
     {
         self.opts.text_join_separator = Some(sep.as_ref().to_owned());
+        self
+    }
+
+    /// Treat output arrays as multiple YAML documents.
+    pub fn multi_doc_yaml(&mut self, yes: bool) -> &mut Self {
+        self.opts.multi_doc_yaml = yes;
         self
     }
 
@@ -162,8 +170,18 @@ where
     }
 
     fn serialize_yaml(&mut self, value: Value) -> Result<()> {
+        match value {
+            Value::Array(array) if self.opts.multi_doc_yaml => array
+                .into_iter()
+                .try_for_each(|document| self.serialize_yaml_document(&document)),
+            value => self.serialize_yaml_document(&value),
+        }
+    }
+
+    fn serialize_yaml_document(&mut self, value: &Value) -> Result<()> {
         self.writer.write_all(b"---\n")?;
-        Ok(serde_yaml::to_writer(&mut self.writer, &value)?)
+        serde_yaml::to_writer(&mut self.writer, value)?;
+        Ok(())
     }
 
     fn serialize_json(&mut self, value: Value) -> Result<()> {
