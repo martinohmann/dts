@@ -6,7 +6,7 @@ mod paging;
 mod utils;
 
 #[cfg(feature = "color")]
-use crate::highlighting::{print_themes, ColoredStdoutWriter, HighlightingConfig};
+use crate::highlighting::{print_themes, ColoredStdoutWriter, SyntaxHighlighter};
 use crate::{
     args::{InputOptions, Options, OutputOptions, TransformOptions},
     output::StdoutWriter,
@@ -92,15 +92,13 @@ fn serialize(sink: &Sink, value: Value, opts: &OutputOptions) -> Result<()> {
 
     let paging_config = PagingConfig::new(opts.paging, opts.pager.as_deref());
 
-    #[cfg(feature = "color")]
-    let assets = highlighting::load_assets();
-
     let writer: Box<dyn io::Write> = match sink {
         #[cfg(feature = "color")]
         Sink::Stdout => {
             if opts.color.should_colorize() {
-                let config = HighlightingConfig::new(&assets, paging_config, opts.theme.as_deref());
-                Box::new(ColoredStdoutWriter::new(encoding, config))
+                let highlighter = SyntaxHighlighter::new(paging_config);
+                let theme = opts.theme.as_deref();
+                Box::new(ColoredStdoutWriter::new(highlighter, encoding, theme))
             } else {
                 Box::new(StdoutWriter::new(paging_config))
             }
