@@ -5,7 +5,7 @@ use crate::{
     paging::{PagingChoice, PagingConfig},
     utils::resolve_cmd,
 };
-use bat::{assets::HighlightingAssets, config::Config, controller::Controller, Input, PagingMode};
+use bat::{Input, PagingMode, assets::HighlightingAssets, config::Config, controller::Controller};
 use dts::Encoding;
 use std::io::{self, Write};
 use std::path::Path;

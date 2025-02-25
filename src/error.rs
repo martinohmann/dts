@@ -1,6 +1,6 @@
 //! Defines the `Error` and `Result` types used by this crate.
 
-use crate::{parsers::ParseError, Encoding};
+use crate::{Encoding, parsers::ParseError};
 use std::error::Error as StdError;
 use std::fmt::Display;
 use std::io;

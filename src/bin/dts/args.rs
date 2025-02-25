@@ -3,10 +3,10 @@
 #[cfg(feature = "color")]
 use crate::output::ColorChoice;
 use crate::paging::PagingChoice;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::{Args, Parser, ValueHint};
 use clap_complete::Shell;
-use dts::{de::DeserializeOptions, ser::SerializeOptions, Encoding, Sink, Source};
+use dts::{Encoding, Sink, Source, de::DeserializeOptions, ser::SerializeOptions};
 use regex::Regex;
 use unescape::unescape;
 

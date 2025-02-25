@@ -1,7 +1,7 @@
 //! This module provides a `Serializer` which supports serializing values into various output
 //! encodings.
 
-use crate::{key::flatten_keys, value::ValueExt, Encoding, Error, Result};
+use crate::{Encoding, Error, Result, key::flatten_keys, value::ValueExt};
 use serde_json::Value;
 use std::fmt::Write;
 

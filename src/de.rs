@@ -1,7 +1,7 @@
 //! This module provides a `Deserializer` which supports deserializing input data with various
 //! encodings into a `Value`.
 
-use crate::{key::expand_keys, parsers::gron, Encoding, Result};
+use crate::{Encoding, Result, key::expand_keys, parsers::gron};
 use hcl::eval::Evaluate;
 use regex::Regex;
 use serde::Deserialize;
