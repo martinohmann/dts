@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "packageRules": [
+    {
+      "description": "Rust jag crates",
+      "groupName": "rust jaq crates",
+      "matchPackageNames": ["jaq-.*"],
+      "matchDatasources": ["cargo"],
+      "versioning": "semver",
+      "group": {
+        "commitMessageTopic": "{{{groupName}}}"
+      },
+      "separateMinorPatch": true
+    }
+  ]
+}
