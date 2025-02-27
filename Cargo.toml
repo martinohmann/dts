@@ -9,7 +9,8 @@ documentation = "https://docs.rs/dts/"
 keywords = ["hcl", "json", "yaml", "jq"]
 categories = ["encoding"]
 readme = "README.md"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85"
 exclude = [
     ".github/",
 ]

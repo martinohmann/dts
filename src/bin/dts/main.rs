@@ -6,16 +6,16 @@ mod paging;
 mod utils;
 
 #[cfg(feature = "color")]
-use crate::highlighting::{print_themes, ColoredStdoutWriter, SyntaxHighlighter};
+use crate::highlighting::{ColoredStdoutWriter, SyntaxHighlighter, print_themes};
 use crate::{
     args::{InputOptions, Options, OutputOptions, TransformOptions},
     output::StdoutWriter,
     paging::PagingConfig,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::{Command, CommandFactory, Parser};
-use clap_complete::{generate, Shell};
-use dts::{de::Deserializer, filter::Filter, ser::Serializer, Encoding, Error, Sink, Source};
+use clap_complete::{Shell, generate};
+use dts::{Encoding, Error, Sink, Source, de::Deserializer, filter::Filter, ser::Serializer};
 use rayon::prelude::*;
 use serde_json::Value;
 use std::fs::{self, File};
@@ -136,7 +136,7 @@ fn serialize_many(sinks: &[Sink], value: Value, opts: &OutputOptions) -> Result<
         _ => {
             return Err(anyhow!(
                 "when using multiple output files, the data must be an array"
-            ))
+            ));
         }
     };
 
