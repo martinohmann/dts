@@ -777,14 +777,14 @@ checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
 
 [[package]]
 name = "hcl-edit"
-version = "0.8.4"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a0579545680893e2204fbf2d44ee806eba33f78d15ae77f0185811643f43aa5"
+checksum = "1ce27e8955fa1d1f048aab75581b699df1ab6e911535fad3c88cb583986efbc0"
 dependencies = [
  "fnv",
  "hcl-primitives",
  "vecmap-rs",
- "winnow 0.6.24",
+ "winnow",
 ]
 
 [[package]]
@@ -802,9 +802,9 @@ dependencies = [
 
 [[package]]
 name = "hcl-rs"
-version = "0.18.3"
+version = "0.18.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf13bca2491da7ac04443ff88836f769ee56fe043c4f7bafcfc51b432f2b5831"
+checksum = "d07c2f533407c55ca997fdebea4f26516c282ff9412b1bfca0f8f37bc1c9fd78"
 dependencies = [
  "hcl-edit",
  "hcl-primitives",
@@ -1990,7 +1990,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow 0.7.3",
+ "winnow",
 ]
 
 [[package]]
@@ -2352,15 +2352,6 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
-
-[[package]]
-name = "winnow"
-version = "0.6.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8d71a593cc5c42ad7876e2c1fda56f314f3754c084128833e64f1345ff8a03a"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "winnow"
