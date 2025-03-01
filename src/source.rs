@@ -69,7 +69,7 @@ impl Source {
         let reader: Box<dyn io::Read> = match self {
             Self::Stdin => Box::new(io::stdin()),
             Self::Path(path) => Box::new(fs::File::open(path)?),
-            Self::Url(url) => Box::new(ureq::get(url.as_ref()).call()?.into_reader()),
+            Self::Url(url) => Box::new(ureq::get(url.as_ref()).call()?.into_body().into_reader()),
         };
 
         SourceReader::new(reader, self.encoding())
