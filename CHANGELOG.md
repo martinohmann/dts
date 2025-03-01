@@ -4,13 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [0.6.7](https://github.com/martinohmann/dts/compare/0.6.6..0.6.7) - 2025-03-01
 
-### Bug Fixes
-
-- **deps**: Update rust crate bat to 0.25.0 (#302) - ([9e5386f](https://github.com/martinohmann/dts/commit/9e5386f881e9516730b5df2eb3b3f2ced0c052c1))
-
 ### Dependencies
 
 - **deps**: Upgrade rust to 1.85 and bump edition to 2024 (#290) - ([fd3c68e](https://github.com/martinohmann/dts/commit/fd3c68e16873db38116d07d302ff1b10266050d3))
+- **deps**: Update rust crate bat to 0.25.0 (#302) - ([9e5386f](https://github.com/martinohmann/dts/commit/9e5386f881e9516730b5df2eb3b3f2ced0c052c1))
 - **deps**: Update rust crate toml to v0.8.20 (#301) - ([0ef1b5d](https://github.com/martinohmann/dts/commit/0ef1b5d8f633fe788010d78031733229997d5127))
 - **deps**: Update rust crate serde_json to v1.0.139 (#300) - ([fba80ec](https://github.com/martinohmann/dts/commit/fba80ec810b5f2247f753fb41b1843fe82e2b3af))
 - **deps**: Update rust crate serde to v1.0.218 (#299) - ([3581f58](https://github.com/martinohmann/dts/commit/3581f581bc7121580177ae9106f548a8fdf4102c))
