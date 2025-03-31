@@ -40,10 +40,10 @@ jobs:
             use-cross: true
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
         with:
           toolchain: stable
           target: ${{ matrix.target }}
@@ -51,7 +51,7 @@ jobs:
           override: true
 
       - name: Load cache
-        uses: actions/cache@v4
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
         with:
           path: |
             ~/.cargo/bin/
@@ -62,7 +62,7 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # v1
         with:
           use-cross: ${{ matrix.use-cross }}
           command: build
@@ -70,7 +70,7 @@ jobs:
 
       - name: Run tests
         if: ${{ !matrix.use-cross }}
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # v1
         with:
           use-cross: ${{ matrix.use-cross }}
           command: test
@@ -81,10 +81,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
         with:
           toolchain: stable
           override: true
@@ -92,7 +92,7 @@ jobs:
           components: rustfmt
 
       - name: Check formatting
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # v1
         with:
           command: fmt
           args: --all -- --check
@@ -102,17 +102,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
         with:
           toolchain: stable
           profile: minimal
           override: true
 
       - name: Check documentation
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # v1
         env:
           RUSTDOCFLAGS: -D warnings
         with:
