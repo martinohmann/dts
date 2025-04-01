@@ -33,15 +33,34 @@
       "addLabels": ["renovate/github-action"]
     },
     {
-      "description": "Rust jag crates",
-      "groupName": "rust jaq crates",
-      "matchPackageNames": ["jaq-.*"],
+      "description": ["jaq group"],
+      "groupName": "jaq",
+      "matchPackageNames": ["/jaq.*/"],
       "matchDatasources": ["cargo"],
-      "versioning": "semver",
       "group": {
-        "commitMessageTopic": "{{{groupName}}}"
+        "commitMessageTopic": "{{{groupName}}} group"
       },
       "separateMinorPatch": true
-    }
+    },
+    {
+      "description": ["clap group"],
+      "groupName": "clap",
+      "matchPackageNames": ["/clap.*/"],
+      "matchDatasources": ["cargo"],
+      "group": {
+        "commitMessageTopic": "{{{groupName}}} group"
+      },
+      "separateMinorPatch": true
+    },
+    {
+      "description": ["pest group"],
+      "groupName": "pest",
+      "matchPackageNames": ["/pest.*/"],
+      "matchDatasources": ["cargo"],
+      "group": {
+        "commitMessageTopic": "{{{groupName}}} group"
+      },
+      "separateMinorPatch": true
+    },
   ]
 }
