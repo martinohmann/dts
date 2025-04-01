@@ -36,7 +36,7 @@
       "description": ["jaq group"],
       "groupName": "jaq",
       "matchPackageNames": ["/jaq.*/"],
-      "matchDatasources": ["cargo"],
+      "matchManagers": ["cargo"],
       "group": {
         "commitMessageTopic": "{{{groupName}}} group"
       },
@@ -46,7 +46,7 @@
       "description": ["clap group"],
       "groupName": "clap",
       "matchPackageNames": ["/clap.*/"],
-      "matchDatasources": ["cargo"],
+      "matchManagers": ["cargo"],
       "group": {
         "commitMessageTopic": "{{{groupName}}} group"
       },
@@ -56,7 +56,7 @@
       "description": ["pest group"],
       "groupName": "pest",
       "matchPackageNames": ["/pest.*/"],
-      "matchDatasources": ["cargo"],
+      "matchManagers": ["cargo"],
       "group": {
         "commitMessageTopic": "{{{groupName}}} group"
       },
