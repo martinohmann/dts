@@ -144,10 +144,7 @@ impl From<serde_qs::Error> for Error {
 
 impl From<serde_xml_rs::Error> for Error {
     fn from(err: serde_xml_rs::Error) -> Self {
-        match err {
-            serde_xml_rs::Error::Io { source } => Error::io(source),
-            other => Error::serde(other),
-        }
+        Error::serde(err)
     }
 }
 
