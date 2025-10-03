@@ -56,7 +56,7 @@ pub struct Statements<'a> {
 }
 
 impl<'a> Statements<'a> {
-    pub fn iter(&self) -> Iter<'a, Statement> {
+    pub fn iter(&self) -> Iter<'a, Statement<'_>> {
         self.inner.iter()
     }
 }
