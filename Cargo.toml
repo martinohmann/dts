@@ -27,7 +27,7 @@ csv = "1.2.2"
 glob = "0.3.1"
 clap_complete = "4.5.1"
 grep-cli = "0.1.8"
-hcl-rs = { version = "0.18.0", features = ["perf"] }
+hcl-rs = { version = "0.19.0", features = ["perf"] }
 jaq-core = { version = "1.4.0", optional = true }
 jaq-interpret = { version = "1.5.0", optional = true }
 jaq-parse = { version = "1.0.2", optional = true }
