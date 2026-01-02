@@ -1,6 +1,6 @@
 [package]
 name = "dts"
-version = "0.6.13"
+version = "0.6.14"
 authors = ["Martin Ohmann <martinohmann@gmail.com>"]
 license = "MIT"
 description = "A tool to deserialize, transform and serialize data between different encodings"
