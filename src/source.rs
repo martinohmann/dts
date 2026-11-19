@@ -81,10 +81,10 @@ impl From<&str> for Source {
         if s == "-" {
             Self::Stdin
         } else {
-            if let Ok(url) = Url::parse(s) {
-                if url.scheme() != "file" {
-                    return Self::Url(url);
-                }
+            if let Ok(url) = Url::parse(s)
+                && url.scheme() != "file"
+            {
+                return Self::Url(url);
             }
 
             Self::Path(PathBuf::from(s))

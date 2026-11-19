@@ -7,7 +7,7 @@ A simple tool to _**deserialize**_ data from an input encoding, _**transform**_
 it and _**serialize**_ it back into an output encoding.
 
 Uses [`jq`](https://stedolan.github.io/jq/) for data transformation and
-requires rust >= 1.56.0.
+requires rust >= 1.96.0.
 
 ## Installation
 

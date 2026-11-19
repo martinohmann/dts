@@ -10,7 +10,7 @@ keywords = ["hcl", "json", "yaml", "jq"]
 categories = ["encoding"]
 readme = "README.md"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.96"
 exclude = [
     ".github/",
 ]

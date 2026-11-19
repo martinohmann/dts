@@ -107,10 +107,11 @@ impl<'a> SyntaxHighlighter<'a> {
         // pager is not `bat` itself. In this case we'll just fall back to using the default pager.
         let pager = self.paging_config.pager();
 
-        if let Some((pager_bin, _)) = resolve_cmd(&pager) {
-            if !pager_bin.ends_with("bat") && !pager_bin.ends_with("bat.exe") {
-                return pager;
-            }
+        if let Some((pager_bin, _)) = resolve_cmd(&pager)
+            && !pager_bin.ends_with("bat")
+            && !pager_bin.ends_with("bat.exe")
+        {
+            return pager;
         }
 
         self.paging_config.default_pager()

@@ -92,10 +92,10 @@ impl From<serde_json::Error> for Error {
 
 impl From<serde_yaml::Error> for Error {
     fn from(err: serde_yaml::Error) -> Self {
-        if let Some(source) = err.source() {
-            if let Some(io_err) = source.downcast_ref::<io::Error>() {
-                return Error::io(io_err.kind());
-            }
+        if let Some(source) = err.source()
+            && let Some(io_err) = source.downcast_ref::<io::Error>()
+        {
+            return Error::io(io_err.kind());
         }
 
         Error::serde(err)
