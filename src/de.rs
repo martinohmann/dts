@@ -201,10 +201,8 @@ where
                     let headers: Vec<String> = headers?;
 
                     Value::Array(
-                        iter.map(|record| {
-                            Ok(headers.iter().cloned().zip(record?).collect())
-                        })
-                        .collect::<Result<_>>()?,
+                        iter.map(|record| Ok(headers.iter().cloned().zip(record?).collect()))
+                            .collect::<Result<_>>()?,
                     )
                 }
                 None => Value::Array(Vec::new()),
