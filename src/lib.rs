@@ -53,7 +53,7 @@ where
             .map_err(|err| Error::glob_pattern(full_pattern.display(), err))?
             .filter_map(|result| match result {
                 Ok(path) => path.is_file().then_some(Ok(path)),
-                Err(err) => Some(Err(err.into_error().into())),
+                Err(err) => Some(Err(Error::io(err))),
             })
             .collect()
     }

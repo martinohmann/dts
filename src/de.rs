@@ -202,7 +202,7 @@ where
 
                     Value::Array(
                         iter.map(|record| {
-                            Ok(headers.iter().cloned().zip(record?.into_iter()).collect())
+                            Ok(headers.iter().cloned().zip(record?).collect())
                         })
                         .collect::<Result<_>>()?,
                     )
