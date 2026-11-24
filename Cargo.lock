@@ -648,7 +648,7 @@ dependencies = [
 
 [[package]]
 name = "dts"
-version = "0.6.16"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
